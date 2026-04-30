@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -27,10 +28,10 @@ from core.common.demo_logger import demo_logger
 console = Console()
 
 
-def discover_cases() -> list[dict]:
+def discover_cases() -> list[dict[str, Any]]:
     """cases/ 디렉토리 스캔 → meta.yaml 목록 반환."""
     cases_dir = Path("cases")
-    out = []
+    out: list[dict[str, Any]] = []
     if not cases_dir.exists():
         return out
     for case_dir in sorted(cases_dir.iterdir()):
@@ -43,9 +44,9 @@ def discover_cases() -> list[dict]:
     return out
 
 
-def warm_up_gemma_async():
+def warm_up_gemma_async() -> None:
     """Ollama Gemma 4 더미 추론 1회로 콜드스타트 회피 (백그라운드)."""
-    def _warm():
+    def _warm() -> None:
         try:
             import ollama
             for model in ("gemma4:e2b",):
@@ -77,7 +78,7 @@ def cmd_check(strict: bool = False) -> int:
             ok = False
 
     # API 키 (strict 모드에선 hard fail)
-    def _check_required(name: str, value: str | None, strict_msg: str):
+    def _check_required(name: str, value: str | None, strict_msg: str) -> None:
         nonlocal ok
         if not value:
             if strict:
@@ -173,7 +174,7 @@ def cmd_menu() -> int:
             console.print(f"[yellow]not found: {choice}[/yellow]")
 
 
-def main():
+def main() -> None:
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("case_id", nargs="?")

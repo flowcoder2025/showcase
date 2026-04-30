@@ -2,10 +2,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
-def test_runner_check_exits_zero_on_clean_env(tmp_path, monkeypatch):
+def test_runner_check_exits_zero_on_clean_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """`--check`는 의존성·키 누락 시 exit 1, 모두 OK 시 0."""
     # 최소 환경 구성: env 키 모두 더미
     monkeypatch.setenv("OPENROUTER_API_KEY", "fake")
@@ -20,7 +23,9 @@ def test_runner_check_exits_zero_on_clean_env(tmp_path, monkeypatch):
     assert result.returncode == 0, result.stderr
 
 
-def test_runner_lists_cases_with_meta_yaml(tmp_path, monkeypatch):
+def test_runner_lists_cases_with_meta_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """cases/ 디렉토리에 meta.yaml이 있으면 메뉴에 노출.
 
     tmp_path를 cwd로 두고 runner.py를 절대경로로 호출 → 실 cases/ 오염 방지.
