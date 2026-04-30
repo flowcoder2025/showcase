@@ -11,6 +11,10 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 def write_styled_report(df: pd.DataFrame, output_path: Path, *, title: str = "보고서") -> None:
     """피벗 결과를 헤더 스타일 + 차트와 함께 저장."""
+    assert df.index.nlevels == 1, (
+        "writer requires single-level index; got "
+        f"{df.index.nlevels}-level MultiIndex"
+    )
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
