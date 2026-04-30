@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+secrets/
+**/output/*
+!**/output/_cached/
+!**/output/.gitkeep
+**/input/*_real.*
+.pytest_cache/
+.ruff_cache/
