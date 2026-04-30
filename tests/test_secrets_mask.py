@@ -104,3 +104,72 @@ def test_mask_text_handles_multiple_distinct_secrets():
     assert "sk-***" in out
     assert "ghp_***" in out
     assert "plain" in out
+
+
+# Gap 1: GitHub regex must mask even with leading word char
+def test_github_token_masked_after_underscore():
+    out = secrets_mask.mask("foo_ghp_abcdef1234567890ABCDEFghij")
+    assert "abcdef" not in out
+    assert "ghp_***" in out
+
+
+def test_github_token_not_masked_when_glued_to_alpha_prefix():
+    # Deliberate boundary: a token directly concatenated to alphanumerics
+    # without any separator (e.g. `prefixghp_…`) is treated as a variable
+    # name lookalike, NOT a leak. This is the conservative trade-off; real
+    # log lines always have a separator (=, /, space, comma, etc.).
+    text = "prefixghp_abcdef1234567890ABCDEFghij"
+    assert secrets_mask.mask(text) == text
+
+
+def test_github_token_inline_with_equals():
+    out = secrets_mask.mask_text("token=foo_ghp_abcdef1234567890ABCDEFghij&next=value")
+    assert "abcdef" not in out
+    assert "next=value" in out
+
+
+# Gap 2: JWT must NOT match short dotted base64-like strings
+def test_jwt_does_not_match_short_dotted_string():
+    # Each segment under 10 chars — should NOT mask
+    text = "eyJabc.def123.xyz789"
+    assert secrets_mask.mask(text) == text
+
+
+def test_jwt_matches_realistic_jwt():
+    jwt = (
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        ".eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ"
+        ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    )
+    assert secrets_mask.mask(jwt) == "eyJ***"
+
+
+# Gap 3: AWS key followed by alphanumeric must still mask
+def test_aws_key_with_trailing_alpha():
+    out = secrets_mask.mask("AKIAIOSFODNN7EXAMPLEx more text")
+    # Key body must be masked
+    assert "IOSFODNN7EXAMPLE" not in out
+    assert "AKIA***" in out
+
+
+def test_aws_key_with_trailing_digit_not_masked():
+    # AWS access keys are exactly 20 chars (AKIA + 16). A trailing digit
+    # makes the surrounding string NOT a valid AWS key, so the conservative
+    # lookahead (?![A-Z0-9]) correctly refuses to match. This avoids
+    # masking unrelated 17+ char [A-Z0-9] tokens that happen to start with AKIA.
+    text = "AKIAIOSFODNN7EXAMPLE1 more"
+    assert secrets_mask.mask(text) == text
+
+
+def test_aws_negative_below_charset():
+    # AKIA followed by lowercase or fewer than 16 [A-Z0-9] must NOT match
+    text = "AKIAioshortmix"
+    assert secrets_mask.mask(text) == text
+
+
+# Negative regression: original behavior preserved
+def test_aws_key_with_period_separator():
+    # Period is non-AWS-charset, so lookahead allows masking
+    out = secrets_mask.mask("AKIAIOSFODNN7EXAMPLE.suffix")
+    assert "AKIA***" in out
+    assert "suffix" in out

@@ -12,10 +12,10 @@ DISCORD_WEBHOOK_RE = re.compile(r"(https://discord\.com/api/webhooks/)[\w\-/.]+"
 OPENROUTER_KEY_RE = re.compile(r"(sk-or-)[\w\-]{4,}")
 ANTHROPIC_KEY_RE = re.compile(r"(sk-ant-)[\w\-]{4,}")
 OPENAI_KEY_RE = re.compile(r"sk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}")
-GITHUB_TOKEN_RE = re.compile(r"\b(gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}")
+GITHUB_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])(gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}")
 SLACK_TOKEN_RE = re.compile(r"\b(xox[baprs])-[A-Za-z0-9\-]{10,}")
-AWS_ACCESS_KEY_RE = re.compile(r"\b(AKIA|ASIA)[A-Z0-9]{16}\b")
-JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b")
+AWS_ACCESS_KEY_RE = re.compile(r"(?<![A-Z0-9])(AKIA|ASIA)[A-Z0-9]{16}(?![A-Z0-9])")
+JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b")
 GENERIC_BEARER_RE = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-]{8,}\b")
 
 
