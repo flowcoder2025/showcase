@@ -3,10 +3,21 @@
 Note: filename is `demo_logger.py` (not `logging.py`) to avoid shadowing
 stdlib's `logging` module within the `core.common` package.
 """
+from typing import Protocol
+
 from rich.console import Console
 from rich.markup import escape
 
 from core.common import secrets_mask
+
+
+class Logger(Protocol):
+    """Public logger contract — what `DemoLogger` provides and what other modules consume."""
+
+    def info(self, msg: str) -> None: ...
+    def success(self, msg: str) -> None: ...
+    def warning(self, msg: str) -> None: ...
+    def error(self, msg: str) -> None: ...
 
 
 class DemoLogger:

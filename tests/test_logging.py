@@ -34,3 +34,16 @@ def test_warning_and_error_emit_to_console(capsys):
     assert "c1" in out  # case_id preservation regression
     assert "warn message" in out
     assert "err message" in out
+
+
+def test_logger_protocol_exists_and_is_public():
+    """Logger Protocol is exposed as part of demo_logger module's public API."""
+    from core.common.demo_logger import Logger
+    # Sanity: DemoLogger structurally satisfies the Protocol
+    log = demo_logger.demo_logger("c")
+    assert isinstance(log, demo_logger.DemoLogger)
+    # All 4 methods on Logger contract
+    assert hasattr(Logger, "info")
+    assert hasattr(Logger, "success")
+    assert hasattr(Logger, "warning")
+    assert hasattr(Logger, "error")

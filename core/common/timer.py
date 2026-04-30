@@ -2,24 +2,19 @@
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Protocol
 
-# Floor for elapsed time when computing ratio: anything sub-50ms is "instant"
-# and would produce embarrassingly inflated ratios on a projector.
-_ELAPSED_FLOOR_S = 0.05
+from core.common.demo_logger import Logger
+
+# Cap for ratio (above this is not credible on a projector).
+# Floor is defensive depth — _RATIO_CAP is the binding guard for all realistic
+# `before_minutes` values. See Task 4.5 review.
 _RATIO_CAP = 10000
-
-
-class _Logger(Protocol):
-    """Minimal logger contract for measure(); avoids coupling to DemoLogger."""
-
-    def info(self, msg: str) -> None: ...
-    def success(self, msg: str) -> None: ...
+_ELAPSED_FLOOR_S = 0.05
 
 
 @contextmanager
 def measure(
-    log: _Logger,
+    log: Logger,
     label: str,
     *,
     before_minutes: float | None = None,
