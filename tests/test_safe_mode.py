@@ -1,7 +1,24 @@
 import json
 import os
 
+import pytest
+
 from core.common import safe_mode
+
+
+@pytest.fixture
+def register_target():
+    """Register intercept targets and unregister even if test fails."""
+    added: list[str] = []
+
+    def _add(name: str, mod: str, fn: str) -> None:
+        safe_mode.INTERCEPT_TARGETS[name] = (mod, fn)
+        added.append(name)
+
+    yield _add
+
+    for name in added:
+        safe_mode.INTERCEPT_TARGETS.pop(name, None)
 
 
 def test_is_safe_reads_env(monkeypatch):
@@ -25,7 +42,7 @@ def test_cache_path_uses_sha1(tmp_path, monkeypatch):
     assert p.suffix == ".json"
 
 
-def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch):
+def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch, register_target):
     """unittest.mock.patch 기반 격리. 컨텍스트 종료 시 복원."""
     monkeypatch.setenv("DEMO_SAFE", "1")
 
@@ -38,7 +55,7 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch):
     sys.modules["core.fake_api"] = fake
 
     # 인터셉트 대상 추가
-    safe_mode.INTERCEPT_TARGETS["fake"] = ("core.fake_api", "call")
+    register_target("fake", "core.fake_api", "call")
 
     cache_dir = tmp_path / "cases" / "case_x" / "output" / "_cached"
     cache_dir.mkdir(parents=True)
@@ -46,15 +63,17 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch):
 
     with safe_mode.intercept("case_x", apis=["fake"]):
         from core import fake_api
-        assert fake_api.call("hi") != "REAL:hi"  # patched
+        result = fake_api.call("hi")
+        assert isinstance(result, dict)
+        assert result.get("_safe") is True
+        assert result.get("qualname") == "core.fake_api.call"
 
     # 컨텍스트 종료 후 복원
     from core import fake_api
     assert fake_api.call("hi") == "REAL:hi"
-    del safe_mode.INTERCEPT_TARGETS["fake"]
 
 
-def test_intercept_returns_cached_when_present(tmp_path, monkeypatch):
+def test_intercept_returns_cached_when_present(tmp_path, monkeypatch, register_target):
     monkeypatch.setenv("DEMO_SAFE", "1")
     monkeypatch.chdir(tmp_path)
 
@@ -64,7 +83,7 @@ def test_intercept_returns_cached_when_present(tmp_path, monkeypatch):
     fake = types.ModuleType("core.fake_api2")
     fake.call = lambda x: "REAL"
     sys.modules["core.fake_api2"] = fake
-    safe_mode.INTERCEPT_TARGETS["fake2"] = ("core.fake_api2", "call")
+    register_target("fake2", "core.fake_api2", "call")
 
     # 캐시 파일 미리 작성
     case_id = "case_y"
@@ -76,5 +95,3 @@ def test_intercept_returns_cached_when_present(tmp_path, monkeypatch):
     with safe_mode.intercept(case_id, apis=["fake2"]):
         from core import fake_api2
         assert fake_api2.call("hi") == "CACHED"
-
-    del safe_mode.INTERCEPT_TARGETS["fake2"]

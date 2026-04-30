@@ -92,8 +92,12 @@ def intercept(case_id: str, apis: list[str]) -> Iterator[None]:
             )
             continue
         p = patch(f"{mod}.{fn}", _make_stub(case_id, mod, fn))
+        try:
+            p.start()
+        except Exception as e:
+            _console.print(f"[red][SAFE] failed to patch {api}: {e}[/red]")
+            continue
         patches.append(p)
-        p.start()
 
     if skipped and not patches:
         _console.print(
@@ -105,7 +109,12 @@ def intercept(case_id: str, apis: list[str]) -> Iterator[None]:
         yield
     finally:
         for p in patches:
-            p.stop()
+            try:
+                p.stop()
+            except RuntimeError:
+                # patcher wasn't started (or already stopped) — ignore so
+                # remaining patches still get cleaned up.
+                pass
 
 
 def save_cache(
