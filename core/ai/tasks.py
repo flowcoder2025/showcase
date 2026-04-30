@@ -1,5 +1,7 @@
 """AI 고수준 태스크 — 요약/분류/작성/추출."""
 import json
+from typing import Any, cast
+
 from core.ai import client, prompts
 
 
@@ -10,7 +12,7 @@ def draft_email(
     history_summary: str,
     *,
     case_id: str | None = None,  # 라이브 실행 시 캐시 저장용
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """답신 초안 3개 생성. safe fallback 시 빈 리스트 반환.
 
     case_id가 주어지면 client.chat이 결과를 cases/{case_id}/output/_cached/에
@@ -26,6 +28,9 @@ def draft_email(
     if not raw or "[SAFE-FALLBACK]" in raw:
         return []
     try:
-        return json.loads(raw)
+        parsed = json.loads(raw)
     except json.JSONDecodeError:
         return []
+    if not isinstance(parsed, list):
+        return []
+    return cast(list[dict[str, Any]], parsed)
