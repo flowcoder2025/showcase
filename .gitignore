@@ -10,3 +10,8 @@ secrets/*
 **/input/*_real.*
 .pytest_cache/
 .ruff_cache/
+
+# Generated sample data (regenerate via personas/sample_data/generate.py)
+personas/sample_data/vendors.xlsx
+personas/sample_data/vendors/
+personas/sample_data/invoices/
