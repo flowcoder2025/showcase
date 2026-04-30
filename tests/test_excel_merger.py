@@ -45,3 +45,16 @@ def test_missing_required_column_raises(tmp_path):
     column_map = {"vendor": "이름", "date": "거래일", "amount": "금액"}
     with pytest.raises(ValueError, match="missing column"):
         merger.merge_by_vendor(tmp_path, column_map=column_map)
+
+
+def test_merge_raises_on_column_map_missing_required_key(tmp_path):
+    df = pd.DataFrame([{"vendor": "A", "date": "2026-01-01", "amount": 100}])
+    df.to_excel(tmp_path / "data.xlsx", index=False)
+    with pytest.raises(ValueError, match="missing required key"):
+        merger.merge_by_vendor(tmp_path, column_map={"vendor": "vendor"})  # date/amount keys absent
+
+
+def test_merge_raises_on_missing_input_dir(tmp_path):
+    column_map = {"vendor": "v", "date": "d", "amount": "a"}
+    with pytest.raises(FileNotFoundError, match="not found"):
+        merger.merge_by_vendor(tmp_path / "nonexistent", column_map=column_map)

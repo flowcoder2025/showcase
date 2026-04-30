@@ -18,6 +18,9 @@ def merge_by_vendor(input_dir: Path, *, column_map: dict[str, str]) -> pd.DataFr
         if k not in column_map:
             raise ValueError(f"column_map missing required key: {k}")
 
+    if not Path(input_dir).is_dir():
+        raise FileNotFoundError(f"input_dir not found or not a directory: {input_dir}")
+
     frames = reader.read_dir(Path(input_dir))
     if not frames:
         raise ValueError(f"no .xlsx files in {input_dir}")
