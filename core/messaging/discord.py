@@ -5,8 +5,9 @@ NOTE: 외부 호출은 반드시 모듈 참조로 호출 (safe_mode patch 격리
     discord.send(...)
 """
 import os
-from discord_webhook import DiscordWebhook, DiscordEmbed
+from typing import TypedDict
 
+from discord_webhook import DiscordEmbed, DiscordWebhook
 
 LEVEL_COLORS = {
     "info":     "3498db",   # blue
@@ -16,8 +17,12 @@ LEVEL_COLORS = {
 }
 
 
+class SendResult(TypedDict):
+    status: int | None
+
+
 def send(content: str, *, level: str = "info", title: str | None = None,
-         webhook_url: str | None = None) -> dict:
+         webhook_url: str | None = None) -> SendResult:
     """Discord 채널에 메시지 전송. level이 주어지면 컬러 임베드 사용.
 
     반환: {"status": int}
