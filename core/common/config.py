@@ -14,7 +14,15 @@ def repo_root() -> Path:
 
 
 def load() -> dict[str, str]:
-    """`.env` + 실제 환경변수 병합. 실제 환경변수가 우선."""
+    """Schema-driven 환경 로드.
+
+    `.env` 파일에 선언된 키들만 반환한다 — `.env`가 schema 역할.
+    같은 키가 os.environ에도 있으면 os.environ 값으로 override.
+    `.env`에 없는 os.environ 변수는 결과에서 제외 (PATH, HOME 등 무관 변수 차단).
+
+    Returns:
+        dict[str, str]: schema 키와 해소된 값의 매핑.
+    """
     root = repo_root() if (Path.cwd() / "pyproject.toml").exists() else Path.cwd()
     env_file = root / ".env" if (root / ".env").exists() else Path.cwd() / ".env"
     file_vals = dotenv_values(env_file) if env_file.exists() else {}
