@@ -50,3 +50,10 @@ def test_chat_force_safe_when_all_models_fail(monkeypatch, capsys):
     result = client.chat([{"role": "user", "content": "hi"}])
     assert "_safe" in str(result) or "safe" in str(result).lower() or result == "[SAFE-FALLBACK]"
     assert "AUTO-SAFE" in capsys.readouterr().out
+
+
+def test_model_priority_is_immutable():
+    """MODEL_PRIORITY should be a tuple to prevent global mutation."""
+    assert isinstance(client.MODEL_PRIORITY, tuple)
+    # immutability check: tuple has no append method
+    assert not hasattr(client.MODEL_PRIORITY, "append")

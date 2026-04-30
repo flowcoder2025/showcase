@@ -11,11 +11,11 @@ from openai import OpenAI
 
 from core.common import safe_mode
 
-MODEL_PRIORITY = [
+MODEL_PRIORITY: tuple[str, ...] = (
     "google/gemini-2.5-flash",      # primary
     "anthropic/claude-haiku-4-5",   # fallback 1
     "openai/gpt-4o-mini",           # fallback 2
-]
+)
 
 
 class RateLimitError(Exception):
@@ -59,6 +59,9 @@ def chat(
     """우선순위 모델 폴백 + 전부 실패 시 force_safe 후 더미 응답.
 
     case_id가 주어지고 DEMO_SAFE=0(라이브)이면 결과를 시연 캐시에 저장.
+
+    Note: 401/AuthenticationError, 모델 미존재 등 분류되지 않은 에러는
+    그대로 propagate한다 (fail-loud). 폴백+더미 응답은 429/5xx에만 적용.
     """
     candidates = [model] if model else list(MODEL_PRIORITY)
     last_err: Exception | None = None
