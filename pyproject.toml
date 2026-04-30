@@ -25,6 +25,7 @@ dev = [
     "pytest>=8.0",
     "pytest-mock>=3.14",
     "ruff>=0.7",
+    "pandas-stubs>=2.2",
 ]
 
 [tool.uv]
