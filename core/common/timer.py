@@ -1,11 +1,33 @@
 """before/after 시간 측정 — 시연 임팩트용."""
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Protocol
+
+# Floor for elapsed time when computing ratio: anything sub-50ms is "instant"
+# and would produce embarrassingly inflated ratios on a projector.
+_ELAPSED_FLOOR_S = 0.05
+_RATIO_CAP = 10000
+
+
+class _Logger(Protocol):
+    """Minimal logger contract for measure(); avoids coupling to DemoLogger."""
+
+    def info(self, msg: str) -> None: ...
+    def success(self, msg: str) -> None: ...
 
 
 @contextmanager
-def measure(log, label: str, *, before_minutes: float | None = None):
-    """경과시간을 콘솔에 출력. before_minutes가 주어지면 배수 계산."""
+def measure(
+    log: _Logger,
+    label: str,
+    *,
+    before_minutes: float | None = None,
+) -> Iterator[None]:
+    """경과시간을 콘솔에 출력. before_minutes가 주어지면 배수 계산.
+
+    Ratio is clamped to avoid demo-time absurdity for sub-second operations.
+    """
     start = time.perf_counter()
     log.info(f"⏱ {label} 시작")
     try:
@@ -13,7 +35,8 @@ def measure(log, label: str, *, before_minutes: float | None = None):
     finally:
         elapsed = time.perf_counter() - start
         if before_minutes is not None:
-            ratio = (before_minutes * 60) / max(elapsed, 1e-6)
+            elapsed_safe = max(elapsed, _ELAPSED_FLOOR_S)
+            ratio = min((before_minutes * 60) / elapsed_safe, _RATIO_CAP)
             log.success(
                 f"⏱ {label} 완료: before {before_minutes}m → after {elapsed:.2f}s (~{ratio:.0f}배)"
             )
