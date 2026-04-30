@@ -12,9 +12,17 @@ DISCORD_WEBHOOK_RE = re.compile(r"(https://discord\.com/api/webhooks/)[\w\-/.]+"
 OPENROUTER_KEY_RE = re.compile(r"(sk-or-)[\w\-]{4,}")
 ANTHROPIC_KEY_RE = re.compile(r"(sk-ant-)[\w\-]{4,}")
 OPENAI_KEY_RE = re.compile(r"sk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}")
+# Lookbehind excludes `_` so `prefix_ghp_…` patterns mask (variable-name style).
+# `\b` would miss these because `_` is a word char.
 GITHUB_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])(gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}")
 SLACK_TOKEN_RE = re.compile(r"\b(xox[baprs])-[A-Za-z0-9\-]{10,}")
+# Lookarounds: ensure exactly 20 [A-Z0-9] — refuse on adjacent uppercase/digit
+# to avoid masking unrelated 21+ char [A-Z0-9] tokens that start with AKIA.
+# Trade-off: trailing lowercase letters allow mask; trailing digits/uppercase don't.
 AWS_ACCESS_KEY_RE = re.compile(r"(?<![A-Z0-9])(AKIA|ASIA)[A-Z0-9]{16}(?![A-Z0-9])")
+# Segment minimums {8,}: realistic JWTs are 40+ chars per segment; floor is a
+# false-positive guard against short dotted base64-like strings (`eyJabc.def.xyz`).
+# Existing Task 3.5 test fixture has 9-char signature, so {10,} would break it.
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b")
 GENERIC_BEARER_RE = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-]{8,}\b")
 
