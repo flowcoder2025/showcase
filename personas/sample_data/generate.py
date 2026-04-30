@@ -4,14 +4,15 @@
     uv run python personas/sample_data/generate.py
 """
 import random
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from faker import Faker
 
 
-def main():
+def main() -> None:
     fake = Faker("ko_KR")
     Faker.seed(42)
     random.seed(42)
@@ -37,7 +38,7 @@ def main():
     # 12개월 거래 — 월별 파일
     base = datetime(2026, 1, 1)
     for month_offset in range(12):
-        month_start = base + timedelta(days=30 * month_offset)
+        month_start = base + relativedelta(months=month_offset)
         rows = []
         for _ in range(random.randint(40, 80)):
             v = random.choice(vendors)
@@ -69,7 +70,7 @@ def main():
         })
     pd.DataFrame(invoices).to_excel(invoices_dir / "invoices.xlsx", index=False)
 
-    print(f"✓ Generated: vendors.xlsx (30), transactions_*.xlsx (12 months), invoices.xlsx (100)")
+    print("✓ Generated: vendors.xlsx (30), transactions_*.xlsx (12 months), invoices.xlsx (100)")
 
 
 if __name__ == "__main__":
