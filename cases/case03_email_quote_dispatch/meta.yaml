@@ -1,0 +1,13 @@
+id: case03_email_quote_dispatch
+title: 견적 메일 일괄 발송 (개인화 + PDF 첨부)
+category: messaging
+persona: 이대리
+duration_seconds: 30
+manual_minutes: 60
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "이대리 50곳 같은 메일 다른 견적 1시간"
+after: "30초, 개인화 본문 + 견적 PDF 자동 첨부"
+tools: ["python-docx", "md-to-pdf", "Gmail API / SMTP", "Jinja2"]
+real_client_inspired: false
+external_apis: ["gmail"]
