@@ -3,9 +3,12 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 
-def test_critical_imports_smoke():
+def test_critical_imports_smoke() -> None:
     """uv sync 대신 핵심 모듈 import만 빠르게 검증."""
     import importlib
 
@@ -38,7 +41,7 @@ def test_critical_imports_smoke():
     )
 
 
-def test_runner_check_exits_zero(monkeypatch):
+def test_runner_check_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "fake")
     monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/x/y")
     result = subprocess.run(
@@ -47,7 +50,7 @@ def test_runner_check_exits_zero(monkeypatch):
     assert result.returncode == 0, result.stderr
 
 
-def test_case01_full_pipeline_creates_report(tmp_path):
+def test_case01_full_pipeline_creates_report(tmp_path: Path) -> None:
     """case01: column_map → merge → pivot → report."""
     import pandas as pd
 
@@ -68,7 +71,9 @@ def test_case01_full_pipeline_creates_report(tmp_path):
     assert out.exists()
 
 
-def test_case09_safe_mode_deterministic(tmp_path, monkeypatch):
+def test_case09_safe_mode_deterministic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """동일 입력 2회 실행 → drafts.json 동일.
 
     fake 응답 캐시를 사전 주입하여 진짜 deterministic 검증 (단순 fallback 일치 X).
@@ -110,11 +115,13 @@ def test_case09_safe_mode_deterministic(tmp_path, monkeypatch):
     assert parsed[0]["subject"] == "fixed"
 
 
-def test_openrouter_fallback_chain(monkeypatch, capsys):
+def test_openrouter_fallback_chain(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """primary 차단 → fallback 자동 → 마지막 실패 시 force_safe."""
     from core.ai import client
 
-    def always_429(model, messages, **k):
+    def always_429(model: str, messages: list[dict[str, Any]], **k: Any) -> str:
         raise client.RateLimitError("429")
 
     monkeypatch.setattr(client, "_call", always_429)
@@ -125,7 +132,7 @@ def test_openrouter_fallback_chain(monkeypatch, capsys):
     assert result == "[SAFE-FALLBACK]"
 
 
-def test_secrets_masking_in_logs(capsys):
+def test_secrets_masking_in_logs(capsys: pytest.CaptureFixture[str]) -> None:
     from core.common.demo_logger import demo_logger
 
     log = demo_logger("dod")
@@ -135,7 +142,9 @@ def test_secrets_masking_in_logs(capsys):
     assert "***" in out
 
 
-def test_safe_mode_patch_isolation_across_cases(monkeypatch, tmp_path):
+def test_safe_mode_patch_isolation_across_cases(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEMO_SAFE", "1")
     from core.common import safe_mode
@@ -150,7 +159,7 @@ def test_safe_mode_patch_isolation_across_cases(monkeypatch, tmp_path):
     assert d.send is original
 
 
-def test_column_map_reuse_with_different_schema(tmp_path):
+def test_column_map_reuse_with_different_schema(tmp_path: Path) -> None:
     """다음 컨설팅 프로젝트 시나리오 — 영어 컬럼."""
     import pandas as pd
 
