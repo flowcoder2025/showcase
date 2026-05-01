@@ -63,6 +63,18 @@ def test_validate_biznum_empty_string() -> None:
     assert invoice.validate_biznum("") is False
 
 
+def test_validate_biznum_strips_whitespace() -> None:
+    """앞뒤 공백은 strip 후 검증 — OCR 결과의 trailing 공백 robust 처리."""
+    assert invoice.validate_biznum(" 220-81-62517 ") is True
+    assert invoice.validate_biznum("\t2208162517\n") is True
+
+
+def test_validate_biznum_internal_whitespace_rejected() -> None:
+    """내부 공백/기타 구분자는 strip 대상이 아님 — 엄격한 형식만 허용."""
+    assert invoice.validate_biznum("220 81 62517") is False
+    assert invoice.validate_biznum("220.81.62517") is False
+
+
 # -- extract: contract via gemma.extract mock -------------------------------
 
 
@@ -336,3 +348,64 @@ def test_to_accounting_csv_unsupported_cp949_char_raises(tmp_path: Path) -> None
     out = tmp_path / "bad.csv"
     with pytest.raises(UnicodeEncodeError):
         invoice.to_accounting_csv([inv_typed], out, encoding="cp949")
+
+
+def test_to_accounting_csv_utf8_with_bom(tmp_path: Path) -> None:
+    """``bom=True`` + utf-8 → 파일 앞에 ``EF BB BF`` BOM 기록 (Windows Excel 호환)."""
+    inv = _fake_invoice()
+    inv_typed = invoice.InvoiceData(
+        invoice_no=inv["invoice_no"],
+        issue_date=inv["issue_date"],
+        supplier_biznum=inv["supplier_biznum"],
+        supplier_name=inv["supplier_name"],
+        buyer_biznum=inv["buyer_biznum"],
+        buyer_name=inv["buyer_name"],
+        line_items=inv["line_items"],
+        total_supply=inv["total_supply"],
+        total_vat=inv["total_vat"],
+        total_amount=inv["total_amount"],
+    )
+    out = tmp_path / "ledger_bom.csv"
+    invoice.to_accounting_csv([inv_typed], out, encoding="utf-8", bom=True)
+
+    # 1. raw bytes 시작이 BOM(EF BB BF) 인지 확인.
+    raw = out.read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf"), f"BOM missing; first bytes={raw[:6]!r}"
+
+    # 2. utf-8-sig 로 읽으면 BOM 자동 제거 + 컨텐츠 정상.
+    text = out.read_text(encoding="utf-8-sig")
+    assert "거래일" in text
+    assert "AX상사" in text
+    assert "INV-2026-00042" in text
+
+
+def test_to_accounting_csv_no_bom_default(tmp_path: Path) -> None:
+    """기본(``bom=False``) → BOM 바이트 없음 (기존 동작 보존)."""
+    inv = _fake_invoice()
+    inv_typed = invoice.InvoiceData(
+        invoice_no=inv["invoice_no"],
+        issue_date=inv["issue_date"],
+        supplier_biznum=inv["supplier_biznum"],
+        supplier_name=inv["supplier_name"],
+        buyer_biznum=inv["buyer_biznum"],
+        buyer_name=inv["buyer_name"],
+        line_items=inv["line_items"],
+        total_supply=inv["total_supply"],
+        total_vat=inv["total_vat"],
+        total_amount=inv["total_amount"],
+    )
+    out = tmp_path / "ledger_no_bom.csv"
+    invoice.to_accounting_csv([inv_typed], out, encoding="utf-8")
+
+    raw = out.read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf"), "BOM should not be present by default"
+
+
+def test_to_accounting_csv_bom_with_cp949_raises(tmp_path: Path) -> None:
+    """cp949에는 BOM 개념이 없음 → ``bom=True`` 조합은 ValueError (fail-fast)."""
+    out = tmp_path / "should_not_exist.csv"
+    with pytest.raises(ValueError) as exc_info:
+        invoice.to_accounting_csv([], out, encoding="cp949", bom=True)
+    assert "BOM" in str(exc_info.value)
+    assert "utf-8" in str(exc_info.value)
+    assert not out.exists(), "file should not be created when validation fails"

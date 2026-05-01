@@ -15,8 +15,9 @@ Architecture
 - _validate_and_normalize: gemma 응답을 InvoiceData로 정규화.
   실패 채널: safe_dummy → placeholder, parse_error/missing field/biznum invalid/
   vat 불일치 → ValueError.
-- to_accounting_csv: 회계SW 표준 CSV (utf-8 / cp949 선택).
+- to_accounting_csv: 회계SW 표준 CSV (utf-8 / cp949 선택, ``bom`` 옵션).
   cp949 미지원 문자는 fail-fast (SI 호환성 우선) — UnicodeEncodeError raise.
+  ``bom=True`` + ``cp949`` 조합은 ``ValueError`` (cp949에 BOM 개념 없음).
 """
 
 from __future__ import annotations
@@ -113,12 +114,12 @@ def validate_biznum(biznum: str) -> bool:
         5. ``check == digit[9]`` 이면 valid.
 
     Args:
-        biznum: ``XXX-XX-XXXXX`` 또는 ``XXXXXXXXXX`` 형식.
+        biznum: ``XXX-XX-XXXXX`` 또는 ``XXXXXXXXXX`` 형식. 앞뒤 공백은 자동으로 제거.
 
     Returns:
         체크섬 통과 시 ``True``, 형식 또는 체크섬 실패 시 ``False``.
     """
-    digits = biznum.replace("-", "")
+    digits = biznum.strip().replace("-", "")
     if len(digits) != 10 or not digits.isdigit():
         return False
     nums = [int(c) for c in digits]
@@ -150,6 +151,7 @@ def to_accounting_csv(
     out_path: Path | str,
     *,
     encoding: Literal["utf-8", "cp949"] = "utf-8",
+    bom: bool = False,
 ) -> None:
     """회계SW (더존, 영림원 등) 표준 CSV로 export.
 
@@ -157,8 +159,12 @@ def to_accounting_csv(
         invoices: 정규화된 invoice 리스트.
         out_path: 저장 경로 (str/Path 모두 허용).
         encoding: ``utf-8`` (default) 또는 ``cp949`` (한국 회계SW 호환).
+        bom: ``True`` 이고 ``encoding="utf-8"`` 일 때 UTF-8 BOM (``EF BB BF``)을
+            파일 앞에 기록 → Windows Excel이 한글을 정상 인식 (``utf-8-sig``).
+            ``cp949``는 BOM 개념이 없으므로 ``bom=True`` 조합은 ``ValueError``.
 
     Raises:
+        ValueError: ``bom=True`` 와 ``encoding="cp949"`` 조합 (fail-fast).
         UnicodeEncodeError: ``encoding="cp949"`` 인데 invoice 필드에 cp949 미지원
             문자(이모지 등)가 포함된 경우. SI 호환을 위해 ``errors="replace"``를
             쓰지 않고 fail-fast로 raise — 데이터 무결성 우선.
@@ -166,8 +172,12 @@ def to_accounting_csv(
     NOTE: 컬럼 순서는 일반적 표준이지만 회계SW마다 다름. 향후 column_map override는
     case08 시나리오 또는 T15.5 fixer 단계에서 추가 가능.
     """
+    if bom and encoding != "utf-8":
+        # cp949에는 BOM 개념이 없으므로 silent ignore 대신 fail-fast.
+        raise ValueError("BOM is only supported with utf-8 encoding")
+    file_encoding = "utf-8-sig" if (bom and encoding == "utf-8") else encoding
     out = Path(out_path)
-    with out.open("w", encoding=encoding, newline="") as f:
+    with out.open("w", encoding=file_encoding, newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             [
