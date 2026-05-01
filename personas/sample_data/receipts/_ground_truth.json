@@ -1,0 +1,2217 @@
+[
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-03-29",
+    "amount": 18000,
+    "items": [
+      {
+        "name": "통합된",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r001.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-22",
+    "amount": 17300,
+    "items": [
+      {
+        "name": "웅장한",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "제작된",
+        "qty": 2,
+        "price": 6900
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r002.png"
+  },
+  {
+    "merchant": "세븐일레븐 합정",
+    "category": "편의점",
+    "date": "2026-02-02",
+    "amount": 81700,
+    "items": [
+      {
+        "name": "변화된",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "엔지니어",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "취약점의",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r003.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-02-19",
+    "amount": 68000,
+    "items": [
+      {
+        "name": "문화적인",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "재발명된",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "배송",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "장려하는",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r004.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-02-09",
+    "amount": 50500,
+    "items": [
+      {
+        "name": "벤치마킹된",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "혼합된",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "간소화된",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "제작된",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r005.png"
+  },
+  {
+    "merchant": "할리스 광화문",
+    "category": "커피",
+    "date": "2026-02-07",
+    "amount": 20700,
+    "items": [
+      {
+        "name": "전략적인",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r006.png"
+  },
+  {
+    "merchant": "할리스 광화문",
+    "category": "커피",
+    "date": "2026-03-23",
+    "amount": 47000,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "전략적인",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r007.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-04-18",
+    "amount": 60900,
+    "items": [
+      {
+        "name": "벤치마킹된",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "최대화된",
+        "qty": 3,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r008.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-03-03",
+    "amount": 20000,
+    "items": [
+      {
+        "name": "화폐화된",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "재발명된",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "재발명된",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r009.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-02-24",
+    "amount": 10500,
+    "items": [
+      {
+        "name": "취약점의",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r010.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-04-16",
+    "amount": 52500,
+    "items": [
+      {
+        "name": "최적화된",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "합성",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "진화된",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r011.png"
+  },
+  {
+    "merchant": "할리스 광화문",
+    "category": "커피",
+    "date": "2026-02-19",
+    "amount": 49200,
+    "items": [
+      {
+        "name": "확장된",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "재평가된",
+        "qty": 1,
+        "price": 12000
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r012.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-04-08",
+    "amount": 3500,
+    "items": [
+      {
+        "name": "시각적인",
+        "qty": 1,
+        "price": 3500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r013.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-03-04",
+    "amount": 35500,
+    "items": [
+      {
+        "name": "웅장한",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "변화된",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "사용",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "시각적인",
+        "qty": 1,
+        "price": 3500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r014.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-03-06",
+    "amount": 11500,
+    "items": [
+      {
+        "name": "큰",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "취약점의",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r015.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-04-02",
+    "amount": 18000,
+    "items": [
+      {
+        "name": "제작된",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r016.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-04-10",
+    "amount": 17900,
+    "items": [
+      {
+        "name": "배송",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "시각적인",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r017.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-01-31",
+    "amount": 42000,
+    "items": [
+      {
+        "name": "선구적인",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "엔지니어",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "엔지니어",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r018.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-02-13",
+    "amount": 64500,
+    "items": [
+      {
+        "name": "재발명된",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "합성",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "사용",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r019.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-21",
+    "amount": 9000,
+    "items": [
+      {
+        "name": "자율적인",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r020.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-07",
+    "amount": 49000,
+    "items": [
+      {
+        "name": "확장된",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "제작된",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "웅장한",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "취약점의",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r021.png"
+  },
+  {
+    "merchant": "세븐일레븐 합정",
+    "category": "편의점",
+    "date": "2026-03-19",
+    "amount": 20700,
+    "items": [
+      {
+        "name": "시각적인",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r022.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-04-05",
+    "amount": 83000,
+    "items": [
+      {
+        "name": "신속한",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "창의적인",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "사용",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "진화된",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r023.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-03-24",
+    "amount": 30700,
+    "items": [
+      {
+        "name": "변화무쌍한",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "다용도의",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "변화무쌍한",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r024.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-04-18",
+    "amount": 70000,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "화폐화된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "장려하는",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "배열적인",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r025.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-02-21",
+    "amount": 32700,
+    "items": [
+      {
+        "name": "폭발하는",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "강화된",
+        "qty": 1,
+        "price": 12000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r026.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-03-31",
+    "amount": 58500,
+    "items": [
+      {
+        "name": "혼합된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "큰",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "포용적인",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r027.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-04-06",
+    "amount": 9000,
+    "items": [
+      {
+        "name": "포용적인",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r028.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-02-17",
+    "amount": 18000,
+    "items": [
+      {
+        "name": "창의적인",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r029.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-02-16",
+    "amount": 95400,
+    "items": [
+      {
+        "name": "큰",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "창의적인",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "최적화된",
+        "qty": 3,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r030.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-04-28",
+    "amount": 42900,
+    "items": [
+      {
+        "name": "자율적인",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "확장된",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r031.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-04-18",
+    "amount": 36000,
+    "items": [
+      {
+        "name": "최적화된",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r032.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-01-31",
+    "amount": 44200,
+    "items": [
+      {
+        "name": "벤치마킹된",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "전략적인",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "재평가된",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "장려하는",
+        "qty": 1,
+        "price": 3500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r033.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-04-08",
+    "amount": 21000,
+    "items": [
+      {
+        "name": "최적화된",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "엔지니어",
+        "qty": 1,
+        "price": 12000
+      },
+      {
+        "name": "최적화된",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r034.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-04-17",
+    "amount": 5500,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r035.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-04-01",
+    "amount": 11000,
+    "items": [
+      {
+        "name": "자율적인",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r036.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-04-25",
+    "amount": 28500,
+    "items": [
+      {
+        "name": "배열적인",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "변화된",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "선구적인",
+        "qty": 2,
+        "price": 3500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r037.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-02-21",
+    "amount": 30900,
+    "items": [
+      {
+        "name": "신속한",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "큰",
+        "qty": 1,
+        "price": 6900
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r038.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-01-31",
+    "amount": 82500,
+    "items": [
+      {
+        "name": "배열적인",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "제작된",
+        "qty": 1,
+        "price": 12000
+      },
+      {
+        "name": "웅장한",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "자율적인",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r039.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-02-14",
+    "amount": 117700,
+    "items": [
+      {
+        "name": "제작된",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "혁명적인",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "포용적인",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "사용",
+        "qty": 3,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r040.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-02-24",
+    "amount": 64500,
+    "items": [
+      {
+        "name": "장려하는",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "장려하는",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "엔지니어",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "최적화된",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r041.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-04-15",
+    "amount": 33900,
+    "items": [
+      {
+        "name": "간소화된",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "웅장한",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "재발명된",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r042.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-03-21",
+    "amount": 13500,
+    "items": [
+      {
+        "name": "시각적인",
+        "qty": 3,
+        "price": 4500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r043.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-02-10",
+    "amount": 22500,
+    "items": [
+      {
+        "name": "재평가된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "최대화된",
+        "qty": 3,
+        "price": 4500
+      },
+      {
+        "name": "시각적인",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r044.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-27",
+    "amount": 62100,
+    "items": [
+      {
+        "name": "간소화된",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "혼합된",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "재평가된",
+        "qty": 1,
+        "price": 6900
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r045.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-04-28",
+    "amount": 20700,
+    "items": [
+      {
+        "name": "구조적인",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r046.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-02-16",
+    "amount": 16000,
+    "items": [
+      {
+        "name": "배송",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r047.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-04-11",
+    "amount": 29500,
+    "items": [
+      {
+        "name": "포용적인",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "폭발하는",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r048.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-04-14",
+    "amount": 56700,
+    "items": [
+      {
+        "name": "큰",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "변화무쌍한",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r049.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-03-31",
+    "amount": 41400,
+    "items": [
+      {
+        "name": "신속한",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "진화된",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "혼합된",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "제작된",
+        "qty": 1,
+        "price": 6900
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r050.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-02-10",
+    "amount": 21500,
+    "items": [
+      {
+        "name": "선구적인",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "간소화된",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r051.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-03-03",
+    "amount": 32500,
+    "items": [
+      {
+        "name": "합성",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "벤치마킹된",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "선구적인",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r052.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-01-31",
+    "amount": 20700,
+    "items": [
+      {
+        "name": "제작된",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r053.png"
+  },
+  {
+    "merchant": "할리스 광화문",
+    "category": "커피",
+    "date": "2026-03-04",
+    "amount": 66000,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 3,
+        "price": 4500
+      },
+      {
+        "name": "합성",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "발전하는",
+        "qty": 3,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r054.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-04-01",
+    "amount": 65700,
+    "items": [
+      {
+        "name": "합성",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "취약점의",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "깨끗한",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "구조적인",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r055.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-03-08",
+    "amount": 18000,
+    "items": [
+      {
+        "name": "다용도의",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r056.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-02-18",
+    "amount": 94500,
+    "items": [
+      {
+        "name": "문화적인",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "큰",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "장려하는",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "재발명된",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r057.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-02-25",
+    "amount": 45500,
+    "items": [
+      {
+        "name": "배송",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "발전하는",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "재평가된",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r058.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-03-12",
+    "amount": 11000,
+    "items": [
+      {
+        "name": "배열적인",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r059.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-03-16",
+    "amount": 51200,
+    "items": [
+      {
+        "name": "자율적인",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "포용적인",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "변화무쌍한",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "최적화된",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r060.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-04-23",
+    "amount": 116700,
+    "items": [
+      {
+        "name": "사용",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "큰",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "창의적인",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "취약점의",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r061.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-04-07",
+    "amount": 112500,
+    "items": [
+      {
+        "name": "폭발하는",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "혁명적인",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r062.png"
+  },
+  {
+    "merchant": "세븐일레븐 합정",
+    "category": "편의점",
+    "date": "2026-02-24",
+    "amount": 112500,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "합성",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r063.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-02-12",
+    "amount": 10000,
+    "items": [
+      {
+        "name": "변화무쌍한",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "장려하는",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r064.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-03-08",
+    "amount": 18000,
+    "items": [
+      {
+        "name": "제작된",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r065.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-02-05",
+    "amount": 36000,
+    "items": [
+      {
+        "name": "깨끗한",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r066.png"
+  },
+  {
+    "merchant": "세븐일레븐 합정",
+    "category": "편의점",
+    "date": "2026-04-18",
+    "amount": 42300,
+    "items": [
+      {
+        "name": "배열적인",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "다용도의",
+        "qty": 1,
+        "price": 3500
+      },
+      {
+        "name": "벤치마킹된",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "확장된",
+        "qty": 2,
+        "price": 6900
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r067.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-03-11",
+    "amount": 36300,
+    "items": [
+      {
+        "name": "통합된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "신속한",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "큰",
+        "qty": 2,
+        "price": 6900
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r068.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-04-22",
+    "amount": 5500,
+    "items": [
+      {
+        "name": "문화적인",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r069.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-02-07",
+    "amount": 35800,
+    "items": [
+      {
+        "name": "시각적인",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "구조적인",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "벤치마킹된",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "큰",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r070.png"
+  },
+  {
+    "merchant": "투썸 종로",
+    "category": "커피",
+    "date": "2026-04-09",
+    "amount": 9000,
+    "items": [
+      {
+        "name": "벤치마킹된",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r071.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-22",
+    "amount": 21500,
+    "items": [
+      {
+        "name": "변화된",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "제작된",
+        "qty": 2,
+        "price": 5500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r072.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-02-20",
+    "amount": 21000,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "통합된",
+        "qty": 1,
+        "price": 12000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r073.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-04-16",
+    "amount": 13500,
+    "items": [
+      {
+        "name": "재평가된",
+        "qty": 3,
+        "price": 4500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r074.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-03-14",
+    "amount": 36000,
+    "items": [
+      {
+        "name": "사용",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "큰",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "최대화된",
+        "qty": 2,
+        "price": 3500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r075.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-04-11",
+    "amount": 12000,
+    "items": [
+      {
+        "name": "재발명된",
+        "qty": 1,
+        "price": 12000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r076.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-03-24",
+    "amount": 9000,
+    "items": [
+      {
+        "name": "발전하는",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r077.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-03-07",
+    "amount": 38700,
+    "items": [
+      {
+        "name": "강화된",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "포용적인",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r078.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-04-17",
+    "amount": 103000,
+    "items": [
+      {
+        "name": "사용",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "혼합된",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "최대화된",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "다용도의",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r079.png"
+  },
+  {
+    "merchant": "세븐일레븐 합정",
+    "category": "편의점",
+    "date": "2026-02-09",
+    "amount": 76500,
+    "items": [
+      {
+        "name": "최대화된",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "재평가된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "혁명적인",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r080.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-03-27",
+    "amount": 16500,
+    "items": [
+      {
+        "name": "제작된",
+        "qty": 3,
+        "price": 5500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r081.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-03-13",
+    "amount": 96000,
+    "items": [
+      {
+        "name": "문화적인",
+        "qty": 3,
+        "price": 4500
+      },
+      {
+        "name": "자율적인",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "창의적인",
+        "qty": 3,
+        "price": 12000
+      },
+      {
+        "name": "배열적인",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r082.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-03-02",
+    "amount": 157500,
+    "items": [
+      {
+        "name": "확장된",
+        "qty": 3,
+        "price": 4500
+      },
+      {
+        "name": "확장된",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "선구적인",
+        "qty": 3,
+        "price": 18000
+      },
+      {
+        "name": "화폐화된",
+        "qty": 3,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r083.png"
+  },
+  {
+    "merchant": "백다방 신촌",
+    "category": "커피",
+    "date": "2026-03-18",
+    "amount": 48000,
+    "items": [
+      {
+        "name": "강화된",
+        "qty": 2,
+        "price": 12000
+      },
+      {
+        "name": "깨끗한",
+        "qty": 2,
+        "price": 12000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r084.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-04-03",
+    "amount": 54000,
+    "items": [
+      {
+        "name": "확장된",
+        "qty": 3,
+        "price": 18000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r085.png"
+  },
+  {
+    "merchant": "맥도날드 강남대로",
+    "category": "식사",
+    "date": "2026-02-08",
+    "amount": 5500,
+    "items": [
+      {
+        "name": "변화무쌍한",
+        "qty": 1,
+        "price": 5500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r086.png"
+  },
+  {
+    "merchant": "CU 청담",
+    "category": "편의점",
+    "date": "2026-02-27",
+    "amount": 68400,
+    "items": [
+      {
+        "name": "문화적인",
+        "qty": 1,
+        "price": 12000
+      },
+      {
+        "name": "취약점의",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "시각적인",
+        "qty": 3,
+        "price": 4500
+      },
+      {
+        "name": "혼합된",
+        "qty": 1,
+        "price": 6900
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r087.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-02-24",
+    "amount": 20700,
+    "items": [
+      {
+        "name": "선구적인",
+        "qty": 3,
+        "price": 6900
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r088.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-04-05",
+    "amount": 58000,
+    "items": [
+      {
+        "name": "합성",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "강화된",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "화폐화된",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "포용적인",
+        "qty": 3,
+        "price": 3500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r089.png"
+  },
+  {
+    "merchant": "할리스 광화문",
+    "category": "커피",
+    "date": "2026-02-20",
+    "amount": 50000,
+    "items": [
+      {
+        "name": "구조적인",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "제작된",
+        "qty": 3,
+        "price": 3500
+      },
+      {
+        "name": "간소화된",
+        "qty": 1,
+        "price": 3500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r090.png"
+  },
+  {
+    "merchant": "버거킹 잠실",
+    "category": "식사",
+    "date": "2026-04-03",
+    "amount": 68200,
+    "items": [
+      {
+        "name": "웅장한",
+        "qty": 2,
+        "price": 18000
+      },
+      {
+        "name": "포용적인",
+        "qty": 1,
+        "price": 4500
+      },
+      {
+        "name": "폭발하는",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "배송",
+        "qty": 2,
+        "price": 3500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r091.png"
+  },
+  {
+    "merchant": "스타벅스 강남점",
+    "category": "커피",
+    "date": "2026-02-22",
+    "amount": 36000,
+    "items": [
+      {
+        "name": "폭발하는",
+        "qty": 3,
+        "price": 12000
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r092.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-03-08",
+    "amount": 9000,
+    "items": [
+      {
+        "name": "진화된",
+        "qty": 2,
+        "price": 4500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r093.png"
+  },
+  {
+    "merchant": "GS25 서초",
+    "category": "편의점",
+    "date": "2026-02-13",
+    "amount": 36000,
+    "items": [
+      {
+        "name": "배열적인",
+        "qty": 2,
+        "price": 18000
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r094.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-04-30",
+    "amount": 46900,
+    "items": [
+      {
+        "name": "사용",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "변화무쌍한",
+        "qty": 3,
+        "price": 5500
+      },
+      {
+        "name": "창의적인",
+        "qty": 1,
+        "price": 6900
+      },
+      {
+        "name": "문화적인",
+        "qty": 1,
+        "price": 18000
+      }
+    ],
+    "payment_method": "네이버페이",
+    "filename": "r095.png"
+  },
+  {
+    "merchant": "이디야 역삼",
+    "category": "커피",
+    "date": "2026-03-23",
+    "amount": 48200,
+    "items": [
+      {
+        "name": "최적화된",
+        "qty": 3,
+        "price": 6900
+      },
+      {
+        "name": "장려하는",
+        "qty": 2,
+        "price": 5500
+      },
+      {
+        "name": "선구적인",
+        "qty": 3,
+        "price": 5500
+      }
+    ],
+    "payment_method": "삼성페이",
+    "filename": "r096.png"
+  },
+  {
+    "merchant": "롯데마트 송파",
+    "category": "장보기",
+    "date": "2026-02-14",
+    "amount": 31500,
+    "items": [
+      {
+        "name": "구조적인",
+        "qty": 1,
+        "price": 18000
+      },
+      {
+        "name": "재발명된",
+        "qty": 3,
+        "price": 4500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r097.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-03-12",
+    "amount": 4500,
+    "items": [
+      {
+        "name": "폭발하는",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "신용카드",
+    "filename": "r098.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-02-20",
+    "amount": 26000,
+    "items": [
+      {
+        "name": "전략적인",
+        "qty": 2,
+        "price": 4500
+      },
+      {
+        "name": "진화된",
+        "qty": 2,
+        "price": 3500
+      },
+      {
+        "name": "선구적인",
+        "qty": 1,
+        "price": 5500
+      },
+      {
+        "name": "시각적인",
+        "qty": 1,
+        "price": 4500
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r099.png"
+  },
+  {
+    "merchant": "이마트 트레이더스 김포",
+    "category": "장보기",
+    "date": "2026-03-30",
+    "amount": 24000,
+    "items": [
+      {
+        "name": "화폐화된",
+        "qty": 2,
+        "price": 12000
+      }
+    ],
+    "payment_method": "현금",
+    "filename": "r100.png"
+  }
+]

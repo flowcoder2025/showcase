@@ -1,0 +1,13 @@
+id: case07_ocr_receipt_to_excel
+title: 영수증 일괄 OCR → 경비 정리 엑셀 (Gemma 4 E2B)
+category: ocr
+persona: 박과장
+duration_seconds: 60
+manual_minutes: 180
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "박과장 영수증 100장 수기 입력 3시간"
+after: "1분, Gemma 4 E2B로 가맹점·금액·일자 자동 추출"
+tools: ["pillow", "ollama (Gemma 4 E2B)", "openpyxl"]
+real_client_inspired: false
+external_apis: ["ollama_gemma"]
