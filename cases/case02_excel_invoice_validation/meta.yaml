@@ -1,0 +1,13 @@
+id: case02_excel_invoice_validation
+title: 거래명세서 단가 검증 + Discord 이상치 알림
+category: excel
+persona: 최주임
+duration_seconds: 10
+manual_minutes: 90
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min"]
+before: "최주임이 거래명세서 100건 단가·수량 수기 대조 1~2시간"
+after: "10초, 이상치 자동 표시 + Discord 채널 알림"
+tools: ["pandas", "discord-webhook"]
+real_client_inspired: true
+external_apis: ["discord_webhook"]
