@@ -59,3 +59,9 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "hwpx_utils"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# T7b: googleapiclient and google_auth_oauthlib lack type stubs / py.typed.
+# google.auth.transport.* and google.oauth2.* ARE typed and remain checked.
+module = ["googleapiclient.*", "google_auth_oauthlib.*"]
+ignore_missing_imports = true
