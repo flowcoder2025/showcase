@@ -1,9 +1,12 @@
+from pathlib import Path
+from typing import Any
+
 import pandas as pd
 import pytest
 
 
 @pytest.fixture
-def invoices_input(tmp_path):
+def invoices_input(tmp_path: Path) -> Path:
     df = pd.DataFrame([
         {"거래처명": "A", "거래명세서번호": "INV-1", "품목": "X",
          "단가": 1000, "수량": 10, "금액": 10_000},
@@ -22,16 +25,21 @@ def invoices_input(tmp_path):
     return p
 
 
-def test_case02_run_detects_outliers_and_calls_discord(invoices_input, tmp_path, monkeypatch):
+def test_case02_run_detects_outliers_and_calls_discord(
+    invoices_input: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from cases.case02_excel_invoice_validation import scenario
     from core.messaging import discord
 
-    sent = []
-    monkeypatch.setattr(
-        discord,
-        "send",
-        lambda content, **k: sent.append((content, k)) or {"status": 204},
-    )
+    sent: list[tuple[str, dict[str, Any]]] = []
+
+    def _capture(content: str, **k: Any) -> dict[str, int]:
+        sent.append((content, k))
+        return {"status": 204}
+
+    monkeypatch.setattr(discord, "send", _capture)
 
     out = tmp_path / "output" / "outliers.xlsx"
     scenario.run(input_path=invoices_input, output_path=out, discord_alert=True)

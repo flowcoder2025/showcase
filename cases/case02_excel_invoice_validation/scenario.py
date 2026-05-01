@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from core.common import safe_mode, timer
+from core.common import timer
 from core.common.demo_logger import demo_logger
 from core.excel import validator
 from core.messaging import discord
@@ -31,12 +31,11 @@ def run(input_path: Path | str = "personas/sample_data/invoices/invoices.xlsx",
             f"{r['거래처명']}({r['거래명세서번호']})"
             for _, r in flagged.head(5).iterrows()
         )
-        with safe_mode.intercept("case02_excel_invoice_validation", apis=["discord_webhook"]):
-            discord.send(
-                f"단가 이상치 {len(flagged)}건 감지:\n{items}",
-                level="warning",
-                title="거래명세서 단가 이상치 알림",
-            )
+        discord.send(
+            f"단가 이상치 {len(flagged)}건 감지:\n{items}",
+            level="warning",
+            title="거래명세서 단가 이상치 알림",
+        )
         log.success("Discord 알림 발송 완료")
     return 0
 

@@ -1,7 +1,14 @@
+from pathlib import Path
+
+import pytest
+
 from core.common import safe_mode
 
 
-def test_intercept_isolates_between_two_cases(monkeypatch, tmp_path):
+def test_intercept_isolates_between_two_cases(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """case A에서 patch한 게 case B에 새지 않아야."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEMO_SAFE", "1")
