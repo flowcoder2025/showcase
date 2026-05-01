@@ -27,5 +27,5 @@ def test_write_styled_report_rejects_multiindex(tmp_path):
         ("A", "Seoul"), ("A", "Busan"), ("B", "Seoul"), ("B", "Busan"),
     ], names=["vendor", "region"]))
     out = tmp_path / "multi.xlsx"
-    with pytest.raises(AssertionError, match="single-level index"):
+    with pytest.raises(ValueError, match="single-level index"):
         writer.write_styled_report(multi_df, out)

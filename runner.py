@@ -29,7 +29,12 @@ console = Console()
 
 
 def discover_cases() -> list[dict[str, Any]]:
-    """cases/ 디렉토리 스캔 → meta.yaml 목록 반환."""
+    """cases/ 디렉토리 스캔 → meta.yaml 목록 반환.
+
+    개별 meta.yaml 파싱 실패 시 warning + skip — 한 케이스의 손상이
+    전체 런처를 막지 않도록 한다.
+    """
+    log = demo_logger("discover")
     cases_dir = Path("cases")
     out: list[dict[str, Any]] = []
     if not cases_dir.exists():
@@ -38,7 +43,14 @@ def discover_cases() -> list[dict[str, Any]]:
         meta_file = case_dir / "meta.yaml"
         if not meta_file.exists():
             continue
-        meta = yaml.safe_load(meta_file.read_text())
+        try:
+            meta = yaml.safe_load(meta_file.read_text(encoding="utf-8"))
+        except yaml.YAMLError as e:
+            log.warning(f"skip case {case_dir.name}: invalid meta.yaml ({e})")
+            continue
+        if not isinstance(meta, dict):
+            log.warning(f"skip case {case_dir.name}: meta.yaml is not a mapping")
+            continue
         meta["_dir"] = case_dir
         out.append(meta)
     return out

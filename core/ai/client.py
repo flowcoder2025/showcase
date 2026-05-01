@@ -7,7 +7,8 @@
 import os
 from typing import Any, cast
 
-from openai import OpenAI
+from openai import APIStatusError, OpenAI
+from openai import RateLimitError as OpenAIRateLimitError
 
 from core.common import safe_mode
 
@@ -34,17 +35,22 @@ def _make_client() -> OpenAI:
 
 
 def _call(model: str, messages: list[dict[str, Any]], **kwargs: Any) -> str:
-    """단일 모델 호출. 429/5xx 시 RateLimitError/ServerError 발생."""
+    """단일 모델 호출. 429/5xx 시 RateLimitError/ServerError 발생.
+
+    Typed openai 예외로 분류 — 문자열 매칭에 의존하지 않는다:
+    - openai.RateLimitError → RateLimitError
+    - openai.APIStatusError(status_code in 5xx) → ServerError
+    - 그 외 모든 예외는 propagate (fail-loud).
+    """
     try:
         resp = _make_client().chat.completions.create(
             model=model, messages=cast(Any, messages), **kwargs
         )
         return resp.choices[0].message.content or ""
-    except Exception as e:
-        msg = str(e).lower()
-        if "429" in msg or "rate" in msg:
-            raise RateLimitError(str(e)) from e
-        if any(c in msg for c in ("500", "502", "503", "504")):
+    except OpenAIRateLimitError as e:
+        raise RateLimitError(str(e)) from e
+    except APIStatusError as e:
+        if e.status_code in {500, 502, 503, 504}:
             raise ServerError(str(e)) from e
         raise
 

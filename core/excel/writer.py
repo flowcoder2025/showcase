@@ -11,10 +11,11 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 def write_styled_report(df: pd.DataFrame, output_path: Path, *, title: str = "보고서") -> None:
     """피벗 결과를 헤더 스타일 + 차트와 함께 저장."""
-    assert df.index.nlevels == 1, (
-        "writer requires single-level index; got "
-        f"{df.index.nlevels}-level MultiIndex"
-    )
+    if df.index.nlevels != 1:
+        raise ValueError(
+            "writer requires single-level index; got "
+            f"{df.index.nlevels}-level MultiIndex"
+        )
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -27,8 +28,9 @@ def write_styled_report(df: pd.DataFrame, output_path: Path, *, title: str = "�
 
     ws.cell(row=1, column=1, value=title).font = Font(size=14, bold=True)
 
-    # 헤더
-    cols = ["vendor"] + list(df.columns)
+    # 헤더 — 인덱스 이름은 generic하게 (vendor 외 schema 재사용 대응)
+    index_name = df.index.name or "index"
+    cols = [index_name] + list(df.columns)
     for c_idx, col in enumerate(cols, start=1):
         cell = ws.cell(row=3, column=c_idx, value=str(col))
         cell.font = Font(bold=True)
