@@ -1,0 +1,908 @@
+[
+  {
+    "filename": "inv_001.png",
+    "invoice_no": "INV-2026-00001",
+    "issue_date": "2026-04-01",
+    "supplier_biznum": "104-33-21815",
+    "supplier_biznum_valid": "104-33-21815",
+    "supplier_name": "(주) 가야",
+    "buyer_biznum": "960-01-33893",
+    "buyer_biznum_valid": "960-01-33893",
+    "buyer_name": "(유) 마음",
+    "line_items": [
+      {
+        "name": "OA 소모품",
+        "qty": 5,
+        "unit_price": 350000,
+        "amount": 1750000
+      }
+    ],
+    "total_supply": 1750000,
+    "total_vat": 175000,
+    "total_amount": 1925000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_002.png",
+    "invoice_no": "INV-2026-00002",
+    "issue_date": "2026-03-01",
+    "supplier_biznum": "816-85-05426",
+    "supplier_biznum_valid": "816-85-05426",
+    "supplier_name": "주식회사 한빛네트워크",
+    "buyer_biznum": "357-33-22140",
+    "buyer_biznum_valid": "357-33-22140",
+    "buyer_name": "(주) 조선",
+    "line_items": [
+      {
+        "name": "사무용품 일괄",
+        "qty": 3,
+        "unit_price": 50000,
+        "amount": 150000
+      }
+    ],
+    "total_supply": 150000,
+    "total_vat": 15000,
+    "total_amount": 165000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_003.png",
+    "invoice_no": "INV-2026-00003",
+    "issue_date": "2026-02-01",
+    "supplier_biznum": "089-89-92172",
+    "supplier_biznum_valid": "089-89-92172",
+    "supplier_name": "(주) 가야고려상사",
+    "buyer_biznum": "223-32-06160",
+    "buyer_biznum_valid": "223-32-06160",
+    "buyer_name": "(주) 인포뷰티",
+    "line_items": [
+      {
+        "name": "포장재 박스",
+        "qty": 5,
+        "unit_price": 120000,
+        "amount": 600000
+      }
+    ],
+    "total_supply": 600000,
+    "total_vat": 60000,
+    "total_amount": 660000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_004.png",
+    "invoice_no": "INV-2026-00004",
+    "issue_date": "2026-01-01",
+    "supplier_biznum": "220-31-73101",
+    "supplier_biznum_valid": "220-31-73101",
+    "supplier_name": "유한회사 마루",
+    "buyer_biznum": "967-89-94055",
+    "buyer_biznum_valid": "967-89-94055",
+    "buyer_name": "(유) 가람네오전자",
+    "line_items": [
+      {
+        "name": "전자부품 모듈",
+        "qty": 1,
+        "unit_price": 80000,
+        "amount": 80000
+      }
+    ],
+    "total_supply": 80000,
+    "total_vat": 8000,
+    "total_amount": 88000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_005.png",
+    "invoice_no": "INV-2026-00005",
+    "issue_date": "2025-12-01",
+    "supplier_biznum": "660-34-42045",
+    "supplier_biznum_valid": "660-32-42045",
+    "supplier_name": "(유) 나루라온에이아이",
+    "buyer_biznum": "482-07-00157",
+    "buyer_biznum_valid": "482-07-00157",
+    "buyer_name": "(주) 시너지네트워크",
+    "line_items": [
+      {
+        "name": "공구 세트",
+        "qty": 1,
+        "unit_price": 350000,
+        "amount": 350000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 2,
+        "unit_price": 25000,
+        "amount": 50000
+      }
+    ],
+    "total_supply": 400000,
+    "total_vat": 40000,
+    "total_amount": 440000,
+    "tax_free": false,
+    "corrupt_supplier": true,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_006.png",
+    "invoice_no": "INV-2026-00006",
+    "issue_date": "2025-11-01",
+    "supplier_biznum": "333-21-16028",
+    "supplier_biznum_valid": "333-21-16028",
+    "supplier_name": "(유) 종합모두그룹",
+    "buyer_biznum": "564-34-71284",
+    "buyer_biznum_valid": "564-34-71284",
+    "buyer_name": "유한회사 이노",
+    "line_items": [
+      {
+        "name": "프린터 토너",
+        "qty": 1,
+        "unit_price": 200000,
+        "amount": 200000
+      },
+      {
+        "name": "OA 소모품",
+        "qty": 5,
+        "unit_price": 25000,
+        "amount": 125000
+      },
+      {
+        "name": "공구 세트",
+        "qty": 4,
+        "unit_price": 350000,
+        "amount": 1400000
+      }
+    ],
+    "total_supply": 1725000,
+    "total_vat": 172500,
+    "total_amount": 1897500,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_007.png",
+    "invoice_no": "INV-2026-00007",
+    "issue_date": "2025-10-01",
+    "supplier_biznum": "205-69-81527",
+    "supplier_biznum_valid": "205-69-81527",
+    "supplier_name": "유한회사 고려시스템즈",
+    "buyer_biznum": "873-39-78551",
+    "buyer_biznum_valid": "873-39-78551",
+    "buyer_name": "(유) 제나",
+    "line_items": [
+      {
+        "name": "포장재 박스",
+        "qty": 1,
+        "unit_price": 500000,
+        "amount": 500000
+      },
+      {
+        "name": "유니폼 단체",
+        "qty": 4,
+        "unit_price": 25000,
+        "amount": 100000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 2,
+        "unit_price": 120000,
+        "amount": 240000
+      }
+    ],
+    "total_supply": 840000,
+    "total_vat": 84000,
+    "total_amount": 924000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_008.png",
+    "invoice_no": "INV-2026-00008",
+    "issue_date": "2025-09-01",
+    "supplier_biznum": "546-54-08423",
+    "supplier_biznum_valid": "546-54-08423",
+    "supplier_name": "(주) 가온센터",
+    "buyer_biznum": "456-07-54090",
+    "buyer_biznum_valid": "456-07-54090",
+    "buyer_name": "(주) 마루국민유통",
+    "line_items": [
+      {
+        "name": "교육 강의",
+        "qty": 1,
+        "unit_price": 350000,
+        "amount": 350000
+      }
+    ],
+    "total_supply": 350000,
+    "total_vat": 0,
+    "total_amount": 350000,
+    "tax_free": true,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_009.png",
+    "invoice_no": "INV-2026-00009",
+    "issue_date": "2025-08-01",
+    "supplier_biznum": "481-32-35709",
+    "supplier_biznum_valid": "481-32-35709",
+    "supplier_name": "유한회사 첨단스타반도체",
+    "buyer_biznum": "713-98-48223",
+    "buyer_biznum_valid": "713-98-48223",
+    "buyer_name": "(유) 라온코어시스템",
+    "line_items": [
+      {
+        "name": "공구 세트",
+        "qty": 1,
+        "unit_price": 25000,
+        "amount": 25000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 4,
+        "unit_price": 10000,
+        "amount": 40000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 3,
+        "unit_price": 200000,
+        "amount": 600000
+      }
+    ],
+    "total_supply": 665000,
+    "total_vat": 66500,
+    "total_amount": 731500,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_010.png",
+    "invoice_no": "INV-2026-00010",
+    "issue_date": "2025-07-01",
+    "supplier_biznum": "491-41-68607",
+    "supplier_biznum_valid": "491-41-68607",
+    "supplier_name": "(주) 종합",
+    "buyer_biznum": "134-77-89483",
+    "buyer_biznum_valid": "134-77-89483",
+    "buyer_name": "주식회사 이노",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 2,
+        "unit_price": 120000,
+        "amount": 240000
+      },
+      {
+        "name": "사무용품 일괄",
+        "qty": 4,
+        "unit_price": 500000,
+        "amount": 2000000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 4,
+        "unit_price": 350000,
+        "amount": 1400000
+      }
+    ],
+    "total_supply": 3640000,
+    "total_vat": 364000,
+    "total_amount": 4004000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_011.png",
+    "invoice_no": "INV-2026-00011",
+    "issue_date": "2025-06-01",
+    "supplier_biznum": "953-82-80403",
+    "supplier_biznum_valid": "953-82-80403",
+    "supplier_name": "주식회사 네오",
+    "buyer_biznum": "561-29-96507",
+    "buyer_biznum_valid": "561-29-96507",
+    "buyer_name": "유한회사 미래첨단센터",
+    "line_items": [
+      {
+        "name": "포장재 박스",
+        "qty": 4,
+        "unit_price": 200000,
+        "amount": 800000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 4,
+        "unit_price": 120000,
+        "amount": 480000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 5,
+        "unit_price": 350000,
+        "amount": 1750000
+      }
+    ],
+    "total_supply": 3030000,
+    "total_vat": 303000,
+    "total_amount": 3333000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_012.png",
+    "invoice_no": "INV-2026-00012",
+    "issue_date": "2025-05-01",
+    "supplier_biznum": "356-40-72325",
+    "supplier_biznum_valid": "356-40-72325",
+    "supplier_name": "(유) 겨레",
+    "buyer_biznum": "472-82-89545",
+    "buyer_biznum_valid": "472-82-89545",
+    "buyer_name": "(주) 보람은행",
+    "line_items": [
+      {
+        "name": "사무용품 일괄",
+        "qty": 1,
+        "unit_price": 500000,
+        "amount": 500000
+      }
+    ],
+    "total_supply": 500000,
+    "total_vat": 50000,
+    "total_amount": 550000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_013.png",
+    "invoice_no": "INV-2026-00013",
+    "issue_date": "2026-04-01",
+    "supplier_biznum": "192-79-76178",
+    "supplier_biznum_valid": "192-79-76178",
+    "supplier_name": "(주) 라온제나에너지",
+    "buyer_biznum": "815-96-98383",
+    "buyer_biznum_valid": "815-96-98383",
+    "buyer_name": "유한회사 신라제조",
+    "line_items": [
+      {
+        "name": "산업용 윤활유",
+        "qty": 3,
+        "unit_price": 500000,
+        "amount": 1500000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 1,
+        "unit_price": 50000,
+        "amount": 50000
+      },
+      {
+        "name": "유니폼 단체",
+        "qty": 4,
+        "unit_price": 200000,
+        "amount": 800000
+      }
+    ],
+    "total_supply": 2350000,
+    "total_vat": 235000,
+    "total_amount": 2585000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_014.png",
+    "invoice_no": "INV-2026-00014",
+    "issue_date": "2026-03-01",
+    "supplier_biznum": "858-58-83828",
+    "supplier_biznum_valid": "858-58-83828",
+    "supplier_name": "(유) 글로벌소프트",
+    "buyer_biznum": "567-26-20848",
+    "buyer_biznum_valid": "567-26-20848",
+    "buyer_name": "(유) 한빛",
+    "line_items": [
+      {
+        "name": "프린터 토너",
+        "qty": 2,
+        "unit_price": 50000,
+        "amount": 100000
+      },
+      {
+        "name": "공구 세트",
+        "qty": 3,
+        "unit_price": 80000,
+        "amount": 240000
+      }
+    ],
+    "total_supply": 340000,
+    "total_vat": 34000,
+    "total_amount": 374000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_015.png",
+    "invoice_no": "INV-2026-00015",
+    "issue_date": "2026-02-01",
+    "supplier_biznum": "356-15-26659",
+    "supplier_biznum_valid": "356-15-26659",
+    "supplier_name": "유한회사 조선",
+    "buyer_biznum": "591-47-62531",
+    "buyer_biznum_valid": "591-47-62531",
+    "buyer_name": "(유) 마루글로벌테크",
+    "line_items": [
+      {
+        "name": "도서 출판물",
+        "qty": 5,
+        "unit_price": 350000,
+        "amount": 1750000
+      },
+      {
+        "name": "농산물 직거래",
+        "qty": 3,
+        "unit_price": 25000,
+        "amount": 75000
+      },
+      {
+        "name": "교육 강의",
+        "qty": 4,
+        "unit_price": 200000,
+        "amount": 800000
+      }
+    ],
+    "total_supply": 2625000,
+    "total_vat": 0,
+    "total_amount": 2625000,
+    "tax_free": true,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_016.png",
+    "invoice_no": "INV-2026-00016",
+    "issue_date": "2026-01-01",
+    "supplier_biznum": "930-43-76611",
+    "supplier_biznum_valid": "930-43-76611",
+    "supplier_name": "(주) 겨레글로벌바이오",
+    "buyer_biznum": "366-28-08129",
+    "buyer_biznum_valid": "366-28-08129",
+    "buyer_name": "주식회사 푸른",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 5,
+        "unit_price": 25000,
+        "amount": 125000
+      }
+    ],
+    "total_supply": 125000,
+    "total_vat": 12500,
+    "total_amount": 137500,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_017.png",
+    "invoice_no": "INV-2026-00017",
+    "issue_date": "2025-12-01",
+    "supplier_biznum": "789-55-99095",
+    "supplier_biznum_valid": "789-55-99095",
+    "supplier_name": "(주) 시너지시너지제조",
+    "buyer_biznum": "841-28-65581",
+    "buyer_biznum_valid": "841-28-65581",
+    "buyer_name": "(유) 인포",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 4,
+        "unit_price": 200000,
+        "amount": 800000
+      }
+    ],
+    "total_supply": 800000,
+    "total_vat": 80000,
+    "total_amount": 880000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_018.png",
+    "invoice_no": "INV-2026-00018",
+    "issue_date": "2025-11-01",
+    "supplier_biznum": "267-53-18055",
+    "supplier_biznum_valid": "267-53-18055",
+    "supplier_name": "(주) 푸른항공",
+    "buyer_biznum": "763-10-10893",
+    "buyer_biznum_valid": "763-10-10893",
+    "buyer_name": "(유) 글로벌발해전자",
+    "line_items": [
+      {
+        "name": "공구 세트",
+        "qty": 3,
+        "unit_price": 350000,
+        "amount": 1050000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 2,
+        "unit_price": 200000,
+        "amount": 400000
+      }
+    ],
+    "total_supply": 1450000,
+    "total_vat": 145000,
+    "total_amount": 1595000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_019.png",
+    "invoice_no": "INV-2026-00019",
+    "issue_date": "2025-10-01",
+    "supplier_biznum": "622-30-70657",
+    "supplier_biznum_valid": "622-30-70657",
+    "supplier_name": "유한회사 가람솔루션",
+    "buyer_biznum": "948-05-31608",
+    "buyer_biznum_valid": "948-05-31608",
+    "buyer_name": "주식회사 윈드",
+    "line_items": [
+      {
+        "name": "포장재 박스",
+        "qty": 4,
+        "unit_price": 120000,
+        "amount": 480000
+      }
+    ],
+    "total_supply": 480000,
+    "total_vat": 48000,
+    "total_amount": 528000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_020.png",
+    "invoice_no": "INV-2026-00020",
+    "issue_date": "2025-09-01",
+    "supplier_biznum": "801-01-24571",
+    "supplier_biznum_valid": "801-01-24571",
+    "supplier_name": "(유) 첨단테크",
+    "buyer_biznum": "181-50-06191",
+    "buyer_biznum_valid": "181-58-06191",
+    "buyer_name": "주식회사 나루",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 3,
+        "unit_price": 10000,
+        "amount": 30000
+      }
+    ],
+    "total_supply": 30000,
+    "total_vat": 3000,
+    "total_amount": 33000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": true
+  },
+  {
+    "filename": "inv_021.png",
+    "invoice_no": "INV-2026-00021",
+    "issue_date": "2025-08-01",
+    "supplier_biznum": "568-23-42844",
+    "supplier_biznum_valid": "568-23-42844",
+    "supplier_name": "주식회사 이노유니온개발",
+    "buyer_biznum": "022-46-26712",
+    "buyer_biznum_valid": "022-46-26712",
+    "buyer_name": "(유) 월드",
+    "line_items": [
+      {
+        "name": "OA 소모품",
+        "qty": 2,
+        "unit_price": 10000,
+        "amount": 20000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 3,
+        "unit_price": 80000,
+        "amount": 240000
+      },
+      {
+        "name": "산업용 윤활유",
+        "qty": 2,
+        "unit_price": 80000,
+        "amount": 160000
+      }
+    ],
+    "total_supply": 420000,
+    "total_vat": 42000,
+    "total_amount": 462000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_022.png",
+    "invoice_no": "INV-2026-00022",
+    "issue_date": "2025-07-01",
+    "supplier_biznum": "695-61-34406",
+    "supplier_biznum_valid": "695-61-34406",
+    "supplier_name": "(주) 스타신문",
+    "buyer_biznum": "883-31-83808",
+    "buyer_biznum_valid": "883-31-83808",
+    "buyer_name": "(주) 마음기획",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 5,
+        "unit_price": 80000,
+        "amount": 400000
+      }
+    ],
+    "total_supply": 400000,
+    "total_vat": 40000,
+    "total_amount": 440000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_023.png",
+    "invoice_no": "INV-2026-00023",
+    "issue_date": "2025-06-01",
+    "supplier_biznum": "868-10-25314",
+    "supplier_biznum_valid": "868-10-25314",
+    "supplier_name": "유한회사 고구려항공",
+    "buyer_biznum": "292-66-25474",
+    "buyer_biznum_valid": "292-66-25474",
+    "buyer_name": "주식회사 코어출판",
+    "line_items": [
+      {
+        "name": "도서 출판물",
+        "qty": 1,
+        "unit_price": 200000,
+        "amount": 200000
+      },
+      {
+        "name": "도서 출판물",
+        "qty": 3,
+        "unit_price": 10000,
+        "amount": 30000
+      },
+      {
+        "name": "도서 출판물",
+        "qty": 3,
+        "unit_price": 350000,
+        "amount": 1050000
+      }
+    ],
+    "total_supply": 1280000,
+    "total_vat": 0,
+    "total_amount": 1280000,
+    "tax_free": true,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_024.png",
+    "invoice_no": "INV-2026-00024",
+    "issue_date": "2025-05-01",
+    "supplier_biznum": "641-64-50865",
+    "supplier_biznum_valid": "641-64-50865",
+    "supplier_name": "주식회사 모두",
+    "buyer_biznum": "295-32-23072",
+    "buyer_biznum_valid": "295-32-23072",
+    "buyer_name": "유한회사 라온",
+    "line_items": [
+      {
+        "name": "산업용 윤활유",
+        "qty": 5,
+        "unit_price": 500000,
+        "amount": 2500000
+      }
+    ],
+    "total_supply": 2500000,
+    "total_vat": 250000,
+    "total_amount": 2750000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_025.png",
+    "invoice_no": "INV-2026-00025",
+    "issue_date": "2026-04-01",
+    "supplier_biznum": "413-02-28678",
+    "supplier_biznum_valid": "413-02-28678",
+    "supplier_name": "주식회사 한가람",
+    "buyer_biznum": "106-65-60246",
+    "buyer_biznum_valid": "106-65-60246",
+    "buyer_name": "유한회사 코어코리아연구소",
+    "line_items": [
+      {
+        "name": "포장재 박스",
+        "qty": 2,
+        "unit_price": 200000,
+        "amount": 400000
+      },
+      {
+        "name": "프린터 토너",
+        "qty": 4,
+        "unit_price": 500000,
+        "amount": 2000000
+      },
+      {
+        "name": "산업용 윤활유",
+        "qty": 1,
+        "unit_price": 120000,
+        "amount": 120000
+      }
+    ],
+    "total_supply": 2520000,
+    "total_vat": 252000,
+    "total_amount": 2772000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_026.png",
+    "invoice_no": "INV-2026-00026",
+    "issue_date": "2026-03-01",
+    "supplier_biznum": "976-62-08406",
+    "supplier_biznum_valid": "976-62-08406",
+    "supplier_name": "유한회사 글로벌마음센터",
+    "buyer_biznum": "784-64-01579",
+    "buyer_biznum_valid": "784-64-01579",
+    "buyer_name": "(유) 가야센터",
+    "line_items": [
+      {
+        "name": "산업용 윤활유",
+        "qty": 4,
+        "unit_price": 350000,
+        "amount": 1400000
+      },
+      {
+        "name": "포장재 박스",
+        "qty": 1,
+        "unit_price": 500000,
+        "amount": 500000
+      }
+    ],
+    "total_supply": 1900000,
+    "total_vat": 190000,
+    "total_amount": 2090000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_027.png",
+    "invoice_no": "INV-2026-00027",
+    "issue_date": "2026-02-01",
+    "supplier_biznum": "338-41-78764",
+    "supplier_biznum_valid": "338-41-78764",
+    "supplier_name": "주식회사 가람",
+    "buyer_biznum": "028-74-90724",
+    "buyer_biznum_valid": "028-74-90724",
+    "buyer_name": "(주) 마루기술",
+    "line_items": [
+      {
+        "name": "산업용 윤활유",
+        "qty": 5,
+        "unit_price": 25000,
+        "amount": 125000
+      },
+      {
+        "name": "사무용품 일괄",
+        "qty": 3,
+        "unit_price": 10000,
+        "amount": 30000
+      }
+    ],
+    "total_supply": 155000,
+    "total_vat": 15500,
+    "total_amount": 170500,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_028.png",
+    "invoice_no": "INV-2026-00028",
+    "issue_date": "2026-01-01",
+    "supplier_biznum": "203-07-10810",
+    "supplier_biznum_valid": "203-07-10810",
+    "supplier_name": "(유) 고구려테크",
+    "buyer_biznum": "692-23-97661",
+    "buyer_biznum_valid": "692-23-97661",
+    "buyer_name": "(유) 코어코스메틱",
+    "line_items": [
+      {
+        "name": "전자부품 모듈",
+        "qty": 3,
+        "unit_price": 120000,
+        "amount": 360000
+      }
+    ],
+    "total_supply": 360000,
+    "total_vat": 36000,
+    "total_amount": 396000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_029.png",
+    "invoice_no": "INV-2026-00029",
+    "issue_date": "2025-12-01",
+    "supplier_biznum": "005-09-08301",
+    "supplier_biznum_valid": "005-09-08301",
+    "supplier_name": "주식회사 한강출판",
+    "buyer_biznum": "692-50-98050",
+    "buyer_biznum_valid": "692-50-98050",
+    "buyer_name": "유한회사 씨앤씨뷰티",
+    "line_items": [
+      {
+        "name": "유니폼 단체",
+        "qty": 3,
+        "unit_price": 120000,
+        "amount": 360000
+      },
+      {
+        "name": "전자부품 모듈",
+        "qty": 5,
+        "unit_price": 120000,
+        "amount": 600000
+      }
+    ],
+    "total_supply": 960000,
+    "total_vat": 96000,
+    "total_amount": 1056000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  },
+  {
+    "filename": "inv_030.png",
+    "invoice_no": "INV-2026-00030",
+    "issue_date": "2025-11-01",
+    "supplier_biznum": "636-62-87110",
+    "supplier_biznum_valid": "636-62-87110",
+    "supplier_name": "(주) 코어전자",
+    "buyer_biznum": "716-53-59558",
+    "buyer_biznum_valid": "716-53-59558",
+    "buyer_name": "유한회사 씨앤씨우리금고",
+    "line_items": [
+      {
+        "name": "산업용 윤활유",
+        "qty": 3,
+        "unit_price": 10000,
+        "amount": 30000
+      }
+    ],
+    "total_supply": 30000,
+    "total_vat": 3000,
+    "total_amount": 33000,
+    "tax_free": false,
+    "corrupt_supplier": false,
+    "corrupt_buyer": false
+  }
+]

@@ -1,0 +1,13 @@
+id: case08_ocr_invoice_to_csv
+title: 세금계산서 OCR → 회계 CSV (Gemma 4 E4B)
+category: ocr
+persona: 박과장
+duration_seconds: 240
+manual_minutes: 240
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "박과장 세금계산서 30장 회계SW 수기 입력 4시간 + 사업자번호 오타 검수 별도"
+after: "4분, Gemma 4 E4B로 거래번호·양측 사업자번호·공급가액·부가세 자동 추출 + 체크섬 검증 + utf-8/cp949 dual export"
+tools: ["pillow", "ollama (Gemma 4 E4B)", "csv"]
+real_client_inspired: true
+external_apis: ["ollama_gemma"]
