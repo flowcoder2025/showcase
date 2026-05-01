@@ -1,0 +1,13 @@
+id: case09_ai_email_drafter
+title: 거래처 응대 메일 AI 초안 (사내 톤 + 과거 거래 컨텍스트, 3안)
+category: ai
+persona: 이대리
+duration_seconds: 8
+manual_minutes: 10
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min"]
+before: "이대리가 답신 한 통에 톤 고민 10분"
+after: "8초, 사내 톤 + 거래 이력 기반 3안 비교"
+tools: ["openai (OpenRouter)", "json"]
+real_client_inspired: false
+external_apis: ["openrouter"]
