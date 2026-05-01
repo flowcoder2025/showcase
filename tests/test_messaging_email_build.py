@@ -249,3 +249,129 @@ def test_build_message_jpg_jpeg_both_image_jpeg(tmp_path: Path) -> None:
     types = {p.get_filename(): p.get_content_type() for p in parts if p.get_filename()}
     assert types["a.jpg"] == "image/jpeg"
     assert types["b.jpeg"] == "image/jpeg"
+
+
+# --- T7a.5 fixer tests -----------------------------------------------------
+
+
+def test_build_html_body_escapes_script() -> None:
+    """build_html_body must autoescape user-supplied data (XSS defense)."""
+    html = email_mod.build_html_body(
+        "<p>안녕하세요 {{ vendor }}님,</p><p>{{ message }}</p>",
+        {"vendor": "<script>alert(1)</script>", "message": "ok"},
+    )
+    assert "&lt;script&gt;" in html
+    assert "<script>alert(1)</script>" not in html
+
+
+def test_build_html_body_supports_korean() -> None:
+    """Korean text passes through autoescape unchanged; HTML metachars escaped."""
+    html = email_mod.build_html_body(
+        "<p>{{ greeting }}</p>",
+        {"greeting": "안녕하세요 & 환영합니다"},
+    )
+    assert "안녕하세요" in html
+    assert "&amp;" in html  # & must be escaped
+
+
+def test_build_html_body_strict_undefined() -> None:
+    """Missing context variables must raise (StrictUndefined parity with template)."""
+    import jinja2
+
+    with pytest.raises(jinja2.UndefinedError):
+        email_mod.build_html_body("<p>{{ missing }}</p>", {})
+
+
+def test_build_message_invalid_sender_format_raises() -> None:
+    with pytest.raises(ValueError, match=r"valid email"):
+        email_mod.build_message(
+            to="r@example.com",
+            subject="x",
+            body_text="body",
+            sender="not-an-email",
+        )
+
+
+def test_build_message_sender_with_display_name_ok() -> None:
+    msg = email_mod.build_message(
+        to="r@example.com",
+        subject="x",
+        body_text="body",
+        sender="AX상사 <sales@ax.example.com>",
+    )
+    assert msg["From"] == "AX상사 <sales@ax.example.com>"
+
+
+def test_build_message_invalid_to_format_raises() -> None:
+    with pytest.raises(ValueError, match=r"to field"):
+        email_mod.build_message(
+            to="garbage",
+            subject="x",
+            body_text="body",
+            sender="s@example.com",
+        )
+
+
+def test_build_message_to_multiple_addresses_ok() -> None:
+    msg = email_mod.build_message(
+        to="a@b.com, c@d.com",
+        subject="x",
+        body_text="body",
+        sender="s@example.com",
+    )
+    assert msg["To"] == "a@b.com, c@d.com"
+
+
+def test_build_message_to_one_invalid_in_multiple_raises() -> None:
+    with pytest.raises(ValueError, match=r"to field"):
+        email_mod.build_message(
+            to="a@b.com, garbage",
+            subject="x",
+            body_text="body",
+            sender="s@example.com",
+        )
+
+
+def test_build_message_zero_byte_attachment_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    empty = tmp_path / "empty.pdf"
+    empty.write_bytes(b"")
+
+    captured: list[str] = []
+
+    class _StubLogger:
+        def info(self, msg: str) -> None: ...
+        def success(self, msg: str) -> None: ...
+        def warning(self, msg: str) -> None:
+            captured.append(msg)
+
+        def error(self, msg: str) -> None: ...
+
+    from core.common import demo_logger as dl
+
+    monkeypatch.setattr(dl, "demo_logger", lambda _case_id: _StubLogger())
+
+    email_mod.build_message(
+        to="r@example.com",
+        subject="x",
+        body_text="body",
+        attachments=[empty],
+        sender="s@example.com",
+    )
+    assert any("0 bytes" in m and "empty.pdf" in m for m in captured)
+
+
+def test_build_message_zero_byte_attachment_still_added(tmp_path: Path) -> None:
+    empty = tmp_path / "empty.pdf"
+    empty.write_bytes(b"")
+    msg = email_mod.build_message(
+        to="r@example.com",
+        subject="x",
+        body_text="body",
+        attachments=[empty],
+        sender="s@example.com",
+    )
+    pdf_parts = [p for p in _all_parts(msg) if p.get_content_type() == "application/pdf"]
+    assert len(pdf_parts) == 1
+    assert pdf_parts[0].get_filename() == "empty.pdf"
