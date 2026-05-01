@@ -119,6 +119,62 @@ def test_check_strict_md_to_pdf_skill_present_passes(
     assert log.errors == []
 
 
+# ----- T8.5 fixer additions: --check --strict GMAIL_SENDER validation -----
+
+
+def test_check_strict_gmail_sender_missing_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T8.5 — email transport(SMTP) 설정은 있지만 ``GMAIL_SENDER`` 미설정 시 strict 실패.
+
+    case03 ``build_message``는 ``GMAIL_SENDER`` 없으면 빌드 시점에 실패하므로
+    strict check에서 사전 차단해야 시연 직전 발견을 막는다.
+    """
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("SMTP_USER", "ax-sales@example.com")
+    monkeypatch.delenv("GMAIL_SENDER", raising=False)
+    monkeypatch.delenv("GMAIL_OAUTH_CREDENTIALS", raising=False)
+
+    log = _CapLogger()
+    ok = runner_mod._check_email_transport(log)
+    assert ok is False
+    assert any("GMAIL_SENDER" in e for e in log.errors), log.errors
+
+
+def test_check_strict_gmail_sender_present_passes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T8.5 — SMTP credential + GMAIL_SENDER 모두 있으면 통과."""
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("SMTP_USER", "ax-sales@example.com")
+    monkeypatch.setenv("GMAIL_SENDER", "AX Sales <ax-sales@example.com>")
+    monkeypatch.delenv("GMAIL_OAUTH_CREDENTIALS", raising=False)
+
+    log = _CapLogger()
+    ok = runner_mod._check_email_transport(log)
+    assert ok is True
+    assert log.errors == []
+
+
+def test_check_strict_gmail_sender_with_gmail_oauth_passes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T8.5 — Gmail OAuth credential + GMAIL_SENDER 모두 있으면 통과."""
+    creds = tmp_path / "credentials.json"
+    creds.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("GMAIL_OAUTH_CREDENTIALS", str(creds))
+    monkeypatch.setenv("GMAIL_SENDER", "AX Sales <ax-sales@example.com>")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("SMTP_USER", raising=False)
+
+    log = _CapLogger()
+    ok = runner_mod._check_email_transport(log)
+    assert ok is True
+
+
 def test_check_strict_md_to_pdf_skill_npx_missing_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

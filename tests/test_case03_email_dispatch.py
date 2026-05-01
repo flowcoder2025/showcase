@@ -409,6 +409,104 @@ def test_run_uses_column_map_for_alternate_schema(
     assert len(captured) == 3
 
 
+def test_run_summary_includes_pdf_failed_counter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T8.5 — summary에 별도 ``pdf_failed`` 카운터 (시연 시 PDF 실패 가시).
+
+    - md_to_pdf 일부 호출이 ``MdToPdfError`` raise → ``summary["pdf_failed"] == 실패수``
+    - 정상 케이스는 ``pdf_failed == 0``.
+    - PDF 실패는 errors와 무관 (errors는 send/build 실패만).
+    """
+    from cases.case03_email_quote_dispatch import scenario
+    from core.docgen import pdf as pdf_mod
+
+    counter = {"n": 0}
+
+    def flaky(md_path: Path | str, out_path: Path | str, **_kw: Any) -> None:
+        counter["n"] += 1
+        if counter["n"] in (2, 4):
+            raise pdf_mod.MdToPdfError(f"simulated #{counter['n']}")
+        Path(out_path).write_bytes(b"%PDF-1.4\n%stub")
+
+    _patch_externals(monkeypatch, pdf_fn=flaky)
+
+    df = _make_dispatch_df(5)
+    inp = tmp_path / "in.xlsx"
+    df.to_excel(inp, index=False)
+    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+
+    assert summary["pdf_failed"] == 2
+    assert summary["built"] == 5
+    assert summary["sent"] == 5
+    assert summary["errors"] == 0
+
+
+def test_run_summary_pdf_failed_zero_on_clean_run(
+    dispatch_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T8.5 — 모든 PDF 정상 생성 시 ``pdf_failed == 0``."""
+    from cases.case03_email_quote_dispatch import scenario
+
+    _patch_externals(monkeypatch)
+    summary = scenario.run(input_path=dispatch_input, output_dir=tmp_path / "out")
+
+    assert summary["pdf_failed"] == 0
+
+
+def test_run_handles_nan_amount(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """T8.5 — amount 컬럼이 NaN(빈 셀) → warning 로그 + amount_str='0', built+1.
+
+    pandas read_excel은 빈 셀을 ``float('nan')``로 채운다. 기존 ``int()`` 변환은
+    ``int(nan) → ValueError``로 잡혀 0이 되긴 했지만, NaN 케이스를 명시 검증해
+    의도를 드러낸다 (회귀 방지).
+    """
+    from cases.case03_email_quote_dispatch import scenario
+
+    captured = _patch_externals(monkeypatch)
+    cap = _CaptureLogger()
+    monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
+
+    df = pd.DataFrame(
+        [
+            {
+                "거래처명": "정상",
+                "담당자": "담당",
+                "이메일": "ok@example.com",
+                "견적번호": "Q-NAN-001",
+                "품목요약": "부품",
+                "예상금액": float("nan"),  # NaN 케이스
+                "과거거래": "신규",
+            },
+            {
+                "거래처명": "정상2",
+                "담당자": "담당",
+                "이메일": "ok2@example.com",
+                "견적번호": "Q-NAN-002",
+                "품목요약": "부품",
+                "예상금액": 5_000,
+                "과거거래": "신규",
+            },
+        ]
+    )
+    inp = tmp_path / "nan.xlsx"
+    df.to_excel(inp, index=False)
+    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+
+    assert summary["built"] == 2
+    assert summary["sent"] == 2
+    assert summary["errors"] == 0
+    # NaN row warning 발생
+    nan_warnings = [w for w in cap.warnings if "Q-NAN-001" in w and "NaN" in w]
+    assert len(nan_warnings) == 1, f"expected NaN warning, got: {cap.warnings!r}"
+    # 본문에 0원 노출
+    assert len(captured) == 2
+    text_parts = [
+        p.get_content() for p in captured[0].walk() if p.get_content_type() == "text/plain"
+    ]
+    assert any("0원" in t for t in text_parts), text_parts
+
+
 def test_run_subject_contains_quote_no_and_vendor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

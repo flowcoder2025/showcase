@@ -86,13 +86,14 @@ def run(
     Returns
     -------
     summary : dict
-        ``{"built": int, "sent": int, "errors": int,
+        ``{"built": int, "sent": int, "errors": int, "pdf_failed": int,
            "transports": {transport: count}, "rows": [...]}``
 
         - ``built`` — ``build_message`` 성공한 건수
         - ``sent`` — ``email.send`` 가 ``sent=True`` 또는 transport
           ``safe-fallback`` 을 반환한 건수 (시연 측면에선 둘 다 "처리됨")
         - ``errors`` — build_message / send 실패 건수 (PDF 실패는 제외 — 첨부만 누락)
+        - ``pdf_failed`` — md_to_pdf 단계 실패 건수 (T8.5 — 시연 시 PDF 실패 가시)
     """
     log = demo_logger("case03_email_quote_dispatch")
     case_dir = Path(__file__).parent
@@ -114,6 +115,7 @@ def run(
         "built": 0,
         "sent": 0,
         "errors": 0,
+        "pdf_failed": 0,  # T8.5 — PDF 실패 별도 카운터 (시연 가시성)
         "transports": {},
         "rows": [],
     }
@@ -130,10 +132,17 @@ def run(
             vendor = str(row[cm["vendor"]]).strip()
             contact = str(row[cm["contact"]])
             to_addr = str(row[cm["to"]])
-            try:
-                amount_int = int(row[cm["amount"]])
-            except (ValueError, TypeError):
+            # T8.5 — NaN 명시 검증. pandas read_excel은 빈 셀을 float('nan')로 채운다.
+            amount_raw = row[cm["amount"]]
+            if pd.isna(amount_raw):
+                log.warning(f"[{quote_no}] amount is NaN — using 0")
                 amount_int = 0
+            else:
+                try:
+                    amount_int = int(amount_raw)
+                except (ValueError, TypeError):
+                    log.warning(f"[{quote_no}] amount invalid ({amount_raw!r}) — using 0")
+                    amount_int = 0
             ctx: dict[str, str] = {
                 "vendor": vendor,
                 "contact": contact,
@@ -153,8 +162,10 @@ def run(
                 pdf_ok = True
             except pdf_mod.MdToPdfError as e:
                 log.warning(f"[{quote_no}] pdf failed: {type(e).__name__}: {e}")
+                summary["pdf_failed"] = int(summary["pdf_failed"]) + 1
             except Exception as e:  # noqa: BLE001 — pdf 단계 보호 (md write 등)
                 log.warning(f"[{quote_no}] pdf step failed: {type(e).__name__}: {e}")
+                summary["pdf_failed"] = int(summary["pdf_failed"]) + 1
 
             # 메일 빌드 + 발송 — 실패는 errors+1, 다른 row 진행.
             try:
@@ -201,7 +212,8 @@ def run(
                 summary["errors"] = int(summary["errors"]) + 1
 
     log.success(
-        f"빌드 {summary['built']}건 / 발송 {summary['sent']}건 / 실패 {summary['errors']}건"
+        f"빌드 {summary['built']}건 / 발송 {summary['sent']}건 / "
+        f"PDF 실패 {summary['pdf_failed']}건 / 에러 {summary['errors']}건"
     )
     return summary
 

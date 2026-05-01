@@ -160,20 +160,28 @@ def _check_md_to_pdf_skill(log: Any) -> bool:
 
 
 def _check_email_transport(log: Any) -> bool:
-    """strict 모드: Gmail OAuth credential 또는 SMTP credential 둘 중 하나는 있어야 한다.
+    """strict 모드: Gmail OAuth credential 또는 SMTP credential + ``GMAIL_SENDER``.
 
     Phase 2 case03용. 시연 시 둘 다 없으면 case03는 --safe로만 실행 가능.
+    ``GMAIL_SENDER``는 ``email.build_message`` From 헤더로 사용되며 누락 시
+    빌드 시점에 실패하므로 strict check에서 사전 차단한다 (T8.5).
     """
     gmail_creds = os.getenv("GMAIL_OAUTH_CREDENTIALS", "")
     has_gmail = bool(gmail_creds) and Path(gmail_creds).exists()
     has_smtp = bool(os.getenv("SMTP_HOST")) and bool(os.getenv("SMTP_USER"))
-    if has_gmail or has_smtp:
-        return True
-    log.error(
-        "[STRICT] no email transport configured — set GMAIL_OAUTH_CREDENTIALS "
-        "(file must exist) or SMTP_HOST+SMTP_USER. case03 will only run in --safe mode."
-    )
-    return False
+    if not (has_gmail or has_smtp):
+        log.error(
+            "[STRICT] no email transport configured — set GMAIL_OAUTH_CREDENTIALS "
+            "(file must exist) or SMTP_HOST+SMTP_USER. case03 will only run in --safe mode."
+        )
+        return False
+    if not os.getenv("GMAIL_SENDER"):
+        log.error(
+            "[STRICT] GMAIL_SENDER not set — case03 build_message will fail. "
+            "Set GMAIL_SENDER='Display Name <user@example.com>'."
+        )
+        return False
+    return True
 
 
 def _check_ollama_gemma(log: Any) -> bool:
