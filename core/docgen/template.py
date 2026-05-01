@@ -14,6 +14,13 @@ _env = jinja2.Environment(
     undefined=jinja2.StrictUndefined,  # 누락 변수 즉시 raise
 )
 
+_env_html = jinja2.Environment(
+    loader=jinja2.BaseLoader(),
+    autoescape=jinja2.select_autoescape(["html", "htm", "xml"]),
+    keep_trailing_newline=True,
+    undefined=jinja2.StrictUndefined,
+)
+
 
 def render_string(template_str: str, context: dict[str, Any]) -> str:
     """문자열 템플릿 → 렌더링 결과."""
@@ -24,3 +31,14 @@ def render_file(template_path: Path | str, context: dict[str, Any]) -> str:
     """파일 템플릿 → 렌더링 결과 (UTF-8 명시)."""
     text = Path(template_path).read_text(encoding="utf-8")
     return render_string(text, context)
+
+
+def render_html_string(template_str: str, context: dict[str, Any]) -> str:
+    """HTML 템플릿 — autoescape 활성. case03 메일 HTML 본문 등 XSS 방어용."""
+    return _env_html.from_string(template_str).render(**context)
+
+
+def render_html_file(template_path: Path | str, context: dict[str, Any]) -> str:
+    """HTML 파일 템플릿 — autoescape 활성 (UTF-8 명시)."""
+    text = Path(template_path).read_text(encoding="utf-8")
+    return render_html_string(text, context)

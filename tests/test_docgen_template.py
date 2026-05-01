@@ -64,3 +64,47 @@ def test_render_file_missing_file_raises(tmp_path: Path) -> None:
     missing = tmp_path / "does_not_exist.txt"
     with pytest.raises(FileNotFoundError):
         template.render_file(missing, {})
+
+
+def test_render_string_no_trailing_newline_preserved() -> None:
+    """입력에 trailing newline 없으면 결과에도 없음 (T3 누락 negative case)."""
+    result = template.render_string("hello {{ name }}", {"name": "박과장"})
+    assert not result.endswith("\n")
+    assert result == "hello 박과장"
+
+
+def test_render_html_string_escapes_user_input() -> None:
+    """HTML 환경에서 사용자 입력은 escape (case03 메일 본문 XSS 방어)."""
+    result = template.render_html_string(
+        "<p>{{ x }}</p>",
+        {"x": "<script>alert('xss')</script>"},
+    )
+    assert "<script>" not in result
+    assert "&lt;script&gt;" in result
+    assert "&lt;/script&gt;" in result
+
+
+def test_render_html_file_escapes_user_input(tmp_path: Path) -> None:
+    """파일 버전 HTML 렌더 — 동일하게 escape."""
+    tmpl_path = tmp_path / "mail.html"
+    tmpl_path.write_text("<p>{{ body }}</p>", encoding="utf-8")
+    result = template.render_html_file(
+        tmpl_path,
+        {"body": "<b>bold</b> & 'quote'"},
+    )
+    assert "<b>bold</b>" not in result
+    assert "&lt;b&gt;bold&lt;/b&gt;" in result
+    assert "&amp;" in result
+
+
+def test_render_html_string_strict_undefined_raises() -> None:
+    """HTML 환경도 StrictUndefined 동작."""
+    with pytest.raises(jinja2.UndefinedError):
+        template.render_html_string("<p>{{ missing }}</p>", {})
+
+
+def test_render_html_string_keeps_trailing_newline() -> None:
+    """HTML 환경도 trailing newline 보존."""
+    result = template.render_html_string("<p>hi</p>\n", {})
+    assert result.endswith("\n")
+    assert result == "<p>hi</p>\n"
