@@ -48,6 +48,15 @@ uv run python -m cases.case05_doc_quote_generator.scenario
 
 `build_quote`가 자동으로 `sum(qty * price)`로 합계를 산정하므로 오타·누락 위험이 없다.
 
+## 출력 파일 관리
+
+`output/` 디렉토리에 생성되는 파일:
+- `{견적번호}.docx` — Word 견적서 (시연·고객 발송용)
+- `{견적번호}.md` — 중간 markdown (감사 추적용, 삭제 가능)
+- `{견적번호}.pdf` — PDF 견적서 (시연·메일 첨부용)
+
+md 파일은 pdf 생성 중간 산출물입니다. 시연 후 정리는 `rm output/*.md`.
+
 ## 시연 임팩트
 - Before: 거래처 1곳당 양식 복붙·표 작성·합계 계산 약 30분
 - After: 10건 일괄 처리도 30초 내, 모든 견적이 동일 양식 + 자동 합계

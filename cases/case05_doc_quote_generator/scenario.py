@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import rich.markup
 
 from core.common import timer
 from core.common.demo_logger import demo_logger
@@ -107,7 +108,16 @@ def run(
     with timer.measure(log, "견적서 일괄 생성 (docx + pdf)", before_minutes=30):
         for request_id, group in grouped:
             request_id_str = str(request_id)
-            vendor = str(group.iloc[0][cm["vendor"]])
+            vendor_raw = group.iloc[0][cm["vendor"]]
+            # pandas Excel roundtrip: 빈 문자열은 NaN으로 읽힘 → pd.isna로 명시 처리.
+            vendor = "" if pd.isna(vendor_raw) else str(vendor_raw).strip()
+
+            # 사전 가드: vendor 빈/공백만 → skip + warning. word.build_quote 재진입 전에 차단.
+            if not vendor:
+                log.warning(f"[{request_id_str}] vendor empty — skipping")
+                summary["errors"] = int(summary["errors"]) + 1
+                continue
+
             items = [
                 {
                     "name": str(row[cm["name"]]),
@@ -117,6 +127,11 @@ def run(
                 for _, row in group.iterrows()
             ]
             meta = {"date": "2026-05-01", "quote_no": request_id_str}
+
+            # per-request 진행 로그 — 시연자가 진행을 시각적으로 확인.
+            # rich.markup 안전(lessons L10): vendor 명에 [..] 포함 시 콘솔에서 markup 해석 방지.
+            vendor_safe = rich.markup.escape(vendor)
+            log.info(f"[{request_id_str}] {vendor_safe} — {len(items)}개 품목 → docx + pdf")
 
             docx_built = False
             try:
@@ -130,7 +145,7 @@ def run(
                 summary["docx_count"] = int(summary["docx_count"]) + 1
                 docx_built = True
             except Exception as e:  # noqa: BLE001 — per-request 실패 격리
-                log.warning(f"docx failed for {request_id_str}: {e}")
+                log.warning(f"[{request_id_str}] docx failed: {type(e).__name__}: {e}")
                 summary["errors"] = int(summary["errors"]) + 1
 
             if docx_built:
@@ -143,10 +158,10 @@ def run(
                     pdf_mod.md_to_pdf(md_path, pdf_path)
                     summary["pdf_count"] = int(summary["pdf_count"]) + 1
                 except pdf_mod.MdToPdfError as e:
-                    log.warning(f"pdf failed for {request_id_str}: {e}")
+                    log.warning(f"[{request_id_str}] pdf failed: {type(e).__name__}: {e}")
                     summary["errors"] = int(summary["errors"]) + 1
                 except Exception as e:  # noqa: BLE001 — md write 등 보호
-                    log.warning(f"pdf step failed for {request_id_str}: {e}")
+                    log.warning(f"[{request_id_str}] pdf step failed: {type(e).__name__}: {e}")
                     summary["errors"] = int(summary["errors"]) + 1
 
             requests_list.append(
