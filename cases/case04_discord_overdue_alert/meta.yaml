@@ -1,0 +1,13 @@
+id: case04_discord_overdue_alert
+title: 미수금 단계별 Discord 알림
+category: messaging
+persona: 박과장
+duration_seconds: 8
+manual_minutes: 120
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "박과장 매주 회수 체크·연락 2시간"
+after: "8초, 연체 단계별 톤 분기로 Discord 자동 알림"
+tools: ["pandas", "discord-webhook"]
+real_client_inspired: true
+external_apis: ["discord_webhook"]
