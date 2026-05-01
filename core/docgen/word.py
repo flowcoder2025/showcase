@@ -3,18 +3,50 @@
 case05 docgen 카테고리의 핵심 빌더. column_map 강제로 다른 입력 스키마와도
 호환되며, total 미명시 시 sum(qty*price)을 자동 계산한다.
 
-NOTE: 한글 폰트는 시스템 기본(macOS: Apple SD Gothic Neo)에 의존한다.
-명시적 폰트 설정은 T4.5 후속 fixer 또는 case05 wrapper에서 보강 가능.
+한글 폰트는 ``KOREAN_FONT`` 모듈 상수로 명시적으로 적용한다 (기본
+``Apple SD Gothic Neo``). Windows/Linux 시연 노트북에서 한글이 깨지지
+않도록 모든 run의 ``w:rFonts`` (eastAsia/ascii/hAnsi)를 설정한다.
+환경변수 ``AX_KOREAN_FONT`` 로 override 가능.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 DEFAULT_COLUMN_MAP: dict[str, str] = {"name": "name", "qty": "qty", "price": "price"}
+
+KOREAN_FONT: str = os.environ.get("AX_KOREAN_FONT", "Apple SD Gothic Neo")
+
+
+def _set_korean_font(run: Any, font_name: str = KOREAN_FONT) -> None:
+    """run에 한글(eastAsia) 폰트를 명시. ascii/hAnsi도 같이 설정해 혼합문 안전."""
+    run.font.name = font_name
+    rPr = run._element.get_or_add_rPr()
+    rFonts = rPr.find(qn("w:rFonts"))
+    if rFonts is None:
+        rFonts = OxmlElement("w:rFonts")
+        rPr.append(rFonts)
+    rFonts.set(qn("w:eastAsia"), font_name)
+    rFonts.set(qn("w:ascii"), font_name)
+    rFonts.set(qn("w:hAnsi"), font_name)
+
+
+def _apply_font_to_paragraph(paragraph: Any) -> None:
+    """단락의 모든 run에 한글 폰트를 적용. run이 없으면 add_run으로 보장."""
+    if not paragraph.runs:
+        # heading/empty paragraph도 빈 run을 추가해 폰트가 적용되도록 보장
+        if paragraph.text == "":
+            return
+        # paragraph.text가 있는데 runs가 비어있는 경우는 거의 없으나 방어적으로 처리
+        return
+    for run in paragraph.runs:
+        _set_korean_font(run)
 
 
 def _coerce_int(value: Any, *, field: str, item: dict[str, Any]) -> int:
@@ -40,16 +72,19 @@ def build_quote(
 
     Args:
         out_path: 결과 .docx 경로
-        vendor: 거래처명
+        vendor: 거래처명 (빈 문자열/whitespace-only 금지)
         items: 품목 리스트 — 각 dict는 column_map 기준 name/qty/price 키 보유
         meta: {"date": YYYY-MM-DD, "quote_no": "Q-XXX-NNN", ...} (date/quote_no 필수)
         column_map: 입력 dict 키 매핑 (재사용성 — 다른 입력 스키마 호환)
         total: 명시 시 사용, 미명시 시 sum(qty * price) 자동 계산
 
     Raises:
-        ValueError: items 빈 리스트 또는 qty/price 변환 실패
+        ValueError: items 빈 리스트 / vendor 빈 문자열 / qty·price 음수 또는
+            변환 실패
         KeyError: meta에 'date' 또는 'quote_no' 누락, items에 매핑된 키 누락
     """
+    if not vendor or not vendor.strip():
+        raise ValueError("vendor must not be empty")
     if not items:
         raise ValueError("items must not be empty")
     if "date" not in meta:
@@ -67,17 +102,24 @@ def build_quote(
     for it in items:
         qty = _coerce_int(it.get(qty_key), field="qty", item=it)
         price = _coerce_int(it.get(price_key), field="price", item=it)
+        if qty < 0 or price < 0:
+            raise ValueError(f"item {it!r} has negative qty/price (qty={qty}, price={price})")
         line_amounts.append(qty * price)
     auto_total = sum(line_amounts)
     final_total = total if total is not None else auto_total
 
     doc = Document()
     # 헤더
-    doc.add_heading("견 적 서", level=0)
+    heading = doc.add_heading("견 적 서", level=0)
+    _apply_font_to_paragraph(heading)
     # 메타 단락
-    doc.add_paragraph(f"견적번호: {meta['quote_no']}")
-    doc.add_paragraph(f"작성일: {meta['date']}")
-    doc.add_paragraph(f"거래처: {vendor}")
+    meta_paras = [
+        doc.add_paragraph(f"견적번호: {meta['quote_no']}"),
+        doc.add_paragraph(f"작성일: {meta['date']}"),
+        doc.add_paragraph(f"거래처: {vendor}"),
+    ]
+    for p in meta_paras:
+        _apply_font_to_paragraph(p)
 
     # 품목 표
     table = doc.add_table(rows=1 + len(items), cols=4)
@@ -97,9 +139,16 @@ def build_quote(
         row[2].text = f"{price:,}"
         row[3].text = f"{qty * price:,}"
 
+    # 표 셀 모든 단락에 폰트 적용
+    for row in table.rows:
+        for cell in row.cells:
+            for p in cell.paragraphs:
+                _apply_font_to_paragraph(p)
+
     # 합계 — 굵게
     doc.add_paragraph()
     total_para = doc.add_paragraph(f"합 계: {final_total:,}원")
     total_para.runs[0].bold = True
+    _apply_font_to_paragraph(total_para)
 
     doc.save(str(out_path))

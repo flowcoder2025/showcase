@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from docx import Document
+from docx.oxml.ns import qn
 
 from core.docgen import word
 
@@ -183,3 +184,120 @@ def test_build_quote_total_zero_when_all_zero_priced(tmp_path: Path) -> None:
     sum_paragraphs = [p.text for p in doc.paragraphs if "합 계" in p.text]
     assert sum_paragraphs
     assert any("0" in p for p in sum_paragraphs)
+
+
+def test_build_quote_negative_qty_raises(tmp_path: Path) -> None:
+    out = tmp_path / "quote.docx"
+    with pytest.raises(ValueError, match="negative"):
+        word.build_quote(
+            out_path=out,
+            vendor="V",
+            items=[{"name": "x", "qty": -1, "price": 100}],
+            meta=_sample_meta(),
+        )
+
+
+def test_build_quote_negative_price_raises(tmp_path: Path) -> None:
+    out = tmp_path / "quote.docx"
+    with pytest.raises(ValueError, match="negative"):
+        word.build_quote(
+            out_path=out,
+            vendor="V",
+            items=[{"name": "x", "qty": 1, "price": -100}],
+            meta=_sample_meta(),
+        )
+
+
+def test_build_quote_empty_vendor_raises(tmp_path: Path) -> None:
+    out = tmp_path / "quote.docx"
+    with pytest.raises(ValueError, match="vendor"):
+        word.build_quote(
+            out_path=out,
+            vendor="",
+            items=_sample_items(),
+            meta=_sample_meta(),
+        )
+
+
+def test_build_quote_whitespace_vendor_raises(tmp_path: Path) -> None:
+    out = tmp_path / "quote.docx"
+    with pytest.raises(ValueError, match="vendor"):
+        word.build_quote(
+            out_path=out,
+            vendor="   ",
+            items=_sample_items(),
+            meta=_sample_meta(),
+        )
+
+
+def _collect_east_asia_fonts(path: Path) -> set[str]:
+    """docx 내 모든 run의 w:rFonts/@w:eastAsia 값을 수집."""
+    doc = Document(str(path))
+    fonts: set[str] = set()
+    # 단락
+    for p in doc.paragraphs:
+        for run in p.runs:
+            rPr = run._element.find(qn("w:rPr"))
+            if rPr is None:
+                continue
+            rFonts = rPr.find(qn("w:rFonts"))
+            if rFonts is None:
+                continue
+            v = rFonts.get(qn("w:eastAsia"))
+            if v:
+                fonts.add(v)
+    # 테이블 셀 단락
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    for run in p.runs:
+                        rPr = run._element.find(qn("w:rPr"))
+                        if rPr is None:
+                            continue
+                        rFonts = rPr.find(qn("w:rFonts"))
+                        if rFonts is None:
+                            continue
+                        v = rFonts.get(qn("w:eastAsia"))
+                        if v:
+                            fonts.add(v)
+    return fonts
+
+
+def test_build_quote_korean_font_applied(tmp_path: Path) -> None:
+    out = tmp_path / "quote.docx"
+    word.build_quote(
+        out_path=out,
+        vendor="AX상사",
+        items=_sample_items(),
+        meta=_sample_meta(),
+    )
+    fonts = _collect_east_asia_fonts(out)
+    assert word.KOREAN_FONT in fonts, (
+        f"expected eastAsia font {word.KOREAN_FONT!r} not found; got {fonts!r}"
+    )
+
+
+def test_build_quote_korean_font_env_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    custom = "Malgun Gothic"
+    monkeypatch.setenv("AX_KOREAN_FONT", custom)
+    # 모듈 상수는 import 시점 평가이므로, 런타임 override를 위해 모듈을 reload
+    import importlib
+
+    importlib.reload(word)
+    try:
+        out = tmp_path / "quote.docx"
+        word.build_quote(
+            out_path=out,
+            vendor="AX상사",
+            items=_sample_items(),
+            meta=_sample_meta(),
+        )
+        fonts = _collect_east_asia_fonts(out)
+        assert custom in fonts, f"expected {custom!r}; got {fonts!r}"
+    finally:
+        # 다른 테스트 격리 — 기본값으로 reload
+        monkeypatch.delenv("AX_KOREAN_FONT", raising=False)
+        importlib.reload(word)
