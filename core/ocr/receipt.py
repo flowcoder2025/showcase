@@ -129,12 +129,39 @@ def _normalize(raw: dict[str, Any], image_path: Path | str) -> ReceiptData:
         )
 
     return ReceiptData(
-        merchant=str(raw["merchant"]).strip(),
+        merchant=_normalize_merchant(raw["merchant"]),
         amount=amount,
         date=_normalize_date(raw["date"]),
         items=_normalize_items(raw.get("items", [])),
         raw_text=str(raw.get("raw_text", "")),
     )
+
+
+# Zero-width 공백 문자 (ZWSP, ZWNJ, ZWJ, BOM) — 일부 OCR 출력에 끼어들어 가맹점
+# 매칭/카테고리 룰을 미세하게 깬다. 시연 안전성 위해 사전 제거.
+_ZERO_WIDTH_CHARS: str = "​‌‍﻿"
+_MULTISPACE_RE: re.Pattern[str] = re.compile(r"\s+")
+
+
+def _normalize_merchant(value: Any) -> str:
+    """가맹점명 trim — 개행/탭/CR/multi-space/zero-width 공백 정규화.
+
+    OCR 출력은 종종 trailing 개행, 탭으로 이어붙은 가게-지점, multi-space,
+    zero-width 공백을 포함한다. 카테고리 룰베이스 매칭 (``startswith``) 가
+    이런 noise에 깨지지 않도록 사전 정규화한다.
+
+    처리:
+        - ``\\n``/``\\r``/``\\t`` → space로 변환.
+        - 연속 whitespace → single space.
+        - zero-width 문자 (ZWSP/ZWNJ/ZWJ/BOM) 제거.
+        - leading/trailing whitespace strip.
+    """
+    s = str(value)
+    for ch in _ZERO_WIDTH_CHARS:
+        s = s.replace(ch, "")
+    s = s.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    s = _MULTISPACE_RE.sub(" ", s)
+    return s.strip()
 
 
 def _normalize_items(items: Any) -> list[dict[str, Any]]:

@@ -18,6 +18,8 @@ R2-M2 risk: 합성 영수증은 self-OCR 자기충족 위험. 실 영수증 hold
 
 from __future__ import annotations
 
+import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +59,33 @@ _CATEGORY_BY_MERCHANT_PREFIX: dict[str, str] = {
 
 _IMAGE_EXTENSIONS: frozenset[str] = frozenset({".png", ".jpg", ".jpeg"})
 
+# 결제수단 키워드 (등록 순서 = 매칭 우선순위). raw_text 정규식 매칭으로 추출.
+# 동시 매칭 시 등록 순서대로 가장 먼저 매칭된 라벨을 반환한다 — 신용카드가
+# 간편결제(N/K페이)보다 우선이므로 "VISA + 카카오페이" 같은 영수증은 신용카드로 분류.
+_PAYMENT_KEYWORDS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("신용카드", re.compile(r"신용카드|카드결제|체크카드|VISA|MASTER")),
+    ("삼성페이", re.compile(r"삼성페이")),
+    ("네이버페이", re.compile(r"네이버페이|NPAY|N페이")),
+    ("카카오페이", re.compile(r"카카오페이|KPAY|K페이")),
+    ("현금", re.compile(r"현금|CASH")),
+)
+
+
+def _guess_payment(raw_text: str) -> str:
+    """raw_text 정규식 매칭 → 결제수단 라벨. 매칭 없으면 빈 문자열.
+
+    Args:
+        raw_text: ``ReceiptData.raw_text`` (OCR 원본 텍스트).
+
+    Returns:
+        결제수단 라벨 ("신용카드"/"삼성페이"/"네이버페이"/"카카오페이"/"현금")
+        또는 매칭 없음 시 빈 문자열.
+    """
+    for label, pattern in _PAYMENT_KEYWORDS:
+        if pattern.search(raw_text):
+            return label
+    return ""
+
 
 def run(
     input_dir: Path | str | None = None,
@@ -84,18 +113,26 @@ def run(
 
     image_paths = _collect_image_paths(resolved_input)
 
-    summary: dict[str, Any] = {"processed": 0, "errors": 0, "rows": []}
+    summary: dict[str, Any] = {"processed": 0, "errors": 0, "rows": [], "per_image_ms": []}
     rows: list[dict[str, Any]] = []
 
     label = f"영수증 OCR ({len(image_paths)}장)"
     with timer.measure(log, label):
         for img_path in image_paths:
+            img_start = time.perf_counter()
             try:
                 data = receipt.extract(img_path)
             except (ValueError, FileNotFoundError) as e:
+                elapsed_ms = (time.perf_counter() - img_start) * 1000
+                summary["per_image_ms"].append(
+                    {"filename": img_path.name, "elapsed_ms": elapsed_ms, "error": True}
+                )
                 log.warning(f"[{img_path.name}] OCR failed: {e}")
                 summary["errors"] += 1
                 continue
+
+            elapsed_ms = (time.perf_counter() - img_start) * 1000
+            summary["per_image_ms"].append({"filename": img_path.name, "elapsed_ms": elapsed_ms})
 
             merchant = data["merchant"]
             amount = int(data["amount"])
@@ -104,8 +141,7 @@ def run(
                     "거래일": data["date"],
                     "가맹점": merchant,
                     "카테고리": _guess_category(merchant),
-                    # OCR 응답에 결제수단 없음 — T11.5에서 items 분석 기반 추출 후속.
-                    "결제수단": "",
+                    "결제수단": _guess_payment(data.get("raw_text", "")),
                     "금액": amount,
                 }
             )
@@ -119,6 +155,12 @@ def run(
             )
 
     _write_xlsx(out_path, rows)
+
+    if summary["per_image_ms"]:
+        avg_ms = sum(p["elapsed_ms"] for p in summary["per_image_ms"]) / len(
+            summary["per_image_ms"]
+        )
+        log.info(f"평균 처리시간 {avg_ms:.0f}ms/장")
 
     log.success(f"처리 {summary['processed']}장 / 실패 {summary['errors']}장 → {out_path}")
     return summary

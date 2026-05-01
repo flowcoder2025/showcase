@@ -318,3 +318,137 @@ def test_run_xlsx_amount_is_integer(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     amount_cell = ws.cell(row=2, column=5).value
     assert isinstance(amount_cell, int), f"expected int, got {type(amount_cell).__name__}"
     assert amount_cell == 5500
+
+
+# -- 13. T11.5: 결제수단 추출 -----------------------------------------------
+
+
+def test_run_extracts_payment_from_raw_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """raw_text에 '삼성페이' 포함 → xlsx 결제수단 == '삼성페이'."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    _make_blank_png(input_dir / "r001.png")
+
+    samsung_data = ReceiptData(
+        merchant="스타벅스 강남점",
+        amount=5500,
+        date="2026-04-15",
+        items=[],
+        raw_text="스타벅스 5500 삼성페이 결제 완료",
+    )
+    _mock_receipt(monkeypatch, response=samsung_data)
+    output_path = tmp_path / "out" / "expense.xlsx"
+    scenario.run(input_dir=input_dir, output_path=output_path)
+
+    wb = openpyxl.load_workbook(output_path)
+    ws = wb.active
+    assert ws is not None
+    payment_cell = ws.cell(row=2, column=4).value
+    assert payment_cell == "삼성페이"
+
+
+def test_run_payment_unknown_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """raw_text에 결제수단 키워드 없음 → 빈 문자열."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    _make_blank_png(input_dir / "r001.png")
+
+    no_payment = ReceiptData(
+        merchant="스타벅스",
+        amount=5500,
+        date="2026-04-15",
+        items=[],
+        raw_text="스타벅스 5500 영수증 발행",
+    )
+    _mock_receipt(monkeypatch, response=no_payment)
+    output_path = tmp_path / "out" / "expense.xlsx"
+    scenario.run(input_dir=input_dir, output_path=output_path)
+
+    wb = openpyxl.load_workbook(output_path)
+    ws = wb.active
+    assert ws is not None
+    payment_cell = ws.cell(row=2, column=4).value
+    # openpyxl는 빈 문자열을 None으로 정규화해 반환 — 둘 다 "매칭 없음" 의미
+    assert payment_cell in (None, "")
+
+
+def test_guess_payment_credit_card() -> None:
+    assert scenario._guess_payment("VISA 카드결제") == "신용카드"
+    assert scenario._guess_payment("신용카드 일시불") == "신용카드"
+    assert scenario._guess_payment("MASTER 결제") == "신용카드"
+    assert scenario._guess_payment("체크카드 승인") == "신용카드"
+
+
+def test_guess_payment_naver() -> None:
+    assert scenario._guess_payment("NPAY 결제") == "네이버페이"
+    assert scenario._guess_payment("네이버페이로 결제했습니다") == "네이버페이"
+    assert scenario._guess_payment("N페이 사용") == "네이버페이"
+
+
+def test_guess_payment_kakao() -> None:
+    assert scenario._guess_payment("카카오페이 머니") == "카카오페이"
+    assert scenario._guess_payment("KPAY 승인") == "카카오페이"
+    assert scenario._guess_payment("K페이 결제") == "카카오페이"
+
+
+def test_guess_payment_cash() -> None:
+    assert scenario._guess_payment("현금영수증 발행") == "현금"
+    assert scenario._guess_payment("CASH PAID") == "현금"
+
+
+def test_guess_payment_no_match_returns_empty() -> None:
+    assert scenario._guess_payment("그냥 텍스트") == ""
+    assert scenario._guess_payment("") == ""
+
+
+def test_guess_payment_priority_order() -> None:
+    """등록 순서대로 매칭 — 신용카드가 카카오페이보다 우선."""
+    # 두 키워드 모두 포함되면 등록 순서대로 매칭됨
+    assert scenario._guess_payment("VISA 카드결제 / 카카오페이도 가능") == "신용카드"
+
+
+# -- 14. T11.5: per-image timer --------------------------------------------
+
+
+def test_run_summary_includes_per_image_ms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """5장 처리 → summary['per_image_ms']에 5개 항목 + elapsed_ms float."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    for i in range(5):
+        _make_blank_png(input_dir / f"r{i:03d}.png")
+
+    _mock_receipt(monkeypatch)
+    output_path = tmp_path / "out" / "expense.xlsx"
+    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+
+    per_image: list[dict[str, Any]] = summary["per_image_ms"]
+    assert len(per_image) == 5
+    for entry in per_image:
+        assert "filename" in entry
+        assert "elapsed_ms" in entry
+        assert isinstance(entry["elapsed_ms"], float)
+        assert entry["elapsed_ms"] >= 0.0
+
+
+def test_run_per_image_ms_includes_error_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """OCR 실패한 영수증의 per_image_ms 항목에는 error: True 플래그."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    for i in range(4):
+        _make_blank_png(input_dir / f"r{i:03d}.png")
+
+    _mock_receipt(monkeypatch, fail_filenames=("r001.png", "r003.png"))
+    output_path = tmp_path / "out" / "expense.xlsx"
+    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+
+    per_image: list[dict[str, Any]] = summary["per_image_ms"]
+    assert len(per_image) == 4
+    by_name = {e["filename"]: e for e in per_image}
+    assert by_name["r001.png"].get("error") is True
+    assert by_name["r003.png"].get("error") is True
+    assert "error" not in by_name["r000.png"] or by_name["r000.png"].get("error") is False
+    assert "error" not in by_name["r002.png"] or by_name["r002.png"].get("error") is False

@@ -373,3 +373,47 @@ def test_extract_warns_on_negative_huge_amount(monkeypatch: pytest.MonkeyPatch) 
     result = receipt.extract("/tmp/r.png")
     assert result["amount"] == -11_000_000_000
     assert len(rec.warnings) == 1
+
+
+# -- T11.5: merchant trim ---------------------------------------------------
+
+
+def test_normalize_merchant_strips_newline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """merchant에 trailing newline → 제거."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "스타벅스 강남점\n", "amount": 5500, "date": "2026-05-01"},
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["merchant"] == "스타벅스 강남점"
+
+
+def test_normalize_merchant_collapses_multispace(monkeypatch: pytest.MonkeyPatch) -> None:
+    """multi-space → single space로 축약."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "스타벅스   강남점", "amount": 5500, "date": "2026-05-01"},
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["merchant"] == "스타벅스 강남점"
+
+
+def test_normalize_merchant_zero_width_chars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """zero-width 공백 문자(ZWSP/ZWNJ/ZWJ) 제거."""
+    _mock_gemma(
+        monkeypatch,
+        # U+200B (ZWSP) 삽입
+        {"merchant": "스타벅스​ 강남", "amount": 5500, "date": "2026-05-01"},
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["merchant"] == "스타벅스 강남"
+
+
+def test_normalize_merchant_strips_tab_and_cr(monkeypatch: pytest.MonkeyPatch) -> None:
+    """탭/캐리지리턴 → space로 변환 후 collapse."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "이디야\t역삼\r점", "amount": 4500, "date": "2026-05-01"},
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["merchant"] == "이디야 역삼 점"
