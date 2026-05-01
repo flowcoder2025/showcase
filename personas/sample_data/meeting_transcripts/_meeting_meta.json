@@ -1,0 +1,37 @@
+[
+  {
+    "filename": "m001_monthly_sales.txt",
+    "title": "월간 영업 미팅 (2026년 4월 결산)",
+    "attendees": ["김사장", "이대리", "박과장"],
+    "expected_action_items": 3,
+    "expected_decisions": 1
+  },
+  {
+    "filename": "m002_overdue_review.txt",
+    "title": "미수금 점검 회의",
+    "attendees": ["김사장", "박과장", "최주임"],
+    "expected_action_items": 4,
+    "expected_decisions": 1
+  },
+  {
+    "filename": "m003_new_product.txt",
+    "title": "신제품 라인 리뷰",
+    "attendees": ["김사장", "이대리", "박과장"],
+    "expected_action_items": 3,
+    "expected_decisions": 1
+  },
+  {
+    "filename": "m004_quarterly_planning.txt",
+    "title": "2026년 2분기 계획 회의",
+    "attendees": ["김사장", "이대리", "박과장", "최주임"],
+    "expected_action_items": 3,
+    "expected_decisions": 1
+  },
+  {
+    "filename": "m005_vendor_negotiation.txt",
+    "title": "거래처 협상 준비 회의 (한일제작소)",
+    "attendees": ["김사장", "이대리"],
+    "expected_action_items": 2,
+    "expected_decisions": 1
+  }
+]

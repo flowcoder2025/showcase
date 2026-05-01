@@ -1,0 +1,13 @@
+id: case10_ai_meeting_summarizer
+title: 회의록 음성 → 요약 + 액션아이템 + 담당자 자동 배정
+category: ai
+persona: 김사장
+duration_seconds: 60
+manual_minutes: 30
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "김사장 회의 후 정리 30분"
+after: "1분, 텍스트 회의록 → 요약·액션·담당자·기한 자동 추출 (음성→텍스트는 Phase 3)"
+tools: ["openai (OpenRouter)", "json"]
+real_client_inspired: true
+external_apis: ["openrouter"]
