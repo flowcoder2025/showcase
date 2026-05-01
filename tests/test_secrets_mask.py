@@ -175,3 +175,95 @@ def test_aws_key_with_period_separator():
     out = secrets_mask.mask("AKIAIOSFODNN7EXAMPLE.suffix")
     assert "AKIA***" in out
     assert "suffix" in out
+
+
+# T7b.5 — Gmail / SMTP credential masking
+def test_masks_smtp_pass_env_assignment() -> None:
+    # `SMTP_PASS=secretvalue` style (env file or shell export)
+    out = secrets_mask.mask("SMTP_PASS=p@ssw0rd-very-secret")
+    assert "p@ssw0rd" not in out
+    assert "SMTP_PASS=***" in out
+
+
+def test_masks_smtp_pass_inline_in_log_line() -> None:
+    out = secrets_mask.mask_text("env: SMTP_HOST=mail.example.com SMTP_PASS=hunter2-secret next")
+    assert "hunter2" not in out
+    assert "SMTP_PASS=***" in out
+    # Must not eat trailing tokens
+    assert "next" in out
+
+
+def test_smtp_pass_does_not_match_when_value_empty() -> None:
+    # Empty value should not produce a "SMTP_PASS=***" claim
+    text = "SMTP_PASS= "
+    assert secrets_mask.mask(text) == text
+
+
+def test_masks_gmail_access_token_ya29() -> None:
+    # Google OAuth access tokens have ya29. prefix
+    token = "ya29.A0AfH6SMBxAbCdEf123_-456GhIjKl"
+    out = secrets_mask.mask(token)
+    assert "AbCdEf" not in out
+    assert "ya29.***" in out
+
+
+def test_masks_gmail_access_token_inline() -> None:
+    out = secrets_mask.mask_text("Authorization: Bearer ya29.AbCdEf12345_-678 trailing")
+    # Bearer pattern OR ya29 pattern — either way the token body is gone
+    assert "AbCdEf12345" not in out
+    assert "trailing" in out
+
+
+def test_masks_refresh_token_in_json() -> None:
+    # Gmail token.json contains refresh_token JSON field
+    blob = '{"refresh_token": "1//0abcDEF12345_xyzGHIJ", "client_id": "x"}'
+    out = secrets_mask.mask(blob)
+    assert "1//0abcDEF12345" not in out
+    assert '"refresh_token": "***"' in out
+
+
+def test_masks_client_secret_in_json() -> None:
+    blob = '{"client_secret": "GOCSPX-abcdefGHIJKLmnop1234"}'
+    out = secrets_mask.mask(blob)
+    assert "GOCSPX-abcdefGHIJKLmnop1234" not in out
+    assert '"client_secret": "***"' in out
+
+
+# T7b.5 — Regression: existing patterns still work after new patterns added
+def test_regression_discord_still_masked_alongside_new_patterns() -> None:
+    text = "webhook=https://discord.com/api/webhooks/1/x SMTP_PASS=topsecret"
+    out = secrets_mask.mask_text(text)
+    assert "https://discord.com/api/webhooks/***" in out
+    assert "SMTP_PASS=***" in out
+
+
+def test_regression_openrouter_still_masked() -> None:
+    out = secrets_mask.mask("sk-or-v1-abc123def456")
+    assert out == "sk-or-***"
+
+
+# T7b.5 — .gitignore must protect Gmail/SMTP credential files
+def test_gitignore_protects_secrets_dir() -> None:
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[1]
+    contents = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    # secrets/* (existing) OR secrets/ — either matches the directory contents
+    assert "secrets/" in contents
+
+
+def test_gitignore_protects_gmail_token_files() -> None:
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[1]
+    contents = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    # Pattern must mention gmail_token (covers gmail_token.json variants anywhere)
+    assert "gmail_token" in contents
+
+
+def test_gitignore_protects_gmail_oauth_files() -> None:
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[1]
+    contents = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    assert "gmail_oauth" in contents

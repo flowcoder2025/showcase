@@ -15,3 +15,7 @@ secrets/*
 personas/sample_data/vendors.xlsx
 personas/sample_data/vendors/
 personas/sample_data/invoices/
+
+# Gmail OAuth credentials & cached tokens (T7b.5 — explicit even outside secrets/)
+**/gmail_token*.json
+**/gmail_oauth*.json

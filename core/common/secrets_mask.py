@@ -4,7 +4,8 @@
 규칙: 코드에서 시크릿을 `print()`/`log.info()`에 직접 넣는 패턴은 ruff 룰로 차단(추후 추가).
 
 지원 포맷: Discord webhook, OpenRouter/Anthropic/OpenAI API 키, GitHub PAT,
-Slack 토큰, AWS access/session 키, JWT, generic Bearer 헤더.
+Slack 토큰, AWS access/session 키, JWT, generic Bearer 헤더,
+Gmail OAuth access/refresh/client_secret 토큰, SMTP_PASS env value (T7b.5).
 """
 
 import re
@@ -27,6 +28,21 @@ AWS_ACCESS_KEY_RE = re.compile(r"(?<![A-Z0-9])(AKIA|ASIA)[A-Z0-9]{16}(?![A-Z0-9]
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b")
 GENERIC_BEARER_RE = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-]{8,}\b")
 
+# T7b.5 — Gmail / SMTP credential masking
+# Google OAuth access tokens always start with `ya29.` (then base64url body).
+# {10,} ensures we don't mask the bare prefix or extremely short matches.
+GMAIL_ACCESS_TOKEN_RE = re.compile(r"\bya29\.[A-Za-z0-9_\-]{10,}")
+# Gmail refresh tokens are stored in token.json as `"refresh_token": "..."`.
+# Match whole JSON field including value, replace value with ***.
+# Non-greedy + non-empty `[^"]+` so `"refresh_token": ""` does NOT match.
+GMAIL_REFRESH_TOKEN_JSON_RE = re.compile(r'("refresh_token"\s*:\s*")[^"]+(")')
+# OAuth client secret JSON field (Google client_secrets.json or token.json).
+GMAIL_CLIENT_SECRET_JSON_RE = re.compile(r'("client_secret"\s*:\s*")[^"]+(")')
+# SMTP password from .env / shell export. Value must be at least 1 non-whitespace
+# char; refuses empty `SMTP_PASS=` / `SMTP_PASS= ` to avoid spurious mask claims.
+# Stops at whitespace, `&`, `"` so multi-token log lines stay parseable.
+SMTP_PASS_RE = re.compile(r"(SMTP_PASS\s*=\s*)([^\s&\"]+)")
+
 
 def mask(value: str) -> str:
     """단일 토큰을 인식해 마스킹된 값으로 반환. 비시크릿이면 원본 반환."""
@@ -42,6 +58,11 @@ def mask(value: str) -> str:
     s = SLACK_TOKEN_RE.sub(r"\1-***", s)
     s = AWS_ACCESS_KEY_RE.sub(r"\1***", s)
     s = JWT_RE.sub("eyJ***", s)
+    # Gmail tokens BEFORE generic Bearer so `Bearer ya29.xxx` keeps the ya29 prefix.
+    s = GMAIL_ACCESS_TOKEN_RE.sub("ya29.***", s)
+    s = GMAIL_REFRESH_TOKEN_JSON_RE.sub(r"\1***\2", s)
+    s = GMAIL_CLIENT_SECRET_JSON_RE.sub(r"\1***\2", s)
+    s = SMTP_PASS_RE.sub(r"\1***", s)
     s = GENERIC_BEARER_RE.sub(r"\1***", s)
     return s
 
