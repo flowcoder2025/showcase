@@ -6,7 +6,7 @@ NOTE: 외부 호출은 반드시 모듈 참조로 호출 (safe_mode patch 격리
 """
 
 import os
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
@@ -15,6 +15,17 @@ LEVEL_COLORS = {
     "success": "2ecc71",  # green
     "warning": "f39c12",  # orange
     "danger": "e74c3c",  # red
+    "critical": "000000",  # black — case04 final escalation 단계
+}
+
+# case04 (미수금 단계별 알림) 도메인 level → internal level 매핑.
+# 단일 patch point 보존: send_with_level()은 내부에서 send()를 호출한다.
+OverdueLevelLiteral = Literal["friendly", "neutral", "strict", "final"]
+OVERDUE_LEVEL_TO_INTERNAL: dict[str, str] = {
+    "friendly": "info",  # 0~14일
+    "neutral": "warning",  # 15~30일
+    "strict": "danger",  # 31~60일
+    "final": "critical",  # 60+일 (법무 escalation)
 }
 
 
@@ -46,3 +57,26 @@ def send(
 
     resp = wh.execute()
     return {"status": getattr(resp, "status_code", None)}
+
+
+def send_with_level(
+    *,
+    webhook_url: str | None = None,
+    title: str,
+    body: str,
+    level: OverdueLevelLiteral,
+) -> SendResult:
+    """case04 도메인용 단계별 톤 분기 wrapper.
+
+    내부적으로 send()를 호출 — INTERCEPT_TARGETS["discord_webhook"]은 send만
+    등록되어 있으므로 단일 patch point를 보존한다.
+    """
+    if level not in OVERDUE_LEVEL_TO_INTERNAL:
+        raise KeyError(f"unknown overdue level: {level!r}")
+    internal = OVERDUE_LEVEL_TO_INTERNAL[level]
+    return send(
+        content=body,
+        level=internal,
+        title=title,
+        webhook_url=webhook_url,
+    )

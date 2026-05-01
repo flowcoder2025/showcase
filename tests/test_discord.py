@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.messaging import discord as discord_mod
+from core.messaging.discord import OverdueLevelLiteral
 
 
 def test_send_calls_webhook_execute(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,3 +50,95 @@ def test_send_with_levels_uses_color(monkeypatch: pytest.MonkeyPatch) -> None:
 
     discord_mod.send("경고", level="warning", title="단가 이상치")
     assert captured["embed"]["color"] == discord_mod.LEVEL_COLORS["warning"]
+
+
+def test_send_with_level_dispatches_to_send(monkeypatch: pytest.MonkeyPatch) -> None:
+    """send_with_level은 내부적으로 send()를 호출해 단일 patch point를 보존한다."""
+    captured: dict[str, Any] = {}
+
+    def fake_send(
+        content: str,
+        *,
+        level: str = "info",
+        title: str | None = None,
+        webhook_url: str | None = None,
+    ) -> discord_mod.SendResult:
+        captured["content"] = content
+        captured["level"] = level
+        captured["title"] = title
+        captured["webhook_url"] = webhook_url
+        captured["call_count"] = captured.get("call_count", 0) + 1
+        return {"status": 204}
+
+    monkeypatch.setattr(discord_mod, "send", fake_send)
+
+    result = discord_mod.send_with_level(
+        webhook_url="https://discord.com/api/webhooks/x/y",
+        title="미수금 31일 경과",
+        body="A사 결제 지연",
+        level="strict",
+    )
+
+    assert result["status"] == 204
+    assert captured["call_count"] == 1
+    assert captured["content"] == "A사 결제 지연"
+    assert captured["title"] == "미수금 31일 경과"
+    assert captured["level"] == "danger"
+    assert captured["webhook_url"] == "https://discord.com/api/webhooks/x/y"
+
+
+def test_send_with_level_color_per_level() -> None:
+    """4단계 도메인 level → internal level → LEVEL_COLORS 색상 lookup."""
+    expected = {
+        "friendly": ("info", "3498db"),  # blue
+        "neutral": ("warning", "f39c12"),  # orange
+        "strict": ("danger", "e74c3c"),  # red
+        "final": ("critical", "000000"),  # black
+    }
+    for domain_level, (internal, color_hex) in expected.items():
+        assert discord_mod.OVERDUE_LEVEL_TO_INTERNAL[domain_level] == internal
+        assert discord_mod.LEVEL_COLORS[internal] == color_hex
+
+
+def test_send_with_level_unknown_level_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Literal 우회로 잘못된 문자열을 전달하면 KeyError."""
+
+    def fake_send(*args: Any, **kwargs: Any) -> discord_mod.SendResult:
+        raise AssertionError("send must not be called for invalid levels")
+
+    monkeypatch.setattr(discord_mod, "send", fake_send)
+
+    with pytest.raises(KeyError, match="unknown overdue level"):
+        discord_mod.send_with_level(
+            webhook_url="https://discord.com/api/webhooks/x/y",
+            title="t",
+            body="b",
+            level=cast(OverdueLevelLiteral, "unknown"),
+        )
+
+
+def test_send_with_level_uses_critical_for_final_60plus(monkeypatch: pytest.MonkeyPatch) -> None:
+    """final 단계는 critical(검정)로 매핑되어야 한다."""
+    captured: dict[str, Any] = {}
+
+    def fake_send(
+        content: str,
+        *,
+        level: str = "info",
+        title: str | None = None,
+        webhook_url: str | None = None,
+    ) -> discord_mod.SendResult:
+        captured["level"] = level
+        return {"status": 204}
+
+    monkeypatch.setattr(discord_mod, "send", fake_send)
+
+    discord_mod.send_with_level(
+        webhook_url="https://discord.com/api/webhooks/x/y",
+        title="60일 초과 — 법무 escalation",
+        body="B사 미수금 90일",
+        level="final",
+    )
+
+    assert captured["level"] == "critical"
+    assert discord_mod.LEVEL_COLORS["critical"] == "000000"
