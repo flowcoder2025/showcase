@@ -128,9 +128,35 @@ def cmd_check(strict: bool = False) -> int:
         ok = _check_ollama_gemma(log) and ok
         ok = _check_discord_webhook(log) and ok
         ok = _check_email_transport(log) and ok
+        ok = _check_md_to_pdf_skill(log) and ok
 
     log.success("--check 통과" if ok else "--check 실패")
     return 0 if ok else 1
+
+
+def _check_md_to_pdf_skill(log: Any) -> bool:
+    """strict 모드: md-to-pdf 스킬 디렉토리 존재 + npx 명령 PATH 검증.
+
+    Phase 2 case05/T5에서 추가된 PDF 생성 의존성. AX_MD_TO_PDF_DIR로 override
+    가능 (테스트·휴대용 환경). npx --version 호출이 5초 내에 응답해야 한다.
+    """
+    skill_dir_str = os.environ.get("AX_MD_TO_PDF_DIR", "/Users/jerome/.claude/skills/md-to-pdf")
+    skill_dir = Path(skill_dir_str)
+    if not skill_dir.exists():
+        log.error(f"[STRICT] md-to-pdf skill dir not found: {skill_dir}")
+        return False
+    try:
+        subprocess.run(
+            ["npx", "--version"],
+            check=True,
+            capture_output=True,
+            timeout=5,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        log.error(f"[STRICT] npx not available: {e}")
+        return False
+    return True
 
 
 def _check_email_transport(log: Any) -> bool:

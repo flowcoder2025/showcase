@@ -262,3 +262,151 @@ def test_md_to_pdf_default_style_is_document(
     pdf.md_to_pdf(md_input, out)
     cmd = run_spy.calls[0]["cmd"]
     assert cmd[cmd.index("--style") + 1] == "document"
+
+
+# ----- T5.5 fixer additions -----
+
+
+class _StderrSpy:
+    """subprocess.run stub that returns nonzero stderr but exit 0, writing stub PDF."""
+
+    def __init__(self, *, stderr: str) -> None:
+        self.stderr = stderr
+
+    def __call__(self, cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        out_path = Path(cmd[4])
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_bytes(b"%PDF-1.4 stub\n")
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr=self.stderr)
+
+
+def test_md_to_pdf_logs_stderr_warning_on_success(
+    fake_skill_dir: Path,
+    md_input: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """exit 0 + stderr non-empty → demo_logger.warning 호출."""
+    monkeypatch.setattr(
+        "core.docgen.pdf.subprocess.run", _StderrSpy(stderr="chromium download warning")
+    )
+    warnings: list[str] = []
+
+    class _StubLogger:
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def info(self, msg: str) -> None:
+            pass
+
+        def success(self, msg: str) -> None:
+            pass
+
+        def error(self, msg: str) -> None:
+            pass
+
+    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+
+    out = tmp_path / "out.pdf"
+    pdf.md_to_pdf(md_input, out)
+
+    assert len(warnings) == 1
+    assert "chromium download warning" in warnings[0]
+    assert "md-to-pdf stderr" in warnings[0]
+
+
+def test_md_to_pdf_no_log_when_stderr_empty(
+    fake_skill_dir: Path,
+    md_input: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """exit 0 + stderr 비어있음 → warning 미호출."""
+    monkeypatch.setattr("core.docgen.pdf.subprocess.run", _StderrSpy(stderr="   "))
+    warnings: list[str] = []
+
+    class _StubLogger:
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def info(self, msg: str) -> None:
+            pass
+
+        def success(self, msg: str) -> None:
+            pass
+
+        def error(self, msg: str) -> None:
+            pass
+
+    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+
+    out = tmp_path / "out.pdf"
+    pdf.md_to_pdf(md_input, out)
+
+    assert warnings == []
+
+
+def test_md_to_pdf_stderr_truncated_to_500_chars(
+    fake_skill_dir: Path,
+    md_input: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """긴 stderr는 500자로 컷."""
+    long = "x" * 1000
+    monkeypatch.setattr("core.docgen.pdf.subprocess.run", _StderrSpy(stderr=long))
+    warnings: list[str] = []
+
+    class _StubLogger:
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def info(self, msg: str) -> None:
+            pass
+
+        def success(self, msg: str) -> None:
+            pass
+
+        def error(self, msg: str) -> None:
+            pass
+
+    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+
+    out = tmp_path / "out.pdf"
+    pdf.md_to_pdf(md_input, out)
+    # warning prefix "md-to-pdf stderr: " + 500 chars max
+    assert len(warnings) == 1
+    # extract part after prefix
+    body = warnings[0].split("md-to-pdf stderr: ", 1)[1]
+    assert len(body) <= 500
+
+
+def test_md_to_pdf_invalid_style_raises_value_error(
+    fake_skill_dir: Path,
+    md_input: Path,
+    tmp_path: Path,
+) -> None:
+    """style 런타임 validation: 잘못된 값 → ValueError."""
+    out = tmp_path / "out.pdf"
+    with pytest.raises(ValueError, match="unknown style") as exc:
+        pdf.md_to_pdf(md_input, out, style="invalid")  # type: ignore[arg-type]
+    msg = str(exc.value)
+    assert "invalid" in msg
+    # Valid list mentioned
+    for s in ("document", "report", "minimal"):
+        assert s in msg
+
+
+@pytest.mark.parametrize("valid_style", ["document", "report", "minimal"])
+def test_md_to_pdf_valid_styles_pass(
+    fake_skill_dir: Path,
+    md_input: Path,
+    tmp_path: Path,
+    run_spy: _RunSpy,
+    valid_style: str,
+) -> None:
+    """3가지 유효 style 모두 정상 통과."""
+    out = tmp_path / f"out_{valid_style}.pdf"
+    pdf.md_to_pdf(md_input, out, style=valid_style)  # type: ignore[arg-type]
+    cmd = run_spy.calls[-1]["cmd"]
+    assert cmd[cmd.index("--style") + 1] == valid_style

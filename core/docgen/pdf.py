@@ -11,11 +11,15 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
+from core.common.demo_logger import demo_logger
+
 DEFAULT_MD_TO_PDF_DIR = "/Users/jerome/.claude/skills/md-to-pdf"
 DEFAULT_MD_TO_PDF_SCRIPT = "scripts/md-to-pdf.ts"
 DEFAULT_TIMEOUT = 60
 
 StyleLiteral = Literal["document", "report", "minimal"]
+_VALID_STYLES: frozenset[str] = frozenset({"document", "report", "minimal"})
+_STDERR_LOG_LIMIT = 500
 
 
 class MdToPdfError(RuntimeError):
@@ -40,6 +44,9 @@ def md_to_pdf(
         FileNotFoundError: md_path 미존재 또는 스킬 경로 미존재
         MdToPdfError: subprocess 실패, 타임아웃, npx 미존재, 또는 결과 파일 누락
     """
+    if style not in _VALID_STYLES:
+        raise ValueError(f"unknown style: {style!r} (valid: {sorted(_VALID_STYLES)})")
+
     md_abs = Path(md_path).resolve()
     out_abs = Path(out_path).resolve()
     if not md_abs.exists():
@@ -80,3 +87,10 @@ def md_to_pdf(
             f"md-to-pdf returned 0 but output file missing: {out_abs}\n"
             f"stdout={result.stdout!r} stderr={result.stderr!r}"
         )
+
+    # 정상 실행이지만 stderr에 메시지가 있으면 noisy한 chromium 경고 등을
+    # 시연자가 인지할 수 있도록 demo_logger.warning으로 노출 (500자 컷).
+    stderr_text = (result.stderr or "").strip()
+    if stderr_text:
+        log = demo_logger("docgen.pdf")
+        log.warning(f"md-to-pdf stderr: {stderr_text[:_STDERR_LOG_LIMIT]}")

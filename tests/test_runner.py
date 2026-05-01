@@ -1,9 +1,12 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
+
+import runner as runner_mod
 
 
 def test_runner_check_exits_zero_on_clean_env(
@@ -57,3 +60,80 @@ def test_runner_lists_cases_with_meta_yaml(tmp_path: Path, monkeypatch: pytest.M
         cwd=tmp_path,
     )
     assert "case99_demo" in result.stdout
+
+
+# ----- T5.5 fixer additions: --check --strict md-to-pdf skill validation -----
+
+
+class _CapLogger:
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+        self.infos: list[str] = []
+
+    def error(self, msg: str) -> None:
+        self.errors.append(msg)
+
+    def warning(self, msg: str) -> None:
+        self.warnings.append(msg)
+
+    def info(self, msg: str) -> None:
+        self.infos.append(msg)
+
+    def success(self, msg: str) -> None:
+        self.infos.append(msg)
+
+
+def test_check_strict_md_to_pdf_skill_missing_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AX_MD_TO_PDF_DIR이 존재하지 않으면 strict check 실패."""
+    bogus = tmp_path / "nonexistent_skill_dir"
+    monkeypatch.setenv("AX_MD_TO_PDF_DIR", str(bogus))
+
+    log = _CapLogger()
+    ok = runner_mod._check_md_to_pdf_skill(log)
+    assert ok is False
+    assert any("md-to-pdf skill dir not found" in e for e in log.errors)
+
+
+def test_check_strict_md_to_pdf_skill_present_passes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """skill dir 존재 + npx 호출 성공 → strict check 통과."""
+    sk = tmp_path / "fake_skill"
+    sk.mkdir()
+    monkeypatch.setenv("AX_MD_TO_PDF_DIR", str(sk))
+
+    def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        assert cmd[0] == "npx"
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="10.0.0\n", stderr="")
+
+    monkeypatch.setattr("runner.subprocess.run", fake_run)
+
+    log = _CapLogger()
+    ok = runner_mod._check_md_to_pdf_skill(log)
+    assert ok is True
+    assert log.errors == []
+
+
+def test_check_strict_md_to_pdf_skill_npx_missing_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """skill dir은 있지만 npx가 PATH에 없으면 strict check 실패."""
+    sk = tmp_path / "fake_skill"
+    sk.mkdir()
+    monkeypatch.setenv("AX_MD_TO_PDF_DIR", str(sk))
+
+    def missing(cmd: list[str], **kwargs: Any) -> Any:
+        raise FileNotFoundError("npx not in PATH")
+
+    monkeypatch.setattr("runner.subprocess.run", missing)
+
+    log = _CapLogger()
+    ok = runner_mod._check_md_to_pdf_skill(log)
+    assert ok is False
+    assert any("npx not available" in e for e in log.errors)
