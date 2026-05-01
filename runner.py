@@ -14,15 +14,17 @@ import platform
 import subprocess
 import sys
 import threading
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from core.common import safe_mode
+from core.common import config, safe_mode
 from core.common.demo_logger import demo_logger
 
 console = Console()
@@ -113,8 +115,75 @@ def cmd_check(strict: bool = False) -> int:
         else:
             log.warning(msg)
 
+    # Ollama Gemma 4 모델 존재 — strict 모드에서만 hard-fail (design §5)
+    if strict:
+        ok = _check_ollama_gemma(log) and ok
+        ok = _check_discord_webhook(log) and ok
+
     log.success("--check 통과" if ok else "--check 실패")
     return 0 if ok else 1
+
+
+def _check_ollama_gemma(log: Any) -> bool:
+    """strict 모드: Ollama 데몬에 gemma4 모델이 설치돼있는지 검증."""
+    try:
+        import ollama
+    except ImportError:
+        log.error("[STRICT] ollama package not installed — `uv add ollama`")
+        return False
+    try:
+        listing = ollama.list()
+    except (ConnectionError, OSError) as e:
+        log.error(f"[STRICT] ollama daemon unreachable: {e}")
+        return False
+    # Response shape: {"models": [{"model": "gemma4:e2b", ...}, ...]} or
+    # an object with .models attribute (depends on ollama-python version).
+    models_raw: Any = (
+        listing.get("models", []) if isinstance(listing, dict)
+        else getattr(listing, "models", [])
+    )
+    names: list[str] = []
+    for m in models_raw:
+        if isinstance(m, dict):
+            n = m.get("model") or m.get("name") or ""
+        else:
+            n = getattr(m, "model", None) or getattr(m, "name", "") or ""
+        if n:
+            names.append(str(n))
+    if not any(n.startswith("gemma4") for n in names):
+        log.error(
+            f"[STRICT] gemma4 model not found in ollama; installed={names!r} — "
+            "`ollama pull gemma4:e2b`"
+        )
+        return False
+    return True
+
+
+def _check_discord_webhook(log: Any) -> bool:
+    """strict 모드: Discord webhook URL 도달 가능 여부 (HEAD 200/204).
+
+    Note: discord webhook도 GET을 받으면 200 + payload를 반환하지만, HEAD는
+    Method Not Allowed(405)일 수 있다. 실제 운영 시연에선 webhook 호출이
+    실패해도 case04 자체가 dry-run으로 동작하도록 설계돼 있으므로, 여기선
+    "URL이 응답 자체는 한다"는 최소한의 reachability만 검증한다.
+    """
+    url = os.getenv("DISCORD_WEBHOOK_URL", "")
+    if not url:
+        # 위에서 _check_required가 이미 strict 시 ok=False 처리함
+        return True
+    # urllib.request의 보안 정책상 외부 fetch가 도구 권한 문제를 유발할 수 있어
+    # Phase 2에서 정식 reachability 체크로 확장한다 (현재 기본 GET 응답으로 충분).
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            status = getattr(resp, "status", None) or resp.getcode()
+        if status in {200, 204}:
+            return True
+        log.error(f"[STRICT] discord webhook returned status={status}")
+        return False
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        log.error(f"[STRICT] discord webhook unreachable: {e}")
+        return False
 
 
 def cmd_list() -> int:
@@ -160,14 +229,20 @@ def run_case(case_id: str, safe: bool) -> int:
     module_name = f"cases.{case_dir.name}.scenario"
     mod = importlib.import_module(module_name)
 
+    # 시나리오 시작 시점을 기록 — 자동 열기 시 "이번 실행"이 만든 파일만 대상
+    start_mtime = time.time()
     with safe_mode.intercept(case_id, apis=apis):
         result = mod.run()
 
-    # 결과 자동 열기
+    # 결과 자동 열기 — 이번 실행 이후 생성/갱신된 비-언더스코어 파일만
     out_dir = case_dir / "output"
     if out_dir.exists():
         for f in sorted(out_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True):
-            if f.is_file() and not f.name.startswith("_"):
+            if (
+                f.is_file()
+                and not f.name.startswith("_")
+                and f.stat().st_mtime >= start_mtime
+            ):
                 open_finder(f)
                 break
     return 0 if result is None or result == 0 else 1
@@ -187,7 +262,8 @@ def cmd_menu() -> int:
 
 
 def main() -> None:
-    load_dotenv()
+    # config.load()가 내부적으로 .env를 os.environ에 주입한다 (dotenv 일원화).
+    config.load()
     parser = argparse.ArgumentParser()
     parser.add_argument("case_id", nargs="?")
     parser.add_argument("--check", action="store_true")

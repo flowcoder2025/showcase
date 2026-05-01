@@ -53,7 +53,7 @@ def _make_stub(case_id: str, mod: str, fn: str) -> Callable[..., Any]:
         key = _key(qualname, args, kwargs)
         cpath = cache_path(case_id, key)
         if cpath.exists():
-            data = json.loads(cpath.read_text())
+            data = json.loads(cpath.read_text(encoding="utf-8"))
             _console.print(f"[dim][SAFE] cache hit: {qualname}[/dim]")
             return data.get("result")
         _console.print(f"[yellow][SAFE] cache miss → dummy: {qualname}[/yellow]")
@@ -128,5 +128,5 @@ def save_cache(
     key = _key(qualname, args, kwargs)
     cpath = cache_path(case_id, key)
     cpath.parent.mkdir(parents=True, exist_ok=True)
-    cpath.write_text(json.dumps({"result": result}, default=str))
+    cpath.write_text(json.dumps({"result": result}, default=str), encoding="utf-8")
     return cpath

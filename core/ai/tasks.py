@@ -3,6 +3,7 @@ import json
 from typing import Any, cast
 
 from core.ai import client, prompts
+from core.common.demo_logger import demo_logger
 
 
 def draft_email(
@@ -24,13 +25,16 @@ def draft_email(
             incoming_subject, incoming_body, company_tone, history_summary
         )},
     ]
+    log = demo_logger(case_id or "tasks")
     raw = client.chat(messages, case_id=case_id)
     if not raw or "[SAFE-FALLBACK]" in raw:
         return []
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        log.warning(f"draft_email: invalid JSON from AI ({e}); raw[:80]={raw[:80]!r}")
         return []
     if not isinstance(parsed, list):
+        log.warning(f"draft_email: AI returned non-list ({type(parsed).__name__}); skipping")
         return []
     return cast(list[dict[str, Any]], parsed)

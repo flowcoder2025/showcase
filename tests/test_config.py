@@ -35,6 +35,9 @@ def test_env_var_not_in_schema_is_excluded(tmp_path, monkeypatch):
     env_file = tmp_path / ".env"
     env_file.write_text("OPENROUTER_API_KEY=test\n")
     monkeypatch.chdir(tmp_path)
+    # config.load()가 load_dotenv(override=False)를 호출하므로 이전 테스트의
+    # OPENROUTER_API_KEY가 os.environ에 남아있을 수 있다 — 명시적으로 delete.
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setenv("UNRELATED_VAR", "should_be_excluded")
     monkeypatch.setenv("PATH", "/random/path")  # PATH는 항상 set
 

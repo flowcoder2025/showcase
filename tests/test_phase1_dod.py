@@ -9,7 +9,12 @@ import pytest
 
 
 def test_critical_imports_smoke() -> None:
-    """uv sync 대신 핵심 모듈 import만 빠르게 검증."""
+    """uv sync 대신 핵심 모듈 import + public API 노출까지 검증.
+
+    `assert all(m is not None ...)`은 import 성공 시 항상 True인 tautology이므로
+    실제 public API가 노출됐는지(hasattr) 검증한다. import 자체가 실패하면
+    pytest가 ImportError로 즉시 fail한다.
+    """
     import importlib
 
     for mod in ("pandas", "openpyxl", "openai", "discord_webhook", "yaml", "rich"):
@@ -19,26 +24,33 @@ def test_critical_imports_smoke() -> None:
     from core.excel import merger, pivot, reader, validator, writer
     from core.messaging import discord
 
-    # smoke check — referencing every import so ruff F401 doesn't drop them
-    assert all(
-        m is not None
-        for m in (
-            config,
-            demo_logger,
-            timer,
-            secrets_mask,
-            safe_mode,
-            reader,
-            merger,
-            pivot,
-            writer,
-            validator,
-            client,
-            prompts,
-            tasks,
-            discord,
-        )
-    )
+    # core.ai
+    assert hasattr(client, "chat")
+    assert hasattr(client, "MODEL_PRIORITY")
+    assert hasattr(client, "RateLimitError")
+    assert hasattr(prompts, "EMAIL_DRAFT_SYSTEM")
+    assert hasattr(tasks, "draft_email")
+
+    # core.common
+    assert hasattr(config, "load")
+    assert hasattr(config, "repo_root")
+    assert hasattr(demo_logger, "demo_logger")
+    assert hasattr(timer, "measure")
+    assert hasattr(secrets_mask, "mask_text")
+    assert hasattr(safe_mode, "intercept")
+    assert hasattr(safe_mode, "is_safe")
+    assert hasattr(safe_mode, "force_safe")
+
+    # core.excel
+    assert hasattr(reader, "read_dir")
+    assert hasattr(merger, "merge_by_vendor")
+    assert hasattr(merger, "REQUIRED_KEYS")
+    assert hasattr(pivot, "vendor_by_month")
+    assert hasattr(writer, "write_styled_report")
+    assert hasattr(validator, "detect_unit_price_outliers")
+
+    # core.messaging
+    assert hasattr(discord, "send")
 
 
 def test_runner_check_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -32,8 +32,10 @@ def merge_by_vendor(input_dir: Path, *, column_map: dict[str, str]) -> pd.DataFr
             if src_col not in df.columns:
                 raise ValueError(f"missing column: {src_col} (mapped from {k})")
         rename = {column_map[k]: k for k in REQUIRED_KEYS}
-        rows.append(df[list(column_map.values())].rename(columns=rename))
+        # REQUIRED_KEYS만 select — column_map에 추가 키가 있어도 무시
+        rows.append(df[[column_map[k] for k in REQUIRED_KEYS]].rename(columns=rename))
 
     merged = pd.concat(rows, ignore_index=True)
-    merged["date"] = pd.to_datetime(merged["date"])
+    # errors="raise" — pandas 버전별 기본값 차이를 명시화
+    merged["date"] = pd.to_datetime(merged["date"], errors="raise")
     return merged

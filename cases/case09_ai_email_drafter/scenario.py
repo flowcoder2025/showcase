@@ -22,7 +22,7 @@ def run(input_path: Path | str = "cases/case09_ai_email_drafter/input/sample_inc
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    incoming = input_path.read_text()
+    incoming = input_path.read_text(encoding="utf-8")
     subject_line, _, body = incoming.partition("\n")
     subject = subject_line.replace("제목:", "").strip()
     body = body.lstrip("본문:").strip()
@@ -36,7 +36,9 @@ def run(input_path: Path | str = "cases/case09_ai_email_drafter/input/sample_inc
             case_id="case09_ai_email_drafter",  # 캐시 저장용 (deterministic 시연)
         )
 
-    output_path.write_text(json.dumps(drafts, ensure_ascii=False, indent=2))
+    output_path.write_text(
+        json.dumps(drafts, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     log.success(f"초안 {len(drafts)}건 저장 → {output_path}")
     return 0
 
