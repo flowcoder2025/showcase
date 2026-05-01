@@ -14,7 +14,6 @@ import os
 import platform
 import subprocess
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
@@ -60,22 +59,18 @@ def discover_cases() -> list[dict[str, Any]]:
 
 
 def warm_up_gemma_async() -> None:
-    """Ollama Gemma 4 더미 추론 1회로 콜드스타트 회피 (백그라운드)."""
+    """Ollama Gemma 4 더미 추론 1회 — ``core.ocr.gemma.warmup`` 위임 (SSOT).
 
-    def _warm() -> None:
-        try:
-            import ollama
+    T9.5: 자체 ``ollama.generate`` 호출 제거 → ``core.ocr.gemma.warmup``이 유일한
+    warmup 진입점이다. 모듈 import 실패 시(예: core.ocr 미빌드) silent —
+    Phase 1 호환을 위해 runner는 OCR 모듈에 hard depend 하지 않는다.
+    """
+    try:
+        from core.ocr import gemma
 
-            for model in ("gemma4:e2b",):
-                try:
-                    ollama.generate(model=model, prompt="warm-up")
-                except Exception:
-                    pass
-        except ImportError:
-            pass
-
-    t = threading.Thread(target=_warm, daemon=True)
-    t.start()
+        gemma.warmup("gemma4:e2b")
+    except ImportError:
+        pass
 
 
 def cmd_check(strict: bool = False) -> int:

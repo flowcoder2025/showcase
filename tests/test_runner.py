@@ -175,6 +175,46 @@ def test_check_strict_gmail_sender_with_gmail_oauth_passes(
     assert ok is True
 
 
+# ----- T9.5 fixer additions: warm_up_gemma_async delegates to core.ocr.gemma -----
+
+
+def test_warm_up_gemma_async_delegates_to_gemma_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """runner.warm_up_gemma_async()는 core.ocr.gemma.warmup("gemma4:e2b")만 호출.
+
+    SSOT 일원화: runner는 더 이상 ollama.generate를 직접 호출하지 않는다.
+    """
+    captured: list[str] = []
+
+    from core.ocr import gemma as gemma_mod
+
+    def fake_warmup(model: str = "gemma4:e2b") -> None:
+        captured.append(model)
+
+    monkeypatch.setattr(gemma_mod, "warmup", fake_warmup)
+    runner_mod.warm_up_gemma_async()
+    assert captured == ["gemma4:e2b"], captured
+
+
+def test_warm_up_gemma_async_silent_on_import_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """core.ocr 미빌드 시뮬: ImportError 발생해도 runner는 silent."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def blocked_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == "core.ocr" or name.startswith("core.ocr"):
+            raise ImportError(f"simulated missing {name}")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", blocked_import)
+    # Must not raise
+    runner_mod.warm_up_gemma_async()
+
+
 def test_check_strict_md_to_pdf_skill_npx_missing_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

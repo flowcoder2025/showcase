@@ -259,3 +259,125 @@ def test_safe_mode_intercept_can_patch_extract(
         assert isinstance(result, dict)
         assert result.get("_safe") is True
         assert result.get("qualname") == "core.ocr.gemma.extract"
+
+
+# -- T9.5: schema validation + 1-shot retry --------------------------------
+
+
+def test_validate_against_schema_helper_accepts_valid() -> None:
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    valid, err = gemma._validate_against_schema({"a": "x"}, schema)
+    assert valid is True
+    assert err is None
+
+
+def test_validate_against_schema_helper_rejects_invalid() -> None:
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    valid, err = gemma._validate_against_schema({"b": 1}, schema)
+    assert valid is False
+    assert err is not None and isinstance(err, str) and len(err) > 0
+
+
+def test_validate_against_schema_helper_none_schema_passes() -> None:
+    valid, err = gemma._validate_against_schema({"anything": True}, None)
+    assert valid is True
+    assert err is None
+
+
+def test_extract_schema_valid_returns_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    """schema 만족 시 1차 응답을 그대로 반환 (retry 없이)."""
+    monkeypatch.setattr(gemma, "_model_exists", lambda _model: True)
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    call_count = {"n": 0}
+
+    def fake_chat(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        call_count["n"] += 1
+        return {"message": {"content": json.dumps({"a": "hello"})}}
+
+    monkeypatch.setattr(ollama, "chat", fake_chat)
+    result = gemma.extract(Path("/tmp/x.png"), model="gemma4:e2b", schema=schema)
+    assert result == {"a": "hello"}
+    assert call_count["n"] == 1, "schema valid 시 retry 안 함"
+
+
+def test_extract_schema_invalid_retries_with_stricter_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """1차 schema 위반 → 강화된 prompt로 1회 retry → 2차 정상."""
+    monkeypatch.setattr(gemma, "_model_exists", lambda _model: True)
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    prompts: list[str] = []
+    responses = [
+        {"message": {"content": json.dumps({"b": 1})}},  # invalid
+        {"message": {"content": json.dumps({"a": "ok"})}},  # valid
+    ]
+    idx = {"n": 0}
+
+    def fake_chat(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        msgs = kwargs.get("messages") or (args[1] if len(args) > 1 else [])
+        if msgs:
+            prompts.append(str(msgs[0].get("content", "")))
+        i = idx["n"]
+        idx["n"] += 1
+        return responses[i]
+
+    monkeypatch.setattr(ollama, "chat", fake_chat)
+    result = gemma.extract(Path("/tmp/x.png"), model="gemma4:e2b", schema=schema)
+    assert result == {"a": "ok"}
+    assert idx["n"] == 2, "invalid schema 시 정확히 1회 retry"
+    # retry prompt에는 schema JSON이 포함돼야 함
+    assert len(prompts) == 2
+    assert '"required"' in prompts[1] or '"properties"' in prompts[1]
+
+
+def test_extract_schema_retry_also_fails_returns_raw(monkeypatch: pytest.MonkeyPatch) -> None:
+    """1차/2차 모두 schema 위반 → _raw_text + _parse_error("schema after retry")."""
+    monkeypatch.setattr(gemma, "_model_exists", lambda _model: True)
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+    }
+    idx = {"n": 0}
+
+    def fake_chat(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        idx["n"] += 1
+        return {"message": {"content": json.dumps({"b": idx["n"]})}}
+
+    monkeypatch.setattr(ollama, "chat", fake_chat)
+    result = gemma.extract(Path("/tmp/x.png"), model="gemma4:e2b", schema=schema)
+    assert idx["n"] == 2, "정확히 2회 호출 (1차 + retry 1회)"
+    assert "_parse_error" in result
+    assert "schema after retry" in result["_parse_error"]
+    assert "_raw_text" in result
+
+
+def test_extract_no_schema_skips_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """schema=None 시 검증 안 거치고 1차 응답 그대로."""
+    monkeypatch.setattr(gemma, "_model_exists", lambda _model: True)
+    idx = {"n": 0}
+
+    def fake_chat(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        idx["n"] += 1
+        return {"message": {"content": json.dumps({"any": "shape"})}}
+
+    monkeypatch.setattr(ollama, "chat", fake_chat)
+    result = gemma.extract(Path("/tmp/x.png"), model="gemma4:e2b", schema=None)
+    assert result == {"any": "shape"}
+    assert idx["n"] == 1, "schema 없으면 retry 절대 안 함"

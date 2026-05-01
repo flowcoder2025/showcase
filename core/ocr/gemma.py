@@ -25,6 +25,7 @@ import threading
 from pathlib import Path
 from typing import Any, Literal
 
+import jsonschema
 import ollama
 
 from core.common import safe_mode
@@ -86,24 +87,91 @@ def extract(
     timeout = _TIMEOUTS_SEC[model]
     user_prompt = prompt or _default_prompt(schema)
 
-    # NOTE: ``ThreadPoolExecutor.__exit__``는 모든 worker 완료까지 block한다.
-    # timeout 시 즉시 반환해야 하므로 ``with`` 블록을 쓰지 않고 ``shutdown(wait=False)``로
-    # 백그라운드 thread를 fire-and-forget 한다 (daemon-like). worker가 ollama
-    # 호출에 갇혀도 메인 흐름은 차단되지 않는다.
+    parsed = _run_with_timeout(img_path, model, user_prompt, timeout, schema)
+    if parsed is None:
+        return _safe_dummy(img_path)
+
+    # Schema validation + 1-shot retry — case07/08 OCR 정확도 직결.
+    # parse 실패 응답(``_raw_text``)은 schema 검증을 건너뛴다 (이미 실패 채널).
+    if schema is not None and "_raw_text" not in parsed:
+        valid, err = _validate_against_schema(parsed, schema)
+        if not valid:
+            log = demo_logger("ocr.gemma")
+            log.warning(f"schema validation failed: {err}; retrying with stricter prompt")
+            stricter = (
+                f"{user_prompt}\n\n"
+                "이전 응답이 schema를 만족하지 못했습니다. 다음 JSON schema를 정확히 준수하세요:\n"
+                f"{json.dumps(schema, ensure_ascii=False)}"
+            )
+            retry_parsed = _run_with_timeout(img_path, model, stricter, timeout, schema)
+            if retry_parsed is None:
+                # retry 자체가 timeout/외부 오류로 실패 — 원본 schema error 보존
+                return {
+                    "_raw_text": json.dumps(parsed, ensure_ascii=False),
+                    "_parse_error": f"schema validation: {err}",
+                }
+            if "_raw_text" in retry_parsed:
+                # retry는 응답을 받았지만 JSON parse 실패
+                return retry_parsed
+            valid2, err2 = _validate_against_schema(retry_parsed, schema)
+            if valid2:
+                return retry_parsed
+            return {
+                "_raw_text": json.dumps(retry_parsed, ensure_ascii=False),
+                "_parse_error": f"schema after retry: {err2}",
+            }
+    return parsed
+
+
+def _run_with_timeout(
+    img_path: Path,
+    model: str,
+    prompt: str,
+    timeout: int,
+    schema: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """ollama 1회 호출 + parse. 실패 시 ``None`` 반환 (caller가 ``_safe_dummy`` 결정).
+
+    NOTE: ``ThreadPoolExecutor.__exit__``는 모든 worker 완료까지 block한다.
+    timeout 시 즉시 반환해야 하므로 ``with`` 블록을 쓰지 않고 ``shutdown(wait=False)``로
+    백그라운드 thread를 fire-and-forget 한다 (daemon-like). worker가 ollama
+    호출에 갇혀도 메인 흐름은 차단되지 않는다.
+    """
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        future = pool.submit(_call_ollama, img_path, model, user_prompt)
+        future = pool.submit(_call_ollama, img_path, model, prompt)
         try:
             response = future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
             safe_mode.force_safe(f"gemma {model} timeout {timeout}s")
-            return _safe_dummy(img_path)
+            return None
         except (ollama.RequestError, ollama.ResponseError) as e:
             safe_mode.force_safe(f"gemma {model} failed: {type(e).__name__}: {e}")
-            return _safe_dummy(img_path)
+            return None
         return _parse_response(response, schema)
     finally:
         pool.shutdown(wait=False)
+
+
+def _validate_against_schema(
+    data: dict[str, Any], schema: dict[str, Any] | None
+) -> tuple[bool, str | None]:
+    """``jsonschema.validate`` 래퍼. (valid, error_msg) 반환.
+
+    schema가 ``None``이면 항상 통과. ``ValidationError`` 메시지는 1차 줄만 보존
+    (장황한 stack info는 prompt에 포함시키기에 부적합).
+    """
+    if schema is None:
+        return True, None
+    try:
+        jsonschema.validate(data, schema)
+        return True, None
+    except jsonschema.ValidationError as e:
+        msg = (e.message or str(e)).split("\n")[0]
+        return False, msg
+    except jsonschema.SchemaError as e:
+        # schema 자체가 invalid — caller(개발자) 잘못이지만 OCR 흐름은 살린다.
+        return False, f"invalid schema: {e.message}"
 
 
 # -- internal helpers -------------------------------------------------------
