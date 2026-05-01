@@ -6,6 +6,7 @@
 지원 포맷: Discord webhook, OpenRouter/Anthropic/OpenAI API 키, GitHub PAT,
 Slack 토큰, AWS access/session 키, JWT, generic Bearer 헤더.
 """
+
 import re
 
 DISCORD_WEBHOOK_RE = re.compile(r"(https://discord\.com/api/webhooks/)[\w\-/.]+")

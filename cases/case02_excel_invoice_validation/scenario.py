@@ -1,4 +1,5 @@
 """Case 02 — 거래명세서 단가 검증 + Discord 이상치 알림."""
+
 from pathlib import Path
 
 import pandas as pd
@@ -9,9 +10,11 @@ from core.excel import validator
 from core.messaging import discord
 
 
-def run(input_path: Path | str = "personas/sample_data/invoices/invoices.xlsx",
-        output_path: Path | str = "cases/case02_excel_invoice_validation/output/outliers.xlsx",
-        discord_alert: bool = True) -> int:
+def run(
+    input_path: Path | str = "personas/sample_data/invoices/invoices.xlsx",
+    output_path: Path | str = "cases/case02_excel_invoice_validation/output/outliers.xlsx",
+    discord_alert: bool = True,
+) -> int:
     log = demo_logger("case02")
     input_path = Path(input_path)
     output_path = Path(output_path)
@@ -28,8 +31,7 @@ def run(input_path: Path | str = "personas/sample_data/invoices/invoices.xlsx",
 
     if discord_alert and len(flagged) > 0:
         items = ", ".join(
-            f"{r['거래처명']}({r['거래명세서번호']})"
-            for _, r in flagged.head(5).iterrows()
+            f"{r['거래처명']}({r['거래명세서번호']})" for _, r in flagged.head(5).iterrows()
         )
         discord.send(
             f"단가 이상치 {len(flagged)}건 감지:\n{items}",

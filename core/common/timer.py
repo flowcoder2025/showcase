@@ -1,4 +1,5 @@
 """before/after 시간 측정 — 시연 임팩트용."""
+
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager

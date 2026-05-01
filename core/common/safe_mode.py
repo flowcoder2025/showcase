@@ -4,6 +4,7 @@
 - 외부 호출 함수는 모듈 참조로 호출해야 patch가 먹는다 (`from core.x import y; y.fn()` ✓)
 - INTERCEPT_TARGETS에 (모듈경로, 함수명) 등록된 함수만 patch
 """
+
 import hashlib
 import importlib
 import json
@@ -30,10 +31,10 @@ def force_safe(reason: str) -> None:
 
 
 INTERCEPT_TARGETS: dict[str, tuple[str, str]] = {
-    "openrouter":      ("core.ai.client", "chat"),
-    "ollama_gemma":    ("core.ocr.gemma", "extract"),
+    "openrouter": ("core.ai.client", "chat"),
+    "ollama_gemma": ("core.ocr.gemma", "extract"),
     "discord_webhook": ("core.messaging.discord", "send"),
-    "gmail":           ("core.messaging.email", "send"),
+    "gmail": ("core.messaging.email", "send"),
 }
 
 
@@ -101,8 +102,7 @@ def intercept(case_id: str, apis: list[str]) -> Iterator[None]:
 
     if skipped and not patches:
         _console.print(
-            "[bold red][SAFE] all targets skipped — "
-            "intercept is no-op for this case[/bold red]"
+            "[bold red][SAFE] all targets skipped — intercept is no-op for this case[/bold red]"
         )
 
     try:

@@ -1,4 +1,5 @@
 """거래처 단위 병합·집계."""
+
 from pathlib import Path
 
 import pandas as pd

@@ -7,6 +7,7 @@ Usage:
     uv run python runner.py --list           # 케이스 목록만
     DEMO_SAFE=1 uv run python runner.py case09  # 안전 모드
 """
+
 import argparse
 import importlib
 import os
@@ -60,9 +61,11 @@ def discover_cases() -> list[dict[str, Any]]:
 
 def warm_up_gemma_async() -> None:
     """Ollama Gemma 4 더미 추론 1회로 콜드스타트 회피 (백그라운드)."""
+
     def _warm() -> None:
         try:
             import ollama
+
             for model in ("gemma4:e2b",):
                 try:
                     ollama.generate(model=model, prompt="warm-up")
@@ -70,6 +73,7 @@ def warm_up_gemma_async() -> None:
                     pass
         except ImportError:
             pass
+
     t = threading.Thread(target=_warm, daemon=True)
     t.start()
 
@@ -101,10 +105,14 @@ def cmd_check(strict: bool = False) -> int:
             else:
                 log.warning(f"{name} missing — {strict_msg}")
 
-    _check_required("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY"),
-                    "AI 케이스는 --safe로만 실행 가능")
-    _check_required("DISCORD_WEBHOOK_URL", os.getenv("DISCORD_WEBHOOK_URL"),
-                    "messaging 케이스는 --safe로만 실행 가능")
+    _check_required(
+        "OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY"), "AI 케이스는 --safe로만 실행 가능"
+    )
+    _check_required(
+        "DISCORD_WEBHOOK_URL",
+        os.getenv("DISCORD_WEBHOOK_URL"),
+        "messaging 케이스는 --safe로만 실행 가능",
+    )
 
     # 샘플 데이터
     if not Path("personas/sample_data/vendors.xlsx").exists():
@@ -139,8 +147,7 @@ def _check_ollama_gemma(log: Any) -> bool:
     # Response shape: {"models": [{"model": "gemma4:e2b", ...}, ...]} or
     # an object with .models attribute (depends on ollama-python version).
     models_raw: Any = (
-        listing.get("models", []) if isinstance(listing, dict)
-        else getattr(listing, "models", [])
+        listing.get("models", []) if isinstance(listing, dict) else getattr(listing, "models", [])
     )
     names: list[str] = []
     for m in models_raw:
@@ -238,11 +245,7 @@ def run_case(case_id: str, safe: bool) -> int:
     out_dir = case_dir / "output"
     if out_dir.exists():
         for f in sorted(out_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True):
-            if (
-                f.is_file()
-                and not f.name.startswith("_")
-                and f.stat().st_mtime >= start_mtime
-            ):
+            if f.is_file() and not f.name.startswith("_") and f.stat().st_mtime >= start_mtime:
                 open_finder(f)
                 break
     return 0 if result is None or result == 0 else 1
@@ -267,8 +270,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("case_id", nargs="?")
     parser.add_argument("--check", action="store_true")
-    parser.add_argument("--strict", action="store_true",
-                        help="--check와 함께 사용 — 키·데이터 누락도 fail")
+    parser.add_argument(
+        "--strict", action="store_true", help="--check와 함께 사용 — 키·데이터 누락도 fail"
+    )
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--safe", action="store_true")
     args = parser.parse_args()

@@ -7,11 +7,13 @@ from openpyxl import load_workbook
 
 @pytest.fixture
 def case_input(tmp_path: Path) -> Path:
-    df = pd.DataFrame([
-        {"거래처명": "A", "거래일": "2026-01-15", "금액": 100},
-        {"거래처명": "A", "거래일": "2026-02-10", "금액": 200},
-        {"거래처명": "B", "거래일": "2026-01-20", "금액": 300},
-    ])
+    df = pd.DataFrame(
+        [
+            {"거래처명": "A", "거래일": "2026-01-15", "금액": 100},
+            {"거래처명": "A", "거래일": "2026-02-10", "금액": 200},
+            {"거래처명": "B", "거래일": "2026-01-20", "금액": 300},
+        ]
+    )
     p = tmp_path / "input"
     p.mkdir()
     df.to_excel(p / "data.xlsx", index=False)

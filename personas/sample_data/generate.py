@@ -3,6 +3,7 @@
 실행:
     uv run python personas/sample_data/generate.py
 """
+
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,13 +27,15 @@ def main() -> None:
     # 거래처 30곳
     vendors = []
     for i in range(30):
-        vendors.append({
-            "vendor_id": f"V{i+1:03d}",
-            "거래처명": fake.company(),
-            "사업자번호": fake.unique.ssn().replace("-", "")[:10],
-            "담당자": fake.name(),
-            "이메일": fake.email(),
-        })
+        vendors.append(
+            {
+                "vendor_id": f"V{i + 1:03d}",
+                "거래처명": fake.company(),
+                "사업자번호": fake.unique.ssn().replace("-", "")[:10],
+                "담당자": fake.name(),
+                "이메일": fake.email(),
+            }
+        )
     pd.DataFrame(vendors).to_excel(out_dir / "vendors.xlsx", index=False)
 
     # 12개월 거래 — 월별 파일
@@ -42,12 +45,14 @@ def main() -> None:
         rows = []
         for _ in range(random.randint(40, 80)):
             v = random.choice(vendors)
-            rows.append({
-                "거래처명": v["거래처명"],
-                "거래일": month_start + timedelta(days=random.randint(0, 28)),
-                "금액": random.randint(50_000, 5_000_000),
-                "품목": fake.bs().split()[0],
-            })
+            rows.append(
+                {
+                    "거래처명": v["거래처명"],
+                    "거래일": month_start + timedelta(days=random.randint(0, 28)),
+                    "금액": random.randint(50_000, 5_000_000),
+                    "품목": fake.bs().split()[0],
+                }
+            )
         df = pd.DataFrame(rows)
         df.to_excel(vendors_dir / f"transactions_{month_start:%Y_%m}.xlsx", index=False)
 
@@ -60,14 +65,16 @@ def main() -> None:
         # 5% 확률로 의도적 이상치 (표준 단가의 3배 이상)
         if random.random() < 0.05:
             unit_price *= random.randint(3, 5)
-        invoices.append({
-            "거래명세서번호": f"INV-{i+1:04d}",
-            "거래처명": v["거래처명"],
-            "품목": fake.bs().split()[0],
-            "단가": unit_price,
-            "수량": qty,
-            "금액": unit_price * qty,
-        })
+        invoices.append(
+            {
+                "거래명세서번호": f"INV-{i + 1:04d}",
+                "거래처명": v["거래처명"],
+                "품목": fake.bs().split()[0],
+                "단가": unit_price,
+                "수량": qty,
+                "금액": unit_price * qty,
+            }
+        )
     pd.DataFrame(invoices).to_excel(invoices_dir / "invoices.xlsx", index=False)
 
     print("✓ Generated: vendors.xlsx (30), transactions_*.xlsx (12 months), invoices.xlsx (100)")

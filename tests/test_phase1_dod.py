@@ -83,9 +83,7 @@ def test_case01_full_pipeline_creates_report(tmp_path: Path) -> None:
     assert out.exists()
 
 
-def test_case09_safe_mode_deterministic(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_case09_safe_mode_deterministic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """동일 입력 2회 실행 → drafts.json 동일.
 
     fake 응답 캐시를 사전 주입하여 진짜 deterministic 검증 (단순 fallback 일치 X).

@@ -19,6 +19,7 @@ def test_measure_ratio_clamped_for_subsecond_ops(capsys):
         pass  # near-instant
     captured = capsys.readouterr()
     import re
+
     m = re.search(r"~(\d+)배", captured.out)
     assert m is not None, f"ratio not found in: {captured.out!r}"
     assert int(m.group(1)) <= 10000, f"ratio {m.group(1)} exceeds 10000 cap"

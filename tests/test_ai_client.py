@@ -13,7 +13,9 @@ def test_chat_returns_text_on_first_model_success(
     fake_response.choices = [MagicMock(message=MagicMock(content="hello"))]
 
     class FakeOpenAI:
-        def __init__(self, *a: Any, **k: Any) -> None: pass
+        def __init__(self, *a: Any, **k: Any) -> None:
+            pass
+
         class chat:
             class completions:
                 @staticmethod

@@ -3,6 +3,7 @@
 Note: filename is `demo_logger.py` (not `logging.py`) to avoid shadowing
 stdlib's `logging` module within the `core.common` package.
 """
+
 from typing import Protocol
 
 from rich.console import Console

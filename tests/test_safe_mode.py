@@ -49,8 +49,12 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch, register_targ
     # 가짜 모듈 등록
     import sys
     import types
+
     fake = types.ModuleType("core.fake_api")
-    def real_call(x): return f"REAL:{x}"
+
+    def real_call(x):
+        return f"REAL:{x}"
+
     fake.call = real_call
     sys.modules["core.fake_api"] = fake
 
@@ -63,6 +67,7 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch, register_targ
 
     with safe_mode.intercept("case_x", apis=["fake"]):
         from core import fake_api
+
         result = fake_api.call("hi")
         assert isinstance(result, dict)
         assert result.get("_safe") is True
@@ -70,6 +75,7 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch, register_targ
 
     # 컨텍스트 종료 후 복원
     from core import fake_api
+
     assert fake_api.call("hi") == "REAL:hi"
 
 
@@ -80,6 +86,7 @@ def test_intercept_returns_cached_when_present(tmp_path, monkeypatch, register_t
     # 가짜 모듈 등록
     import sys
     import types
+
     fake = types.ModuleType("core.fake_api2")
     fake.call = lambda x: "REAL"
     sys.modules["core.fake_api2"] = fake
@@ -94,4 +101,5 @@ def test_intercept_returns_cached_when_present(tmp_path, monkeypatch, register_t
 
     with safe_mode.intercept(case_id, apis=["fake2"]):
         from core import fake_api2
+
         assert fake_api2.call("hi") == "CACHED"

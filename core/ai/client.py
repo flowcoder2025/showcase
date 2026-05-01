@@ -4,6 +4,7 @@
     from core.ai import client
     client.chat(...)
 """
+
 import os
 from typing import Any, cast
 
@@ -13,9 +14,9 @@ from openai import RateLimitError as OpenAIRateLimitError
 from core.common import safe_mode
 
 MODEL_PRIORITY: tuple[str, ...] = (
-    "google/gemini-2.5-flash",      # primary
-    "anthropic/claude-haiku-4-5",   # fallback 1
-    "openai/gpt-4o-mini",           # fallback 2
+    "google/gemini-2.5-flash",  # primary
+    "anthropic/claude-haiku-4-5",  # fallback 1
+    "openai/gpt-4o-mini",  # fallback 2
 )
 
 
@@ -84,8 +85,11 @@ def chat(
             if case_id and not safe_mode.is_safe():
                 # messages는 list[dict]라 stable hash 위해 str화
                 safe_mode.save_cache(
-                    case_id, "core.ai.client.chat", (),
-                    {"messages_repr": repr(messages)}, result,
+                    case_id,
+                    "core.ai.client.chat",
+                    (),
+                    {"messages_repr": repr(messages)},
+                    result,
                 )
             return result
         except (RateLimitError, ServerError) as e:

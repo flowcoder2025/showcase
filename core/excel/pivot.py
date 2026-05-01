@@ -1,4 +1,5 @@
 """거래처 × 월 피벗."""
+
 import pandas as pd
 
 

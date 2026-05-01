@@ -32,8 +32,10 @@ def test_masks_bearer_token():
 
 def test_bearer_does_not_match_short_tokens():
     # {8,} bound — 7 chars must NOT match
-    assert secrets_mask.mask("Bearer short12") == "Bearer short12" or \
-           secrets_mask.mask("Bearer short1") == "Bearer short1"
+    assert (
+        secrets_mask.mask("Bearer short12") == "Bearer short12"
+        or secrets_mask.mask("Bearer short1") == "Bearer short1"
+    )
     # 7-char case (definitely below bound)
     assert secrets_mask.mask("Bearer abc1234") == "Bearer abc1234"
 

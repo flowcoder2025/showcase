@@ -1,4 +1,5 @@
 """AI 고수준 태스크 — 요약/분류/작성/추출."""
+
 import json
 from typing import Any, cast
 
@@ -21,9 +22,12 @@ def draft_email(
     """
     messages = [
         {"role": "system", "content": prompts.EMAIL_DRAFT_SYSTEM},
-        {"role": "user", "content": prompts.email_draft_user(
-            incoming_subject, incoming_body, company_tone, history_summary
-        )},
+        {
+            "role": "user",
+            "content": prompts.email_draft_user(
+                incoming_subject, incoming_body, company_tone, history_summary
+            ),
+        },
     ]
     log = demo_logger(case_id or "tasks")
     raw = client.chat(messages, case_id=case_id)

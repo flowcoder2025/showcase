@@ -12,6 +12,7 @@ def test_draft_email_returns_three_options(monkeypatch: Any) -> None:
         )
 
     from core.ai import client
+
     monkeypatch.setattr(client, "chat", fake_chat)
 
     result = tasks.draft_email(
@@ -29,6 +30,7 @@ def test_draft_email_handles_safe_fallback(monkeypatch: Any) -> None:
         return "[SAFE-FALLBACK]"
 
     from core.ai import client
+
     monkeypatch.setattr(client, "chat", fake_safe)
 
     result = tasks.draft_email("s", "b", "tone", "hist")

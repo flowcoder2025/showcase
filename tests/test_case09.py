@@ -29,11 +29,16 @@ def test_case09_safe_mode_returns_deterministic_result(
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
 
     from cases.case09_ai_email_drafter import scenario
-    scenario.run(input_path=case_dir / "input" / "sample_incoming.txt",
-                 output_path=case_dir / "output" / "drafts.json")
+
+    scenario.run(
+        input_path=case_dir / "input" / "sample_incoming.txt",
+        output_path=case_dir / "output" / "drafts.json",
+    )
     text1 = (case_dir / "output" / "drafts.json").read_text(encoding="utf-8")
-    scenario.run(input_path=case_dir / "input" / "sample_incoming.txt",
-                 output_path=case_dir / "output" / "drafts.json")
+    scenario.run(
+        input_path=case_dir / "input" / "sample_incoming.txt",
+        output_path=case_dir / "output" / "drafts.json",
+    )
     text2 = (case_dir / "output" / "drafts.json").read_text(encoding="utf-8")
 
     # 두 번째 실행 결과가 첫 번째와 동일 (deterministic)
@@ -46,5 +51,6 @@ def test_case09_safe_mode_returns_deterministic_result(
 
 def test_case09_external_apis_listed_in_meta() -> None:
     import yaml
+
     meta = yaml.safe_load(Path("cases/case09_ai_email_drafter/meta.yaml").read_text())
     assert "openrouter" in meta.get("external_apis", [])
