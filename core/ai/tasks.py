@@ -2,10 +2,33 @@
 
 import hashlib
 import json
+import re
+from datetime import datetime
 from typing import Any, TypedDict, cast
 
 from core.ai import client, prompts
-from core.common.demo_logger import demo_logger
+from core.common.demo_logger import Logger, demo_logger
+
+_ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _normalize_due(value: Any, log: Logger) -> str:
+    """due 형식 검증. YYYY-MM-DD만 허용. 잘못된 형식 → "" fallback + warning.
+
+    빈 문자열은 valid (LLM이 due를 모를 수도 있음 — graceful).
+    """
+    s = str(value).strip()
+    if not s:
+        return ""
+    if not _ISO_DATE_PATTERN.match(s):
+        log.warning(f"due not in YYYY-MM-DD format: {value!r}, using ''")
+        return ""
+    try:
+        datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        log.warning(f"due is not a valid date: {value!r}, using ''")
+        return ""
+    return s
 
 
 def draft_email(
@@ -147,9 +170,20 @@ def summarize_meeting(
             ActionItem(
                 owner=str(item.get("owner", "")),
                 task=str(item.get("task", "")),
-                due=str(item.get("due", "")),
+                due=_normalize_due(item.get("due", ""), log),
             )
         )
+
+    # 빈 action_items 분기 — 시연 시 "정상 응답인지 응답 오류인지" 구분
+    if not action_items:
+        if not raw_actions:
+            log.info("회의에서 추출된 action_item 없음 (정상 응답)")
+        else:
+            log.warning(f"raw_actions 있지만 정규화 후 빈 결과: {raw_actions!r}")
+
+    summary_str = str(parsed.get("summary", ""))
+    if not summary_str.strip():
+        log.warning(f"LLM returned empty summary; raw response: {response_str[:200]!r}")
 
     decisions_raw = parsed.get("decisions", [])
     decisions: list[str] = (
@@ -157,7 +191,7 @@ def summarize_meeting(
     )
 
     return MeetingSummary(
-        summary=str(parsed.get("summary", "")),
+        summary=summary_str,
         action_items=action_items,
         decisions=decisions,
     )

@@ -269,3 +269,195 @@ def test_safe_summary_deterministic_per_transcript(monkeypatch: Any) -> None:
     b = tasks.summarize_meeting(transcript="다름", attendees=["김사장"])
     assert a1 == a2
     assert a1["summary"] != b["summary"]
+
+
+# ---------------------------------------------------------------------------
+# T12.5 — due format validation + empty action_items/summary warnings
+# ---------------------------------------------------------------------------
+
+
+class _RecordingLogger:
+    """info/warning 호출 인자를 캡처하는 minimal logger stub."""
+
+    def __init__(self) -> None:
+        self.infos: list[str] = []
+        self.warnings: list[str] = []
+
+    def info(self, msg: str) -> None:
+        self.infos.append(msg)
+
+    def success(self, msg: str) -> None:  # pragma: no cover - unused
+        pass
+
+    def warning(self, msg: str) -> None:
+        self.warnings.append(msg)
+
+    def error(self, msg: str) -> None:  # pragma: no cover - unused
+        pass
+
+
+def _patch_summarize_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
+    """summarize_meeting 내부의 demo_logger를 RecordingLogger로 교체.
+
+    tasks.py가 ``from ... import demo_logger`` 형태이므로 tasks 모듈에
+    바인딩된 이름을 직접 교체해야 한다.
+    """
+    rec = _RecordingLogger()
+    monkeypatch.setattr(tasks, "demo_logger", lambda _case_id: rec)
+    return rec
+
+
+def _payload(
+    *,
+    summary: str = "회의 요약 정상",
+    action_items: list[dict[str, Any]] | None = None,
+    decisions: list[str] | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "summary": summary,
+            "action_items": action_items if action_items is not None else [],
+            "decisions": decisions if decisions is not None else [],
+        },
+        ensure_ascii=False,
+    )
+
+
+def test_summarize_meeting_due_invalid_format_uses_empty(monkeypatch: Any) -> None:
+    """due="내일" → fallback to "" + warning."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(
+            _payload(action_items=[{"owner": "김사장", "task": "T", "due": "내일"}])
+        ),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"][0]["due"] == ""
+    assert any("not in YYYY-MM-DD format" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_due_invalid_date_uses_empty(monkeypatch: Any) -> None:
+    """due="2026-13-01" (월 13) → datetime.strptime 실패 → "" + warning."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(
+            _payload(action_items=[{"owner": "김사장", "task": "T", "due": "2026-13-01"}])
+        ),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"][0]["due"] == ""
+    assert any("not a valid date" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_due_valid_iso_passthrough(monkeypatch: Any) -> None:
+    """due="2026-05-08" → 그대로 유지 + warning 없음."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(
+            _payload(action_items=[{"owner": "김사장", "task": "T", "due": "2026-05-08"}])
+        ),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"][0]["due"] == "2026-05-08"
+    assert not any("due" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_due_empty_string_passthrough(monkeypatch: Any) -> None:
+    """due="" → ""  유지 (warning 없음 — empty도 valid)."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(_payload(action_items=[{"owner": "김사장", "task": "T", "due": ""}])),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"][0]["due"] == ""
+    assert not any("due" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_due_extra_whitespace_trimmed(monkeypatch: Any) -> None:
+    """due="  2026-05-08  " → strip() 후 "2026-05-08" 유지."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(
+            _payload(action_items=[{"owner": "김사장", "task": "T", "due": "  2026-05-08  "}])
+        ),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"][0]["due"] == "2026-05-08"
+    assert not any("due" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_empty_action_items_logs_info(monkeypatch: Any) -> None:
+    """raw_actions=[] + summary not empty → log.info ("정상 응답")."""
+    monkeypatch.setattr(
+        client,
+        "chat",
+        _fake_chat_factory(_payload(summary="요약 OK", action_items=[])),
+    )
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"] == []
+    assert any("action_item 없음" in i for i in rec.infos)
+
+
+def test_summarize_meeting_normalized_to_empty_logs_warning(monkeypatch: Any) -> None:
+    """raw_actions에 비-dict만 있어 정규화 후 빈 결과 → log.warning."""
+    payload = json.dumps(
+        {
+            "summary": "요약 OK",
+            "action_items": ["string_only", 123],
+            "decisions": [],
+        },
+        ensure_ascii=False,
+    )
+    monkeypatch.setattr(client, "chat", _fake_chat_factory(payload))
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["action_items"] == []
+    assert any("정규화 후 빈 결과" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_empty_summary_logs_warning(monkeypatch: Any) -> None:
+    """summary="" → log.warning ("empty summary")."""
+    monkeypatch.setattr(client, "chat", _fake_chat_factory(_payload(summary="")))
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert result["summary"] == ""
+    assert any("empty summary" in w for w in rec.warnings)
+
+
+def test_summarize_meeting_whitespace_summary_logs_warning(monkeypatch: Any) -> None:
+    """summary='   \\n  ' → strip 후 빈 → warning."""
+    monkeypatch.setattr(client, "chat", _fake_chat_factory(_payload(summary="   \n  ")))
+    rec = _patch_summarize_logger(monkeypatch)
+
+    result = tasks.summarize_meeting(transcript="회의록", attendees=["김사장"])
+
+    assert any("empty summary" in w for w in rec.warnings)
+    # raw 값은 그대로 통과 (검증만 — 변형 안 함)
+    assert result["summary"] == "   \n  "
