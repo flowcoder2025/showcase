@@ -17,7 +17,16 @@ def test_critical_imports_smoke() -> None:
     """
     import importlib
 
-    for mod in ("pandas", "openpyxl", "openai", "discord_webhook", "yaml", "rich"):
+    for mod in (
+        "pandas",
+        "openpyxl",
+        "openai",
+        "discord_webhook",
+        "yaml",
+        "rich",
+        # Phase 2 신규 의존성 (T0). weasyprint는 system libs 의존성 때문에 T5에서 결정 보류.
+        "lxml.etree",
+    ):
         importlib.import_module(mod)
     from core.ai import client, prompts, tasks
     from core.common import config, demo_logger, safe_mode, secrets_mask, timer

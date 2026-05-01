@@ -127,9 +127,27 @@ def cmd_check(strict: bool = False) -> int:
     if strict:
         ok = _check_ollama_gemma(log) and ok
         ok = _check_discord_webhook(log) and ok
+        ok = _check_email_transport(log) and ok
 
     log.success("--check 통과" if ok else "--check 실패")
     return 0 if ok else 1
+
+
+def _check_email_transport(log: Any) -> bool:
+    """strict 모드: Gmail OAuth credential 또는 SMTP credential 둘 중 하나는 있어야 한다.
+
+    Phase 2 case03용. 시연 시 둘 다 없으면 case03는 --safe로만 실행 가능.
+    """
+    gmail_creds = os.getenv("GMAIL_OAUTH_CREDENTIALS", "")
+    has_gmail = bool(gmail_creds) and Path(gmail_creds).exists()
+    has_smtp = bool(os.getenv("SMTP_HOST")) and bool(os.getenv("SMTP_USER"))
+    if has_gmail or has_smtp:
+        return True
+    log.error(
+        "[STRICT] no email transport configured — set GMAIL_OAUTH_CREDENTIALS "
+        "(file must exist) or SMTP_HOST+SMTP_USER. case03 will only run in --safe mode."
+    )
+    return False
 
 
 def _check_ollama_gemma(log: Any) -> bool:

@@ -18,6 +18,10 @@ dependencies = [
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
     "faker>=30.0",
+    "lxml>=5.0",
+    # NOTE: weasyprint는 T0에서 제외 — Pango/Cairo 등 system libs 의존성 (macOS: brew install pango cairo).
+    # T5 (case05 docgen) 진입 시 폴백 결정 재검토 (weasyprint vs reportlab vs subprocess+md-to-pdf).
+    # Plan deviation 5 disclosed.
 ]
 
 [dependency-groups]
@@ -50,4 +54,8 @@ select = ["E", "F", "I", "B", "UP"]
 
 [[tool.mypy.overrides]]
 module = "discord_webhook"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hwpx_utils"
 ignore_missing_imports = true
