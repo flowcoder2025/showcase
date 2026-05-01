@@ -1,8 +1,12 @@
 import json
 from pathlib import Path
 
+import pytest
 
-def test_case09_safe_mode_returns_deterministic_result(tmp_path, monkeypatch):
+
+def test_case09_safe_mode_returns_deterministic_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """동일 입력 2회 실행 시 결과 동일."""
     monkeypatch.setenv("DEMO_SAFE", "1")
     monkeypatch.chdir(tmp_path)
@@ -32,7 +36,7 @@ def test_case09_safe_mode_returns_deterministic_result(tmp_path, monkeypatch):
     assert isinstance(parsed, list)
 
 
-def test_case09_external_apis_listed_in_meta():
+def test_case09_external_apis_listed_in_meta() -> None:
     import yaml
     meta = yaml.safe_load(Path("cases/case09_ai_email_drafter/meta.yaml").read_text())
     assert "openrouter" in meta.get("external_apis", [])
