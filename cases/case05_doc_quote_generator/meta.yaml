@@ -1,0 +1,13 @@
+id: case05_doc_quote_generator
+title: 견적서/거래명세서 자동 생성 (Word + PDF)
+category: docgen
+persona: 이대리
+duration_seconds: 5
+manual_minutes: 30
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "이대리 양식 복붙·표 그리기 30분"
+after: "5초, 일관 양식 docx + pdf 동시 생성"
+tools: ["python-docx", "md-to-pdf"]
+real_client_inspired: false
+external_apis: []
