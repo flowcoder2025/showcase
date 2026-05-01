@@ -146,12 +146,29 @@ def extract(image_path: Path | str) -> InvoiceData:
     return _validate_and_normalize(raw, image_path)
 
 
+# 내부 슬러그 → 기본 한국어 헤더 매핑 (default 컬럼 순서).
+# column_map=None 시 이 순서/헤더 그대로 사용. column_map 제공 시 슬러그 유효성 검증에 사용.
+_CANONICAL_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("issue_date", "거래일"),
+    ("invoice_no", "거래번호"),
+    ("supplier_biznum", "공급자번호"),
+    ("supplier_name", "공급자명"),
+    ("buyer_biznum", "공급받는자번호"),
+    ("buyer_name", "공급받는자명"),
+    ("total_supply", "공급가액"),
+    ("total_vat", "부가세"),
+    ("total_amount", "합계"),
+)
+_CANONICAL_SLUGS: frozenset[str] = frozenset(slug for slug, _ in _CANONICAL_COLUMNS)
+
+
 def to_accounting_csv(
     invoices: list[InvoiceData],
     out_path: Path | str,
     *,
     encoding: Literal["utf-8", "cp949"] = "utf-8",
     bom: bool = False,
+    column_map: dict[str, str] | None = None,
 ) -> None:
     """회계SW (더존, 영림원 등) 표준 CSV로 export.
 
@@ -162,50 +179,45 @@ def to_accounting_csv(
         bom: ``True`` 이고 ``encoding="utf-8"`` 일 때 UTF-8 BOM (``EF BB BF``)을
             파일 앞에 기록 → Windows Excel이 한글을 정상 인식 (``utf-8-sig``).
             ``cp949``는 BOM 개념이 없으므로 ``bom=True`` 조합은 ``ValueError``.
+        column_map: 컬럼 override. ``None`` 이면 기본 9개 한국어 헤더를 canonical 순서로 작성.
+            제공 시 키는 내부 슬러그(``issue_date``/``invoice_no``/``supplier_biznum``/
+            ``supplier_name``/``buyer_biznum``/``buyer_name``/``total_supply``/
+            ``total_vat``/``total_amount``), 값은 출력될 헤더 텍스트. 딕셔너리 삽입
+            순서대로 컬럼이 작성되며, 누락된 슬러그는 CSV에서 제외 (부분 export).
+            빈 딕셔너리(``{}``)는 ``ValueError`` (default 원할 시 ``None`` 사용).
+            canonical 슬러그가 아닌 키는 ``ValueError("unknown column: ...")``.
 
     Raises:
         ValueError: ``bom=True`` 와 ``encoding="cp949"`` 조합 (fail-fast).
+        ValueError: ``column_map`` 이 빈 딕셔너리이거나 unknown 슬러그 포함.
         UnicodeEncodeError: ``encoding="cp949"`` 인데 invoice 필드에 cp949 미지원
             문자(이모지 등)가 포함된 경우. SI 호환을 위해 ``errors="replace"``를
             쓰지 않고 fail-fast로 raise — 데이터 무결성 우선.
-
-    NOTE: 컬럼 순서는 일반적 표준이지만 회계SW마다 다름. 향후 column_map override는
-    case08 시나리오 또는 T15.5 fixer 단계에서 추가 가능.
     """
     if bom and encoding != "utf-8":
         # cp949에는 BOM 개념이 없으므로 silent ignore 대신 fail-fast.
         raise ValueError("BOM is only supported with utf-8 encoding")
+
+    # column_map 검증 + 컬럼 순서/헤더 결정.
+    columns: list[tuple[str, str]]
+    if column_map is None:
+        columns = list(_CANONICAL_COLUMNS)
+    else:
+        if not column_map:
+            raise ValueError("column_map cannot be empty; pass None for default")
+        for slug in column_map:
+            if slug not in _CANONICAL_SLUGS:
+                raise ValueError(f"unknown column: {slug}")
+        # dict 삽입 순서 보존 (Python 3.7+ 보장).
+        columns = [(slug, header) for slug, header in column_map.items()]
+
     file_encoding = "utf-8-sig" if (bom and encoding == "utf-8") else encoding
     out = Path(out_path)
     with out.open("w", encoding=file_encoding, newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(
-            [
-                "거래일",
-                "거래번호",
-                "공급자번호",
-                "공급자명",
-                "공급받는자번호",
-                "공급받는자명",
-                "공급가액",
-                "부가세",
-                "합계",
-            ]
-        )
+        writer.writerow([header for _, header in columns])
         for inv in invoices:
-            writer.writerow(
-                [
-                    inv["issue_date"],
-                    inv["invoice_no"],
-                    inv["supplier_biznum"],
-                    inv["supplier_name"],
-                    inv["buyer_biznum"],
-                    inv["buyer_name"],
-                    inv["total_supply"],
-                    inv["total_vat"],
-                    inv["total_amount"],
-                ]
-            )
+            writer.writerow([inv[slug] for slug, _ in columns])  # type: ignore[literal-required]
 
 
 # -- internal helpers -------------------------------------------------------

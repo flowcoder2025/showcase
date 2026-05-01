@@ -371,6 +371,92 @@ def test_scenario_zero_invoices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 # -- 12. CSV 컬럼 ------------------------------------------------------------
 
 
+# -- 13. T15.5: 품질 경고 (failure_rate >= 50%) ----------------------------
+
+
+def test_scenario_warns_on_high_failure_rate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """>=50% 실패 시 quality_warning=True + failure_rate 정확."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    for i in range(4):
+        _make_blank_png(input_dir / f"inv_{i:03d}.png")
+
+    # 4장 중 2장(50%)를 invalid biznum으로 모킹.
+    _mock_invoice(
+        monkeypatch,
+        invalid_biznum_filenames=("inv_000.png", "inv_001.png"),
+    )
+
+    warnings_captured: list[str] = []
+
+    class _WarnSpy:
+        def info(self, msg: str) -> None:
+            pass
+
+        def success(self, msg: str) -> None:
+            pass
+
+        def warning(self, msg: str) -> None:
+            warnings_captured.append(msg)
+
+        def error(self, msg: str) -> None:
+            pass
+
+    monkeypatch.setattr(scenario, "demo_logger", lambda case_id: _WarnSpy())
+
+    out_dir = tmp_path / "out"
+    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+
+    assert summary["processed"] == 4
+    assert summary["failed"] == 2
+    assert summary["failure_rate"] == 0.5
+    assert summary["quality_warning"] is True
+    # prominent warning이 demo_logger.warning을 통해 출력됐는지 확인.
+    assert any("품질 경고" in w for w in warnings_captured)
+    assert any("DEMO_SAFE" in w for w in warnings_captured)
+
+
+def test_scenario_no_warning_below_threshold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """실패율이 50% 미만이면 quality_warning=False (기본 시드 ~7% 실패에 해당)."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    for i in range(10):
+        _make_blank_png(input_dir / f"inv_{i:03d}.png")
+
+    # 10장 중 1장만 실패 (10%) — threshold 미만.
+    _mock_invoice(monkeypatch, fail_filenames=("inv_005.png",))
+
+    out_dir = tmp_path / "out"
+    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+
+    assert summary["processed"] == 10
+    assert summary["failed"] == 1
+    assert summary["failure_rate"] == 0.1
+    assert summary["quality_warning"] is False
+
+
+def test_scenario_no_warning_when_zero_processed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """processed=0 (빈 디렉토리)일 때 quality_warning=False, failure_rate=0.0."""
+    input_dir = tmp_path / "in"
+    input_dir.mkdir()
+    empty_seed = tmp_path / "empty"
+    empty_seed.mkdir()
+    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", empty_seed)
+
+    _mock_invoice(monkeypatch)
+    out_dir = tmp_path / "out"
+    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    assert summary["processed"] == 0
+    assert summary["failure_rate"] == 0.0
+    assert summary["quality_warning"] is False
+
+
 def test_scenario_csv_has_standard_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     input_dir = tmp_path / "in"
     input_dir.mkdir()

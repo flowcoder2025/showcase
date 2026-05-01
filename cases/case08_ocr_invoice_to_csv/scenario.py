@@ -50,8 +50,11 @@ def run(
 
     Returns:
         ``{"processed": int, "verified": int, "failed": int,
+           "failure_rate": float, "quality_warning": bool,
            "elapsed_seconds": float, "outputs": list[str], "per_image_ms": list[dict],
-           "failures": list[dict]}``.
+           "failures": list[dict]}``. ``quality_warning=True`` 시 운영자가 DEMO_SAFE=1
+        재실행을 검토해야 한다 (auto-force_safe는 의도적으로 안 함 — partial-success
+        real run을 silent swap 하면 OCR 품질 저하를 운영자가 못 알아챔).
     """
     log = demo_logger("case08_ocr_invoice_to_csv")
     case_dir = Path(__file__).parent
@@ -126,14 +129,28 @@ def run(
         avg_ms = sum(p["elapsed_ms"] for p in per_image_ms) / len(per_image_ms)
         log.info(f"평균 처리시간 {avg_ms:.0f}ms/장")
 
-    log.success(
-        f"처리 {len(image_paths)}장 / 검증통과 {len(verified)} / 실패 {len(failures)} → {out_dir}"
-    )
+    # >=50% 실패 시 prominent warning (auto-force_safe는 일부러 안 함 — partial-success
+    # real run을 silent로 캐시 응답으로 swap하면 운영자가 OCR 품질 저하를 못 알아챔).
+    processed = len(image_paths)
+    failure_rate = (len(failures) / processed) if processed > 0 else 0.0
+    quality_warning = processed > 0 and failure_rate >= 0.5
+    if quality_warning:
+        log.warning("=" * 60)
+        log.warning(f"품질 경고: 실패율 {failure_rate:.0%} ({len(failures)}/{processed}) >= 50%")
+        log.warning("OCR 품질이 정상 범위를 벗어났습니다. 다음을 확인하세요:")
+        log.warning("  1. 이미지 해상도/스캔 품질 (블러, 회전, 잘림)")
+        log.warning("  2. Gemma 4 모델 가중치 (재시작/리로드 시도)")
+        log.warning("  3. 시연 흐름이 우선이면 DEMO_SAFE=1 로 재실행")
+        log.warning("=" * 60)
+
+    log.success(f"처리 {processed}장 / 검증통과 {len(verified)} / 실패 {len(failures)} → {out_dir}")
 
     return {
-        "processed": len(image_paths),
+        "processed": processed,
         "verified": len(verified),
         "failed": len(failures),
+        "failure_rate": failure_rate,
+        "quality_warning": quality_warning,
         "elapsed_seconds": elapsed_seconds,
         "outputs": [str(utf8_path), str(cp949_path), str(failures_path)],
         "per_image_ms": per_image_ms,

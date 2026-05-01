@@ -409,3 +409,102 @@ def test_to_accounting_csv_bom_with_cp949_raises(tmp_path: Path) -> None:
     assert "BOM" in str(exc_info.value)
     assert "utf-8" in str(exc_info.value)
     assert not out.exists(), "file should not be created when validation fails"
+
+
+# -- T15.5: column_map override --------------------------------------------
+
+
+def _typed_fake_invoice() -> invoice.InvoiceData:
+    """to_accounting_csv 입력용 InvoiceData fixture."""
+    inv = _fake_invoice()
+    return invoice.InvoiceData(
+        invoice_no=inv["invoice_no"],
+        issue_date=inv["issue_date"],
+        supplier_biznum=inv["supplier_biznum"],
+        supplier_name=inv["supplier_name"],
+        buyer_biznum=inv["buyer_biznum"],
+        buyer_name=inv["buyer_name"],
+        line_items=inv["line_items"],
+        total_supply=inv["total_supply"],
+        total_vat=inv["total_vat"],
+        total_amount=inv["total_amount"],
+    )
+
+
+def test_to_accounting_csv_column_map_partial(tmp_path: Path) -> None:
+    """부분 컬럼 + 영문 헤더 — 누락된 슬러그는 CSV에서 제외된다."""
+    inv_typed = _typed_fake_invoice()
+    out = tmp_path / "partial.csv"
+    invoice.to_accounting_csv(
+        [inv_typed],
+        out,
+        encoding="utf-8",
+        column_map={"issue_date": "Date", "total_amount": "Total"},
+    )
+
+    rows = list(csv.reader(out.open(encoding="utf-8")))
+    assert rows[0] == ["Date", "Total"]
+    assert rows[1] == ["2026-05-01", "1100000"]
+    assert len(rows[1]) == 2  # 다른 컬럼은 포함되지 않음
+
+
+def test_to_accounting_csv_column_map_reordered(tmp_path: Path) -> None:
+    """전체 9개 키, 다른 순서 + custom 헤더 — dict 삽입 순서 보존."""
+    inv_typed = _typed_fake_invoice()
+    out = tmp_path / "reordered.csv"
+    custom = {
+        "invoice_no": "전표번호",
+        "issue_date": "전표일자",
+        "total_amount": "합계금액",
+        "total_vat": "세액",
+        "total_supply": "공급가",
+        "supplier_biznum": "공급자등록번호",
+        "supplier_name": "공급자상호",
+        "buyer_biznum": "매입자등록번호",
+        "buyer_name": "매입자상호",
+    }
+    invoice.to_accounting_csv([inv_typed], out, encoding="utf-8", column_map=custom)
+
+    rows = list(csv.reader(out.open(encoding="utf-8")))
+    assert rows[0] == list(custom.values())
+    # 첫 두 컬럼이 invoice_no, issue_date 순서로 재배치돼야 한다.
+    assert rows[1][0] == "INV-2026-00042"
+    assert rows[1][1] == "2026-05-01"
+
+
+def test_to_accounting_csv_column_map_empty_raises(tmp_path: Path) -> None:
+    """빈 column_map은 default와 의미가 다르므로 ValueError (실수 방지)."""
+    out = tmp_path / "empty_map.csv"
+    with pytest.raises(ValueError) as exc_info:
+        invoice.to_accounting_csv([], out, column_map={})
+    assert "empty" in str(exc_info.value).lower()
+    assert not out.exists()
+
+
+def test_to_accounting_csv_column_map_invalid_key_raises(tmp_path: Path) -> None:
+    """canonical 슬러그 외의 키는 ValueError + 키 이름 포함."""
+    out = tmp_path / "bad_key.csv"
+    with pytest.raises(ValueError) as exc_info:
+        invoice.to_accounting_csv([], out, column_map={"foo": "Bar"})
+    assert "foo" in str(exc_info.value)
+    assert "unknown column" in str(exc_info.value)
+    assert not out.exists()
+
+
+def test_to_accounting_csv_column_map_with_bom(tmp_path: Path) -> None:
+    """column_map + bom=True/utf-8 조합 — BOM이 정상 작성되고 컬럼도 적용된다."""
+    inv_typed = _typed_fake_invoice()
+    out = tmp_path / "map_bom.csv"
+    invoice.to_accounting_csv(
+        [inv_typed],
+        out,
+        encoding="utf-8",
+        bom=True,
+        column_map={"issue_date": "날짜", "invoice_no": "번호"},
+    )
+
+    raw = out.read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf")
+    text = out.read_text(encoding="utf-8-sig")
+    assert text.splitlines()[0] == "날짜,번호"
+    assert "2026-05-01,INV-2026-00042" in text
