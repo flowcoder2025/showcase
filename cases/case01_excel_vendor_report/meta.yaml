@@ -1,0 +1,13 @@
+id: case01_excel_vendor_report
+title: 거래처별 월별 매출 보고서 자동 생성
+category: excel
+persona: 박과장
+duration_seconds: 5
+manual_minutes: 180
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "박과장이 매월 거래처 30곳 시트 합치고 피벗 3시간"
+after: "5초 만에 거래처별·월별 매출표 + 차트 포함 보고서"
+tools: ["pandas", "openpyxl"]
+real_client_inspired: false
+external_apis: []
