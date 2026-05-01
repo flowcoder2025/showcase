@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import pandas as pd
 
 from core.excel import merger
 
 
-def test_merger_reuses_with_english_columns(tmp_path):
+def test_merger_reuses_with_english_columns(tmp_path: Path) -> None:
     """다음 컨설팅 프로젝트 시나리오 — 컬럼명이 영어인 경우."""
     df = pd.DataFrame([
         {"Customer": "X", "TxDate": "2026-01-01", "Total": 100},

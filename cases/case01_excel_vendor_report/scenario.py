@@ -9,7 +9,7 @@ COLUMN_MAP = {"vendor": "거래처명", "date": "거래일", "amount": "금액"}
 
 
 def run(input_dir: Path | str = "personas/sample_data/vendors",
-        output_path: Path | str = "cases/case01_excel_vendor_report/output/report.xlsx"):
+        output_path: Path | str = "cases/case01_excel_vendor_report/output/report.xlsx") -> int:
     log = demo_logger("case01")
     input_dir = Path(input_dir)
     output_path = Path(output_path)
