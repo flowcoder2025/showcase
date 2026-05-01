@@ -1,0 +1,13 @@
+id: case06_hwpx_govt_form_filler
+title: 정부지원사업 신청서 HWPX 자동 작성
+category: docgen
+persona: 김사장
+duration_seconds: 30
+manual_minutes: 30
+audience: ["customer_meeting", "lecture"]
+demo_lengths: ["1min", "3min", "5min"]
+before: "김사장 정부지원사업 신청서 양식 직접 채우기 30분 + 오타 검수"
+after: "30초, AX상사 데이터 → HWPX 8필드 자동 채움 + 한글 GUI에서 즉시 확인"
+tools: ["hwpx-editor (Python skill)", "lxml"]
+real_client_inspired: true
+external_apis: []

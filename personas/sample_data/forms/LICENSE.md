@@ -15,16 +15,41 @@ the upstream package — see upstream LICENSE for full text.
 This fixture is **for tests only**. It is not a real Korean government grant
 form template.
 
-## grant_application_template.hwpx (deferred to T18)
+## grant_application_template.hwpx (T18 stand-in)
 
-The real Korean government grant form template needed for case06 (정부지원사업
-신청서 자동화 시연) is **not present in this directory**. Sourcing it under an
-appropriate license — preferably 대한민국 정부 공공누리 1유형 (출처표시) or
-direct permission from the issuing agency — is part of T18 (case06 scenario).
+This file is a **MIT-licensed stand-in**, not a real Korean government grant
+form. It is the same Skeleton.hwpx derivative as `test_template.hwpx`, but
+with an 8-row × 2-col table (id=`999000002`) injected via
+`personas/scripts/build_grant_template.py`. The eight left-column labels
+mimic typical grant fields (회사명·대표자명·사업자등록번호·사업분야·
+신청금액·매출액·직원수·신청일자) so case06 can exercise the full
+`fill_form` → `extract_text` round-trip end-to-end.
 
-Until then, case06 unit tests use `test_template.hwpx` for the
-HwpxEditor round-trip, and the case06 scenario script runs against whatever
-template the operator places at `personas/sample_data/forms/grant_application_template.hwpx`.
+### Why a stand-in instead of a real govt form
+
+Real templates from TIPA, SMTECH, K-Startup, and similar agencies typically
+carry an implicit "applicant use" license, but explicit redistribution
+rights are unclear or absent. Repackaging one in this repo without per-form
+legal review is a license risk. The stand-in is upstream MIT and
+redistributable under the same terms as `test_template.hwpx`.
+
+### Live demo policy
+
+**Operators must replace this fixture with the actual program-specific
+.hwpx before any live demo.** The `case06` scenario’s
+`_GRANT_TABLE_ID` and `_FIELD_ORDER` constants must also be re-mapped to
+the real form’s table id and row order, since cell coordinates differ
+across forms. The `case06` README and demo script (1-min / 3-min / 5-min)
+both call this out so the demo team does not accidentally show the
+stand-in to a customer as a "real" govt form.
+
+### Rebuild
+
+```bash
+uv run python personas/scripts/build_grant_template.py
+```
+The script is idempotent: re-runs produce a byte-equivalent .hwpx so the
+fixture can be safely regenerated in CI without churn.
 
 ## Why a fixture and not the real form
 

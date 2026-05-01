@@ -54,6 +54,15 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.mypy]
+# T18: ``personas/sample_data/grant_data.py`` is imported as both
+# ``personas.sample_data.grant_data`` (from cases/tests via package path) and
+# ``grant_data`` (when mypy is given the file path directly). Without
+# ``explicit_package_bases`` mypy flags the duplicate as an error. The repo
+# root is the only "package base" we need so this remains scoped.
+explicit_package_bases = true
+namespace_packages = true
+
 [[tool.mypy.overrides]]
 module = "discord_webhook"
 ignore_missing_imports = true
