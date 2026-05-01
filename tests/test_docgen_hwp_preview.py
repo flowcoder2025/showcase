@@ -77,7 +77,8 @@ def test_hwpx_editor_python_import_smoke(tmp_path: Path) -> None:
     if HWPX_EDITOR_SCRIPTS not in sys.path:
         sys.path.insert(0, HWPX_EDITOR_SCRIPTS)
 
-    from hwpx_utils import HwpxEditor  # type: ignore[import-untyped, import-not-found, unused-ignore]
+    # ruff I001 disabled: lazy import은 sys.path 변경 이후에 와야 한다.
+    from hwpx_utils import HwpxEditor  # type: ignore[import-untyped, import-not-found, unused-ignore]  # noqa: I001
 
     # Skeleton.hwpx를 tmp_path에 복사 (read-only 위치 보호)
     sample = tmp_path / "skeleton.hwpx"

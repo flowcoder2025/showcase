@@ -63,6 +63,12 @@ module = "hwpx_utils"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# T17: lxml does not ship type stubs and lxml-stubs is third-party / partial.
+# core/docgen/hwpx.py 및 (이미 내부적으로 lxml 사용하는) hwpx_utils 모두 영향.
+module = ["lxml", "lxml.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 # T7b: googleapiclient and google_auth_oauthlib lack type stubs / py.typed.
 # google.auth.transport.* and google.oauth2.* ARE typed and remain checked.
 module = ["googleapiclient.*", "google_auth_oauthlib.*"]
