@@ -10,6 +10,8 @@ from typing import Literal, TypedDict
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
+from core.common.demo_logger import demo_logger
+
 LEVEL_COLORS = {
     "info": "3498db",  # blue
     "success": "2ecc71",  # green
@@ -56,7 +58,15 @@ def send(
         wh = DiscordWebhook(url=url, content=content)
 
     resp = wh.execute()
-    return {"status": getattr(resp, "status_code", None)}
+    status: int | None = getattr(resp, "status_code", None)
+    # 429(rate limit) 또는 5xx(서버 오류) 응답은 시연 가시성을 위해 warning을 남긴다.
+    # raise하지 않는 이유: 시연 도중 알림 실패가 흐름을 끊지 않게 하기 위함.
+    # demo_logger는 secrets_mask를 거치므로 webhook URL이 포함된 메시지도 안전하다.
+    if status is not None and (status == 429 or 500 <= status < 600):
+        demo_logger("discord").warning(
+            f"discord webhook returned {status} (rate limit/server error)"
+        )
+    return {"status": status}
 
 
 def send_with_level(
@@ -73,6 +83,8 @@ def send_with_level(
     """
     if level not in OVERDUE_LEVEL_TO_INTERNAL:
         raise KeyError(f"unknown overdue level: {level!r}")
+    if not body or not body.strip():
+        raise ValueError("body must not be empty")
     internal = OVERDUE_LEVEL_TO_INTERNAL[level]
     return send(
         content=body,

@@ -1,10 +1,14 @@
+import io
 from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from rich.console import Console
 
 from core.messaging import discord as discord_mod
 from core.messaging.discord import OverdueLevelLiteral
+
+SECRET_WEBHOOK = "https://discord.com/api/webhooks/123456789/abcdefSECRETTOKEN"
 
 
 def test_send_calls_webhook_execute(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,3 +146,177 @@ def test_send_with_level_uses_critical_for_final_60plus(monkeypatch: pytest.Monk
 
     assert captured["level"] == "critical"
     assert discord_mod.LEVEL_COLORS["critical"] == "000000"
+
+
+# ---------------------------------------------------------------------------
+# T1.5 fixer additions
+# ---------------------------------------------------------------------------
+
+
+def test_send_warns_on_429_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    """429 (rate limit) 응답 시 demo_logger.warning 호출 — raise 아님."""
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=429)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    warnings: list[str] = []
+
+    class FakeLogger:
+        def info(self, msg: str) -> None: ...
+        def success(self, msg: str) -> None: ...
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def error(self, msg: str) -> None: ...
+
+    monkeypatch.setattr(discord_mod, "demo_logger", lambda case_id: FakeLogger())
+
+    result = discord_mod.send("hi")
+    assert result["status"] == 429
+    assert len(warnings) == 1
+    assert "429" in warnings[0]
+
+
+@pytest.mark.parametrize("status", [500, 502, 503, 504])
+def test_send_warns_on_5xx_status(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=status)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    warnings: list[str] = []
+
+    class FakeLogger:
+        def info(self, msg: str) -> None: ...
+        def success(self, msg: str) -> None: ...
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def error(self, msg: str) -> None: ...
+
+    monkeypatch.setattr(discord_mod, "demo_logger", lambda case_id: FakeLogger())
+
+    discord_mod.send("hi")
+    assert len(warnings) == 1
+    assert str(status) in warnings[0]
+
+
+def test_send_does_not_warn_on_2xx(monkeypatch: pytest.MonkeyPatch) -> None:
+    """정상(204) 응답에는 warning 발생 없음."""
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=204)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    warnings: list[str] = []
+
+    class FakeLogger:
+        def info(self, msg: str) -> None: ...
+        def success(self, msg: str) -> None: ...
+        def warning(self, msg: str) -> None:
+            warnings.append(msg)
+
+        def error(self, msg: str) -> None: ...
+
+    monkeypatch.setattr(discord_mod, "demo_logger", lambda case_id: FakeLogger())
+
+    discord_mod.send("hi")
+    assert warnings == []
+
+
+def test_send_warning_does_not_leak_webhook_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """warning 경로에서 demo_logger를 거치므로 webhook URL은 secrets_mask에 의해 마스킹된다."""
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=429)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    # 실제 demo_logger를 사용하되 console 출력만 캡처해 secrets_mask 적용 여부를 검증.
+    buf = io.StringIO()
+
+    class CapturingLogger:
+        def __init__(self, case_id: str) -> None:
+            from core.common.demo_logger import DemoLogger
+
+            self._inner = DemoLogger(case_id)
+            self._inner.console = Console(file=buf, force_terminal=False, no_color=True)
+
+        def info(self, msg: str) -> None:
+            self._inner.info(msg)
+
+        def success(self, msg: str) -> None:
+            self._inner.success(msg)
+
+        def warning(self, msg: str) -> None:
+            self._inner.warning(msg)
+
+        def error(self, msg: str) -> None:
+            self._inner.error(msg)
+
+    monkeypatch.setattr(discord_mod, "demo_logger", lambda case_id: CapturingLogger(case_id))
+
+    discord_mod.send("hi")
+    output = buf.getvalue()
+    # webhook의 시크릿 토큰이 평문으로 노출되어선 안 됨.
+    assert "abcdefSECRETTOKEN" not in output
+    assert "123456789" not in output
+
+
+@pytest.mark.parametrize("body", ["", "   ", "\n\t  ", "　"])
+def test_send_with_level_empty_body_raises(monkeypatch: pytest.MonkeyPatch, body: str) -> None:
+    """빈 또는 whitespace-only body는 ValueError로 거절한다."""
+
+    def fake_send(*args: Any, **kwargs: Any) -> discord_mod.SendResult:
+        raise AssertionError("send must not be called for empty body")
+
+    monkeypatch.setattr(discord_mod, "send", fake_send)
+
+    with pytest.raises(ValueError, match="body must not be empty"):
+        discord_mod.send_with_level(
+            webhook_url=SECRET_WEBHOOK,
+            title="t",
+            body=body,
+            level="strict",
+        )
+
+
+def test_send_with_level_non_empty_body_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """비어있지 않은 body는 정상 통과해야 한다 (regression 가드)."""
+    captured: dict[str, Any] = {}
+
+    def fake_send(
+        content: str,
+        *,
+        level: str = "info",
+        title: str | None = None,
+        webhook_url: str | None = None,
+    ) -> discord_mod.SendResult:
+        captured["content"] = content
+        return {"status": 204}
+
+    monkeypatch.setattr(discord_mod, "send", fake_send)
+
+    discord_mod.send_with_level(
+        webhook_url=SECRET_WEBHOOK,
+        title="t",
+        body=" 실제 내용 ",
+        level="friendly",
+    )
+    assert captured["content"] == " 실제 내용 "
