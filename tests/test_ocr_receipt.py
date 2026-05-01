@@ -215,3 +215,161 @@ def test_extract_passes_receipt_schema(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     receipt.extract("/tmp/r.png")
     assert calls[0]["schema"] is receipt.RECEIPT_SCHEMA
+
+
+# -- T10.5: items qty/price normalization ----------------------------------
+
+
+def test_normalize_items_string_qty_price(monkeypatch: pytest.MonkeyPatch) -> None:
+    """items의 qty/price string → int 변환 (₩, 콤마, 원 제거)."""
+    _mock_gemma(
+        monkeypatch,
+        {
+            "merchant": "M",
+            "amount": 15000,
+            "date": "2026-05-01",
+            "items": [{"name": "사과", "qty": "3", "price": "₩15,000"}],
+        },
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["items"] == [{"name": "사과", "qty": 3, "price": 15000}]
+
+
+def test_normalize_items_invalid_qty_fallback_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    """변환 불가능한 qty/price → 0 (silent fallback)."""
+    _mock_gemma(
+        monkeypatch,
+        {
+            "merchant": "M",
+            "amount": 15000,
+            "date": "2026-05-01",
+            "items": [{"name": "X", "qty": "abc", "price": "xyz"}],
+        },
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["items"] == [{"name": "X", "qty": 0, "price": 0}]
+
+
+def test_normalize_items_strips_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """item name의 surrounding whitespace 제거."""
+    _mock_gemma(
+        monkeypatch,
+        {
+            "merchant": "M",
+            "amount": 4500,
+            "date": "2026-05-01",
+            "items": [{"name": "  카페라떼  ", "qty": 1, "price": 4500}],
+        },
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["items"][0]["name"] == "카페라떼"
+
+
+def test_normalize_items_skips_non_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+    """items에 dict가 아닌 항목 (string 등) 포함 → 결과에서 제외."""
+    _mock_gemma(
+        monkeypatch,
+        {
+            "merchant": "M",
+            "amount": 5000,
+            "date": "2026-05-01",
+            "items": [{"name": "정상", "qty": 1, "price": 5000}, "garbage", 42],
+        },
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["items"] == [{"name": "정상", "qty": 1, "price": 5000}]
+
+
+def test_normalize_items_partial_fields_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    """qty만 있고 price 없는 item → qty 정규화, price 키는 결과에 없음."""
+    _mock_gemma(
+        monkeypatch,
+        {
+            "merchant": "M",
+            "amount": 1000,
+            "date": "2026-05-01",
+            "items": [{"name": "메모", "qty": "5"}],
+        },
+    )
+    result = receipt.extract("/tmp/r.png")
+    assert result["items"] == [{"name": "메모", "qty": 5}]
+
+
+# -- T10.5: amount sanity warning ------------------------------------------
+
+
+class _RecordingLogger:
+    """warning 호출 인자를 캡처하는 minimal logger stub."""
+
+    def __init__(self) -> None:
+        self.warnings: list[str] = []
+
+    def info(self, msg: str) -> None:  # pragma: no cover - unused
+        pass
+
+    def success(self, msg: str) -> None:  # pragma: no cover - unused
+        pass
+
+    def warning(self, msg: str) -> None:
+        self.warnings.append(msg)
+
+    def error(self, msg: str) -> None:  # pragma: no cover - unused
+        pass
+
+
+def _patch_demo_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
+    """receipt 모듈이 사용하는 demo_logger.demo_logger를 RecordingLogger로 교체."""
+    from core.common import demo_logger as dl_module
+
+    rec = _RecordingLogger()
+    monkeypatch.setattr(dl_module, "demo_logger", lambda _case_id: rec)
+    return rec
+
+
+def test_extract_warns_on_zero_amount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """amount=0 → demo_logger.warning 호출되며 ReceiptData는 정상 반환."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "M", "amount": 0, "date": "2026-05-01"},
+    )
+    rec = _patch_demo_logger(monkeypatch)
+    result = receipt.extract("/tmp/r.png")
+    assert result["amount"] == 0
+    assert len(rec.warnings) == 1
+    assert "suspicious amount" in rec.warnings[0]
+
+
+def test_extract_warns_on_huge_amount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """amount > 100억 → warning + 정상 반환."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "M", "amount": 11_000_000_000, "date": "2026-05-01"},
+    )
+    rec = _patch_demo_logger(monkeypatch)
+    result = receipt.extract("/tmp/r.png")
+    assert result["amount"] == 11_000_000_000
+    assert len(rec.warnings) == 1
+    assert "11,000,000,000" in rec.warnings[0]
+
+
+def test_extract_no_warn_on_normal_amount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """정상 범위 amount → warning 미호출."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "M", "amount": 15000, "date": "2026-05-01"},
+    )
+    rec = _patch_demo_logger(monkeypatch)
+    receipt.extract("/tmp/r.png")
+    assert rec.warnings == []
+
+
+def test_extract_warns_on_negative_huge_amount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """abs(amount) > 100억 (음수 환불) → warning."""
+    _mock_gemma(
+        monkeypatch,
+        {"merchant": "M", "amount": -11_000_000_000, "date": "2026-05-01"},
+    )
+    rec = _patch_demo_logger(monkeypatch)
+    result = receipt.extract("/tmp/r.png")
+    assert result["amount"] == -11_000_000_000
+    assert len(rec.warnings) == 1

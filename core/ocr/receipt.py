@@ -25,6 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
+from core.common import demo_logger as _dl
 from core.ocr import gemma
 
 
@@ -120,13 +121,52 @@ def _normalize(raw: dict[str, Any], image_path: Path | str) -> ReceiptData:
     if missing:
         raise ValueError(f"OCR response missing required fields {missing}; raw={raw!r}")
 
+    amount = _parse_amount(raw["amount"])
+    # Sanity check — 0원이거나 100억(절댓값) 초과면 OCR 오류 가능성. 시연 비차단.
+    if amount == 0 or abs(amount) > 10_000_000_000:
+        _dl.demo_logger("ocr.receipt").warning(
+            f"suspicious amount {amount:,} for image {image_path}; raw_amount={raw['amount']!r}"
+        )
+
     return ReceiptData(
         merchant=str(raw["merchant"]).strip(),
-        amount=_parse_amount(raw["amount"]),
+        amount=amount,
         date=_normalize_date(raw["date"]),
-        items=list(raw.get("items", [])),
+        items=_normalize_items(raw.get("items", [])),
         raw_text=str(raw.get("raw_text", "")),
     )
+
+
+def _normalize_items(items: Any) -> list[dict[str, Any]]:
+    """item별 qty/price를 정수로 정규화. name은 string strip.
+
+    실패 채널 (item 단위는 silent — 전체 OCR을 깨뜨리지 않음):
+        - dict이 아닌 항목은 결과에서 제외.
+        - qty/price가 ``_parse_amount`` 변환 실패 시 0으로 fallback.
+
+    부분 필드 (qty만, price만 등) 입력은 해당 필드만 정규화하여 그대로 통과.
+    """
+    if not isinstance(items, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        normalized: dict[str, Any] = {}
+        if "name" in it:
+            normalized["name"] = str(it["name"]).strip()
+        if "qty" in it:
+            try:
+                normalized["qty"] = _parse_amount(it["qty"])
+            except ValueError:
+                normalized["qty"] = 0
+        if "price" in it:
+            try:
+                normalized["price"] = _parse_amount(it["price"])
+            except ValueError:
+                normalized["price"] = 0
+        out.append(normalized)
+    return out
 
 
 def _parse_amount(value: Any) -> int:
