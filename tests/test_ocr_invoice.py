@@ -197,6 +197,35 @@ def test_extract_vat_mismatch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "vat" in msg.lower()
 
 
+def test_validate_invoice_vat_tolerance_one_won(monkeypatch: pytest.MonkeyPatch) -> None:
+    """R2-H3 regression: ``total_supply // 10`` truncate로 인한 1원 차이 false
+    positive 방지. supply=1005 일 때 banker's rounding으로 vat=101 이 정상이지만,
+    이전 버전은 ``1005 // 10 = 100`` 로 맞지 않아 reject했다.
+    수정 후: ±1원 허용으로 정상 통과해야 한다.
+    """
+    _mock_gemma(
+        monkeypatch,
+        _fake_invoice(total_supply=1005, total_vat=101, total_amount=1106),
+    )
+    # 예외 없이 정상 통과하면 OK.
+    result = invoice.extract("/tmp/inv.png")
+    assert result["total_supply"] == 1005
+    assert result["total_vat"] == 101
+
+
+def test_validate_invoice_vat_tolerance_rejects_two_won_diff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """R2-H3: ±1원 허용은 OCR rounding noise 한정. 2원 이상 차이는 여전히 reject."""
+    _mock_gemma(
+        monkeypatch,
+        _fake_invoice(total_supply=1000, total_vat=102, total_amount=1102),
+    )
+    with pytest.raises(ValueError) as exc_info:
+        invoice.extract("/tmp/inv.png")
+    assert "vat" in str(exc_info.value).lower()
+
+
 def test_extract_safe_fallback_returns_placeholder(monkeypatch: pytest.MonkeyPatch) -> None:
     """gemma safe_dummy → InvoiceData placeholder (시연 흐름 보호)."""
     _mock_gemma(monkeypatch, {"_safe": True, "image_hash": "deadbeef"})

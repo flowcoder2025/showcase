@@ -82,8 +82,22 @@ def cmd_check(strict: bool = False) -> int:
     log = demo_logger("check")
     ok = True
 
-    # 의존성 (항상 hard fail)
-    for mod in ("pandas", "openpyxl", "rich", "yaml", "openai", "discord_webhook"):
+    # 의존성 (항상 hard fail). R2-M6 — Phase 2 신규 카테고리 의존성 추가:
+    # jinja2 (docgen template), docx (python-docx), lxml (HWPX), jsonschema (OCR
+    # response 검증), ollama (case07/08 OCR client).
+    for mod in (
+        "pandas",
+        "openpyxl",
+        "rich",
+        "yaml",
+        "openai",
+        "discord_webhook",
+        "jinja2",
+        "docx",
+        "lxml",
+        "jsonschema",
+        "ollama",
+    ):
         try:
             importlib.import_module(mod)
         except ImportError as e:

@@ -42,6 +42,10 @@ def send(
 
     반환: {"status": int}
     """
+    # R2-M1: content와 title 둘 다 비어 있으면 Discord가 거절하기 전에 fail-fast.
+    if (not content or not content.strip()) and not title:
+        raise ValueError("send requires non-empty content or title")
+
     url = webhook_url or os.getenv("DISCORD_WEBHOOK_URL")
     if not url:
         raise RuntimeError("DISCORD_WEBHOOK_URL not set")

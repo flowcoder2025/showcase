@@ -14,6 +14,7 @@ NOTE: 외부 호출은 모듈 참조로 호출(safe_mode patch 격리):
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -126,7 +127,8 @@ def run(
                 }
                 for _, row in group.iterrows()
             ]
-            meta = {"date": "2026-05-01", "quote_no": request_id_str}
+            # R2-L1: 하드코딩 날짜 → 실행일 ISO. 시연 시 "오늘 날짜" 견적이 생성된다.
+            meta = {"date": date.today().isoformat(), "quote_no": request_id_str}
 
             # per-request 진행 로그 — 시연자가 진행을 시각적으로 확인.
             # rich.markup 안전(lessons L10): vendor 명에 [..] 포함 시 콘솔에서 markup 해석 방지.

@@ -157,8 +157,8 @@ def run(
         )
 
     # rhwp PoC 실패로 시각 미리보기 자동화 미지원 — 운영자가 한글 GUI에서 확인.
-    log.info(f"📄 채워진 양식: {out_path}")
-    log.info("👉 시각 확인은 한글(Hancom Office)에서 결과 .hwpx를 열어 진행하세요")
+    log.info(f"[OUTPUT] 채워진 양식: {out_path}")
+    log.info("[ACTION] 시각 확인은 한글(Hancom Office)에서 결과 .hwpx를 열어 진행하세요")
     log.info("   (rhwp PoC 결과: specs/rhwp-poc-decision.md 참조 — 자동 미리보기 미지원)")
 
     return {

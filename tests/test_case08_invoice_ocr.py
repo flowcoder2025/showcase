@@ -310,11 +310,18 @@ def test_classify_failure_invalid_buyer_biznum() -> None:
 
 
 def test_classify_failure_vat_mismatch() -> None:
-    # vat이 0도 아니고 supply // 10도 아닌 경우.
-    data = _make_invoice_data(total_supply=1_000_000, total_vat=99_999)
+    # vat이 0도 아니고 supply // 10 ±1 허용범위 밖이면 불일치로 분류.
+    # ±1 tolerance는 R2-H3 (banker's rounding tolerance) 반영.
+    data = _make_invoice_data(total_supply=1_000_000, total_vat=99_000)
     reason = scenario._classify_failure(data)
     assert reason is not None
     assert "vat mismatch" in reason
+
+
+def test_classify_failure_vat_within_tolerance() -> None:
+    # ±1 tolerance: supply=1005 → expected=100 (truncation), actual=101 → 통과.
+    data = _make_invoice_data(total_supply=1005, total_vat=101, total_amount=1106)
+    assert scenario._classify_failure(data) is None
 
 
 def test_classify_failure_tax_free_passes() -> None:

@@ -69,7 +69,10 @@ def run(
     """
     log = demo_logger("case04_discord_overdue_alert")
     case_dir = Path(__file__).parent
-    cmap = column_map or COLUMN_MAP
+    # 부분 override 허용 (case03/case05 패턴 일치). dict | dict 병합으로
+    # 누락 키는 default COLUMN_MAP에서 채워진다 — `column_map={"vendor": "..."}`
+    # 같은 single-key override 시 silent KeyError 트랩 방지.
+    cmap = {**COLUMN_MAP, **(column_map or {})}
 
     if input_path is None:
         # 우선 case 입력 → 없으면 sample_data fallback.

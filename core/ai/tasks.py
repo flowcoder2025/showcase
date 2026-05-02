@@ -103,14 +103,18 @@ def summarize_meeting(
     Raises:
         ValueError: attendees가 빈 리스트인 경우.
         ValueError: transcript가 비어있거나 whitespace-only인 경우.
-        ValueError: LLM 응답의 action_item.owner가 attendees에 없는 경우
-            (hallucinate 방지 — fail-loud).
 
     Returns:
         성공: MeetingSummary (summary/action_items/decisions).
         safe-mode: deterministic dummy MeetingSummary (transcript hash 기반).
         JSON parse 실패 또는 비-dict 응답: 빈 결과 + warning log
             (case09 draft_email 패턴 일관).
+
+    Note:
+        R2-M5 — LLM 응답의 ``action_item.owner`` 가 ``attendees`` 에 없는
+        경우 (hallucinate)는 raise 대신 해당 항목만 drop + WARNING 로그를
+        남긴다. 시연 흐름을 끊지 않고 "한 회의의 부분 손실"로 격하한다.
+        (이전 버전은 ``ValueError`` 였음.)
     """
     if not attendees:
         raise ValueError("attendees must not be empty")
@@ -131,8 +135,9 @@ def summarize_meeting(
         response_format={"type": "json_object"},
     )
 
-    # chat() 자체가 force_safe로 fallback했을 수 있음
-    if response_str == "[SAFE-FALLBACK]" or "[SAFE-FALLBACK]" in response_str:
+    # chat() 자체가 force_safe로 fallback했을 수 있음.
+    # R2-M4: 첫 비교는 두 번째 substring 검사에 흡수되므로 중복 — 단일 체크로 단순화.
+    if "[SAFE-FALLBACK]" in response_str:
         return _safe_summary(transcript, attendees)
 
     log = demo_logger("summarize_meeting")
@@ -151,21 +156,25 @@ def summarize_meeting(
     raw_actions_obj = parsed.get("action_items", [])
     raw_actions: list[Any] = raw_actions_obj if isinstance(raw_actions_obj, list) else []
 
-    # owner hallucinate 검증 (R2-M3) — LLM이 attendees 외 사람을 배정하면 fail-loud
-    invalid_owners = [
-        item.get("owner")
-        for item in raw_actions
-        if isinstance(item, dict) and item.get("owner") not in attendees
-    ]
+    # owner hallucinate 처리 (R2-M5) — LLM이 attendees 외 사람을 배정하면
+    # 해당 항목만 drop + WARNING 로그. raise하지 않아 시연 흐름을 보호한다.
+    valid_actions: list[dict[str, Any]] = []
+    invalid_owners: list[Any] = []
+    for item in raw_actions:
+        if not isinstance(item, dict):
+            continue
+        if item.get("owner") not in attendees:
+            invalid_owners.append(item.get("owner"))
+            continue
+        valid_actions.append(item)
     if invalid_owners:
-        raise ValueError(
-            f"action_item owners not in attendees: {invalid_owners}; attendees={attendees}"
+        log.warning(
+            f"action_item owners not in attendees (dropped {len(invalid_owners)}): "
+            f"{invalid_owners}; attendees={attendees}"
         )
 
     action_items: list[ActionItem] = []
-    for item in raw_actions[:max_action_items]:
-        if not isinstance(item, dict):
-            continue
+    for item in valid_actions[:max_action_items]:
         action_items.append(
             ActionItem(
                 owner=str(item.get("owner", "")),

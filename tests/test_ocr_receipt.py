@@ -142,6 +142,17 @@ def test_normalize_date_invalid_raises() -> None:
         receipt._normalize_date("not-a-date")
 
 
+def test_normalize_date_rejects_ambiguous_slash_format() -> None:
+    """R2-H2 regression: ``MM/DD/YYYY`` 와 ``DD/MM/YYYY`` 는 silent misparse
+    위험으로 둘 다 거절한다 (``05/06/2026`` → 미국식인지 유럽식인지 불명)."""
+    with pytest.raises(ValueError):
+        receipt._normalize_date("05/06/2026")
+    with pytest.raises(ValueError):
+        receipt._normalize_date("12/31/2025")
+    with pytest.raises(ValueError):
+        receipt._normalize_date("31/12/2025")
+
+
 # -- extract: normalization passthrough -------------------------------------
 
 

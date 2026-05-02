@@ -136,10 +136,11 @@ def test_case09_uses_openrouter_fallback_chain() -> None:
 
 
 def test_case10_owner_hallucinate_protection(monkeypatch: pytest.MonkeyPatch) -> None:
-    """DoD: ``summarize_meeting`` 이 attendees 외 owner를 받으면 ``ValueError`` raise.
+    """DoD: ``summarize_meeting`` 이 attendees 외 owner를 받으면 해당 항목을 drop.
 
-    R2-M3 — LLM이 참석자 명단에 없는 사람을 action_item.owner로 hallucinate
-    하면 silent acceptance 가 아니라 fail-loud 해야 함.
+    R2-M5 (T25 update) — LLM이 참석자 명단에 없는 사람을 action_item.owner로
+    hallucinate 하면 raise 대신 해당 항목만 drop + WARNING 로그를 남긴다.
+    시연 흐름을 끊지 않고 "한 회의의 부분 손실" 로 격하한다 (이전: ValueError).
     """
     # safe-mode short-circuit 우회 (deterministic dummy 가 아닌 검증 로직 통과)
     monkeypatch.delenv("DEMO_SAFE", raising=False)
@@ -147,7 +148,7 @@ def test_case10_owner_hallucinate_protection(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(safe_mode, "is_safe", lambda: False)
 
-    # LLM이 attendees 외 owner를 응답하는 시나리오 시뮬레이션
+    # LLM이 attendees 외 owner를 응답하는 시나리오 시뮬레이션 — 모두 invalid 한 케이스.
     bad_response = json.dumps(
         {
             "summary": "요약",
@@ -160,11 +161,15 @@ def test_case10_owner_hallucinate_protection(monkeypatch: pytest.MonkeyPatch) ->
     )
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: bad_response)
 
-    with pytest.raises(ValueError, match="not in attendees"):
-        tasks.summarize_meeting(
-            "회의록 본문",
-            attendees=["김사장", "이대리"],
-        )
+    result = tasks.summarize_meeting(
+        "회의록 본문",
+        attendees=["김사장", "이대리"],
+    )
+    # invalid owner 항목은 결과에서 제외되어야 한다.
+    assert result["action_items"] == []
+    # summary/decisions 는 그대로 보존.
+    assert result["summary"] == "요약"
+    assert result["decisions"] == ["결정"]
 
 
 def test_case10_action_items_typed_dict_shape(monkeypatch: pytest.MonkeyPatch) -> None:

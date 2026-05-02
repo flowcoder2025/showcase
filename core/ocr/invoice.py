@@ -286,12 +286,15 @@ def _validate_and_normalize(raw: dict[str, Any], image_path: Path | str) -> Invo
     total_vat = _to_int(raw["total_vat"])
     total_amount = _to_int(raw["total_amount"])
 
-    # 면세(vat=0) 또는 일반(vat = supply // 10) 둘 중 하나여야 함.
+    # 면세(vat=0) 또는 일반(vat ≈ supply // 10) 둘 중 하나여야 함.
+    # R2-H3: 정수 truncate (`//`) 만으로는 banker's rounding 1원 차이를
+    # false positive로 거절한다 (예: supply=1005, vat=101 정상이나 1005//10=100).
+    # 실 OCR 데이터에서 1원 단위 반올림 차이는 흔하므로 ±1원 허용.
     expected_vat = total_supply // 10
-    if total_vat != 0 and total_vat != expected_vat:
+    if total_vat != 0 and abs(total_vat - expected_vat) > 1:
         raise ValueError(
             f"vat mismatch: total_vat={total_vat:,} but expected "
-            f"{expected_vat:,} (= total_supply {total_supply:,} // 10); "
+            f"{expected_vat:,}±1 (= total_supply {total_supply:,} // 10); "
             f"image={image_path}"
         )
 

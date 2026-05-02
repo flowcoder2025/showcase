@@ -82,12 +82,18 @@ def test_summarize_meeting_returns_typed_summary(monkeypatch: Any) -> None:
     assert result["decisions"] == ["4분기 신제품 출시 보류", "마케팅 예산 20% 증액"]
 
 
-def test_summarize_meeting_owner_must_be_in_attendees(monkeypatch: Any) -> None:
+def test_summarize_meeting_drops_owners_not_in_attendees(monkeypatch: Any) -> None:
+    """R2-M5: hallucinate된 owner는 raise 대신 drop + warning.
+
+    이전 버전은 ``ValueError`` 였으나 시연 흐름 보호를 위해 부분 손실로 격하했다.
+    invalid owner를 가진 action_item만 결과에서 제외되고 valid owner는 통과한다.
+    """
     bad_payload = json.dumps(
         {
-            "summary": "...",
+            "summary": "정상 요약",
             "action_items": [
-                {"owner": "이사람없음", "task": "tbd", "due": "2026-05-15"},
+                {"owner": "이사람없음", "task": "drop", "due": "2026-05-15"},
+                {"owner": "김사장", "task": "keep", "due": "2026-05-16"},
             ],
             "decisions": [],
         },
@@ -95,11 +101,14 @@ def test_summarize_meeting_owner_must_be_in_attendees(monkeypatch: Any) -> None:
     )
     monkeypatch.setattr(client, "chat", _fake_chat_factory(bad_payload))
 
-    with pytest.raises(ValueError, match="action_item owners not in attendees"):
-        tasks.summarize_meeting(
-            transcript="회의록 내용",
-            attendees=["김사장", "박과장"],
-        )
+    result = tasks.summarize_meeting(
+        transcript="회의록 내용",
+        attendees=["김사장", "박과장"],
+    )
+    # invalid owner 항목은 drop, valid owner 항목은 통과.
+    assert len(result["action_items"]) == 1
+    assert result["action_items"][0]["owner"] == "김사장"
+    assert result["action_items"][0]["task"] == "keep"
 
 
 def test_summarize_meeting_safe_mode_deterministic(monkeypatch: Any) -> None:

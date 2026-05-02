@@ -297,6 +297,42 @@ def test_send_with_level_empty_body_raises(monkeypatch: pytest.MonkeyPatch, body
         )
 
 
+@pytest.mark.parametrize("content", ["", "   ", "\n\t  "])
+def test_send_empty_content_no_title_raises(monkeypatch: pytest.MonkeyPatch, content: str) -> None:
+    """R2-M1 regression: content/title 모두 비어 있으면 fail-fast.
+
+    Discord webhook이 거절하기 전에 호출 측에서 막아 가시성 확보.
+    """
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=204)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    with pytest.raises(ValueError, match="non-empty content or title"):
+        discord_mod.send(content)
+    fake_dw.execute.assert_not_called()
+
+
+def test_send_empty_content_with_title_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """R2-M1: title이 있으면 content가 비어도 통과 (Embed 본문이 비어도 제목으로 충분)."""
+    fake_dw = MagicMock()
+    fake_dw.execute.return_value = MagicMock(status_code=204)
+
+    def fake_webhook(**k: Any) -> MagicMock:
+        return fake_dw
+
+    monkeypatch.setattr(discord_mod, "DiscordWebhook", fake_webhook)
+    monkeypatch.setattr(discord_mod, "DiscordEmbed", lambda **k: dict(k))
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", SECRET_WEBHOOK)
+
+    result = discord_mod.send("", title="긴급 알림")
+    assert result["status"] == 204
+
+
 def test_send_with_level_non_empty_body_passes(monkeypatch: pytest.MonkeyPatch) -> None:
     """비어있지 않은 body는 정상 통과해야 한다 (regression 가드)."""
     captured: dict[str, Any] = {}

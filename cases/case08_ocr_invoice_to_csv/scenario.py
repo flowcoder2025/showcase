@@ -199,8 +199,9 @@ def _classify_failure(data: invoice.InvoiceData) -> str | None:
     supply = int(data["total_supply"])
     vat = int(data["total_vat"])
     expected = supply // 10
-    if vat != 0 and vat != expected:
-        return f"vat mismatch: vat={vat:,} expected {expected:,} (supply={supply:,})"
+    # R2-H3: ±1원 허용 (banker's rounding 차이) — invoice._validate_and_normalize와 동일 기준.
+    if vat != 0 and abs(vat - expected) > 1:
+        return f"vat mismatch: vat={vat:,} expected {expected:,}±1 (supply={supply:,})"
     return None
 
 

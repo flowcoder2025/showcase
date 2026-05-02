@@ -198,3 +198,49 @@ def test_run_continues_after_per_row_failure(
     assert summary["errors"] >= 1
     assert summary["sent"] >= 59  # 60 입력 - 1 실패
     assert summary["sent"] + summary["errors"] == 60
+
+
+def test_case04_column_map_partial_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """R2-C1 regression: ``column_map`` 부분 override 시 default 키가 보존되어야 한다.
+
+    이전 버전: ``cmap = column_map or COLUMN_MAP`` — 부분 override가 제공되면
+    default 맵 전체가 교체되며 누락된 키 lookup이 silent KeyError로 잡혀
+    summary['errors']로 흘렀다.
+
+    수정 후: ``{**COLUMN_MAP, **column_map}`` 병합 — 누락 키는 default가 채움.
+    """
+    from cases.case04_discord_overdue_alert import scenario
+    from core.messaging import discord
+
+    rows = [
+        {
+            "회사명": "AX_VENDOR_001",  # vendor 키만 한국어 헤더 변경
+            "거래번호": "INV-0001",
+            "금액": 1_000_000,
+            "납기일": "2026-04-01",
+            "연체일": 7,
+            "담당자": "박과장",
+        }
+    ]
+    df = _make_overdue_df(rows)
+    p = tmp_path / "partial.xlsx"
+    df.to_excel(p, index=False)
+
+    sent: list[dict[str, Any]] = []
+
+    def _capture(**kwargs: Any) -> dict[str, int]:
+        sent.append(kwargs)
+        return {"status": 204}
+
+    monkeypatch.setattr(discord, "send_with_level", _capture)
+
+    # vendor 키만 override — 나머지(invoice_id/amount/due_date/days_overdue)는 default 사용.
+    summary = scenario.run(input_path=p, column_map={"vendor": "회사명"})
+
+    assert summary["sent"] == 1, f"부분 override 실패 — summary={summary!r}"
+    assert summary["errors"] == 0
+    assert len(sent) == 1
+    assert "AX_VENDOR_001" in sent[0]["title"]
