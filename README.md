@@ -127,11 +127,15 @@ case03~10 양산 + DoD 검증 + 3-reviewer audit + cleanup. **이 README는 Phas
 - **safe_mode dummy 호환 패턴 산재**: case03/04/05 시나리오가 `{"_safe": True, ...}` dict를 직접 감지 → SendResult/dict[Any] TypedDict 계약 bypass. 통일안 후보 2개 미결. (`memory/critical-gaps.md` #5)
 - **`core/excel/reader.read_excel(column_map=...)` 헬퍼 부재**: case01/02/03/04/05/07이 `pd.read_excel` 직접 호출 + 시나리오 내부 column_map 적용. 헬퍼 추출 시 회귀 테스트 강화 필요. (`memory/critical-gaps.md` #6)
 
-## Phase 3 — 진입 조건 (R1-O4)
+## Phase 3 — 진입 조건 (정정 — 2026-05-08)
 
-> **Phase 2 종료 후 실 미팅 또는 강의에서 2회 이상 시연 → 피드백 반영 후 Phase 3 진입.**
+**의도 재정렬**: Phase 3은 design v2.1(`specs/2026-05-08-phase3-design-v2.md`, commit `b5ffe0f`)에서 **"재사용 라이브러리 추출 + 사내 단일 user 데모"**로 재정렬되었습니다. SaaS production-ready 방향은 v1 design(`specs/2026-05-08-phase3-design.md`)에 history 보존.
 
-External usage promise: `specs/phase2-external-usage-promise.md` (하드 마감 **2026-05-09**, 작성일 2026-05-02 기준 +7일). 미충족 시 "production-ready" 주장을 retract하고 Phase 3 게이트 차단.
+**Production-ready 라벨 retracted (2026-05-08, T32 commit)**: 외부 사용 0/1 미충족 사실을 마감 도래 전 정직 인정. 약속 자체는 보존 (`specs/phase2-external-usage-promise.md` Retraction 섹션 참조).
+
+**Phase 3 게이트 (2 트랙)**:
+- (1) 외부 사용 시연 약속 1회 이상 — Phase 2 약속 보존, 외부 reviewer feedback 본래 우려 직접 대응
+- (2) dogfood fixture CI 통과 — 재사용 가능성 코드로 증명 (T45부터 영구 PR 차단 조건)
 
 ### Phase 3 후보 작업 (backlog)
 

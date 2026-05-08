@@ -89,6 +89,6 @@ cat specs/2026-05-08-phase3-design.md          # 설계 ★
 cat specs/2026-05-08-phase3-plan.md            # task map (T29~T52) ★
 ```
 
-**Phase 3-A 진입 전 의사결정**: 외부 사용 ≥2/2 충족 또는 production-ready 주장 명시 retract. plan §1 진입 절차 참조.
+**Phase 3-A 진입 상태 (2026-05-08 T32 정정)**: production-ready 라벨은 retracted (`specs/phase2-external-usage-promise.md` Retraction 섹션). Phase 3 의도가 design v2.1 (commit `b5ffe0f`)에서 "재사용 라이브러리 추출 + 사내 단일 user 데모"로 재정렬됨. 외부 사용 약속 0/1은 미충족 인정 — 약속 자체는 보존, dogfood가 추가 검증 (대체 아님).
 
 **E4B 4bit weight (W1, 즉시 wins)**: 현재 bf16(7GB)으로 동작. `huggingface-cli download mlx-community/gemma-4-e4b-it-4bit` 후 symlink 갱신 시 case08 평균 8.7s → 3s 수준 기대.

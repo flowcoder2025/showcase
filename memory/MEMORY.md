@@ -68,9 +68,10 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 
 > Phase 2 종료 후 실 미팅 또는 강의에서 **2회 이상** 사용 → 피드백 반영 후 Phase 3 진입.
 
-- **외부 사용 약속**: `specs/phase2-external-usage-promise.md`
-  - 현재 충족: 0/2
-  - 하드 마감: **2026-05-09** (작성일 +7일). 미충족 시 production-ready 주장 retract + Phase 3 게이트 차단.
+- **외부 사용 약속**: `specs/phase2-external-usage-promise.md` (T32 정정 — 2026-05-08)
+  - 현재 충족: 0/1 (약속 자체는 보존)
+  - **production-ready 라벨 retracted** (T32 commit). Phase 3 의도가 design v2.1(commit `b5ffe0f`)에서 "재사용 라이브러리 + 사내 단일 user 데모"로 재정렬.
+  - 외부 사용 (1)은 보존 + dogfood (2)는 추가 검증 (대체 아님). 둘 다 v2.1 §2.2 게이트.
   - 충족 시 promise 파일 추적표에 일자/청중/시연 케이스/관찰 row append.
 
 ### Phase 2 핵심 commits (T0~T13, 2026-05-01~05-02)
@@ -193,11 +194,16 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - **e2e 검증**: case07 88/100 (E2B, 210s), case08 28/30 (E4B bf16, 262s), 좀비 회수 OK
   - 539 passed + 4 skipped, mypy strict 53 source files clean
 
-## Phase 3 설계 + 플랜 (2026-05-08 작성 완료, 코드 진입 전)
+## Phase 3 설계 + 플랜 (2026-05-08, v1 → v2 → v2.1 self-revise 후 audit 정정 완료)
 
-- `specs/2026-05-08-phase3-design.md`: 깨지는 5개 CLI 가정 G1~G5, target 아키, layer 책임, 비기능 요구
-- `specs/2026-05-08-phase3-plan.md`: T29~T52 task map (3-A Refactor → 3-B FastAPI → 3-C Queue+Storage → 3-D Frontend → 3-E Multi-tenant), 즉시 wins W1~W3, 패키징 P1~P3
-- **진입 절차**: 외부 사용 ≥2/2 충족 또는 production-ready 주장 retract 후 T29부터
+- v1: `specs/2026-05-08-phase3-design.md` + `2026-05-08-phase3-plan.md` (history 보존, SaaS 방향)
+- v2: 사용자 의도 재정렬로 재사용 우선 + 사내 단일 user 데모로 응축
+- **v2.1 (active)**: `specs/2026-05-08-phase3-design-v2.md` (commit `b5ffe0f`, T31). 3-reviewer audit 17건 finding 반영. 핵심:
+  - 게이트 v2.1: (1) 외부 사용 약속 보존 + (2) dogfood 추가 검증 (대체 아님)
+  - 추정 정직 정정: ~10.5d → ~12.5d (T37/T38 분해, T42/T43 분해)
+  - framing 정정: "풀 잠금" → "다층 잠금 (3.11 풀 + 3.12/3.13 smoke)"
+  - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
+- **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
 ## 다음 세션 진입 (Phase 3-A 또는 외부 사용)
 
@@ -212,10 +218,10 @@ cat specs/2026-05-08-phase3-plan.md       # task map + 다음 명령 ★
 
 ### 진입 경로 분기
 
-1. **외부 사용 (우선 — Phase 3 게이트)**
+1. **외부 사용 (게이트 (1) — 약속 보존, R3-C1 정정 후)**
    - 실제 미팅·강의에서 시연 → `specs/phase2-external-usage-promise.md` 추적표에 row append (일자/청중/케이스/관찰)
-   - 2회 이상 충족 + 피드백 수집 → Phase 3 진입 가능
-   - 하드 마감: 2026-05-09. 미충족 시 production-ready 주장 retract.
+   - 1회 이상 충족 + reviewer feedback 수집 → 게이트 (1) 충족
+   - 하드 마감 2026-05-09 도래 — production-ready 라벨 T32 retracted (약속 자체는 보존, dogfood는 대체 아님).
 
 2. **다음 컨설팅 프로젝트에서 core/ 라이브러리 import**
    - `core/{common,excel,messaging,docgen,ocr,ai}` 모두 재사용 가능
