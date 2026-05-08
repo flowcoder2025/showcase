@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.flowsystem.mlx-vlm-gemma4-e4b</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/jerome/mlx-env/bin/mlx_vlm.server</string>
+        <string>--model</string>
+        <string>/Users/jerome/models/gemma-4-e4b-mlx</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>11438</string>
+        <string>--prefill-step-size</string>
+        <string>2048</string>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/jerome/Library/Logs/mlx-vlm-gemma4-e4b.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/jerome/Library/Logs/mlx-vlm-gemma4-e4b.log</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/jerome</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/jerome/mlx-env/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

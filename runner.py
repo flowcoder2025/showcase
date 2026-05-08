@@ -18,7 +18,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from rich.console import Console
@@ -59,16 +59,20 @@ def discover_cases() -> list[dict[str, Any]]:
 
 
 def warm_up_gemma_async() -> None:
-    """Ollama Gemma 4 더미 추론 1회 — ``core.ocr.gemma.warmup`` 위임 (SSOT).
+    """MLX Gemma 4 (E2B/E4B) 백그라운드 spawn + warmup — ``core.ocr.gemma.warmup`` 위임.
 
-    T9.5: 자체 ``ollama.generate`` 호출 제거 → ``core.ocr.gemma.warmup``이 유일한
-    warmup 진입점이다. 모듈 import 실패 시(예: core.ocr 미빌드) silent —
-    Phase 1 호환을 위해 runner는 OCR 모듈에 hard depend 하지 않는다.
+    runner 시작 시점에 두 모델(E2B/E4B)을 백그라운드로 띄워 첫 OCR 호출의
+    콜드스타트(~30~60s)를 메뉴 표시 직후로 흡수한다. ``AX_OCR_BASE_URL_*``가
+    설정돼있으면 spawn은 스킵된다 (외부 plist 모드).
+
+    모듈 import 실패 시(예: core.ocr 미빌드) silent — Phase 1 호환을 위해 runner는
+    OCR 모듈에 hard depend 하지 않는다.
     """
     try:
         from core.ocr import gemma
 
         gemma.warmup("gemma4:e2b")
+        gemma.warmup("gemma4:e4b")
     except ImportError:
         pass
 
@@ -82,9 +86,10 @@ def cmd_check(strict: bool = False) -> int:
     log = demo_logger("check")
     ok = True
 
-    # 의존성 (항상 hard fail). R2-M6 — Phase 2 신규 카테고리 의존성 추가:
+    # 의존성 (항상 hard fail). R2-M6 — Phase 2 신규 카테고리 의존성:
     # jinja2 (docgen template), docx (python-docx), lxml (HWPX), jsonschema (OCR
-    # response 검증), ollama (case07/08 OCR client).
+    # response 검증). OCR backend는 mlx_vlm.server를 OpenAI-compat HTTP로 호출하므로
+    # client 측 패키지 의존성은 openai만 있으면 충분하다 (ollama 의존성 제거됨).
     for mod in (
         "pandas",
         "openpyxl",
@@ -96,7 +101,6 @@ def cmd_check(strict: bool = False) -> int:
         "docx",
         "lxml",
         "jsonschema",
-        "ollama",
     ):
         try:
             importlib.import_module(mod)
@@ -132,9 +136,9 @@ def cmd_check(strict: bool = False) -> int:
         else:
             log.warning(msg)
 
-    # Ollama Gemma 4 모델 존재 — strict 모드에서만 hard-fail (design §5)
+    # MLX Gemma 4 backend — strict 모드에서만 hard-fail
     if strict:
-        ok = _check_ollama_gemma(log) and ok
+        ok = _check_mlx_gemma(log) and ok
         ok = _check_discord_webhook(log) and ok
         ok = _check_email_transport(log) and ok
         ok = _check_md_to_pdf_skill(log) and ok
@@ -193,38 +197,44 @@ def _check_email_transport(log: Any) -> bool:
     return True
 
 
-def _check_ollama_gemma(log: Any) -> bool:
-    """strict 모드: Ollama 데몬에 gemma4 모델이 설치돼있는지 검증."""
-    try:
-        import ollama
-    except ImportError:
-        log.error("[STRICT] ollama package not installed — `uv add ollama`")
+def _check_mlx_gemma(log: Any) -> bool:
+    """strict 모드: mlx_vlm.server (E2B 11437 / E4B 11438) 백엔드 검증.
+
+    ``AX_OCR_BASE_URL_*``가 설정돼있으면 외부 서버에 ``/v1/models`` GET으로 확인.
+    설정 안 돼있으면 ``AX_MLX_BIN`` + 모델 디렉토리 두 개의 존재만 확인 (실제
+    spawn은 runner main에서 백그라운드로 처리 → strict check가 30~60s 모델
+    로딩을 기다리면 사용성 저하).
+    """
+    from core.ocr import _mlx_server
+
+    bin_path = os.environ.get("AX_MLX_BIN") or "/Users/jerome/mlx-env/bin/mlx_vlm.server"
+    if not Path(bin_path).is_file():
+        log.error(f"[STRICT] AX_MLX_BIN not found: {bin_path}")
         return False
-    try:
-        listing = ollama.list()
-    except (ConnectionError, OSError) as e:
-        log.error(f"[STRICT] ollama daemon unreachable: {e}")
-        return False
-    # Response shape: {"models": [{"model": "gemma4:e2b", ...}, ...]} or
-    # an object with .models attribute (depends on ollama-python version).
-    models_raw: Any = (
-        listing.get("models", []) if isinstance(listing, dict) else getattr(listing, "models", [])
-    )
-    names: list[str] = []
-    for m in models_raw:
-        if isinstance(m, dict):
-            n = m.get("model") or m.get("name") or ""
+
+    ok = True
+    for alias_label, alias in (("E2B", "gemma4:e2b"), ("E4B", "gemma4:e4b")):
+        if _mlx_server.is_external(cast(Any, alias)):
+            url = _mlx_server.base_url(cast(Any, alias)) + "/models"
+            try:
+                req = urllib.request.Request(url, method="GET")
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    status = getattr(resp, "status", None) or resp.getcode()
+                if status != 200:
+                    log.error(f"[STRICT] mlx {alias_label} {url} returned status={status}")
+                    ok = False
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                log.error(f"[STRICT] mlx {alias_label} unreachable at {url}: {e}")
+                ok = False
         else:
-            n = getattr(m, "model", None) or getattr(m, "name", "") or ""
-        if n:
-            names.append(str(n))
-    if not any(n.startswith("gemma4") for n in names):
-        log.error(
-            f"[STRICT] gemma4 model not found in ollama; installed={names!r} — "
-            "`ollama pull gemma4:e2b`"
-        )
-        return False
-    return True
+            mpath = _mlx_server.model_path(cast(Any, alias))
+            if not Path(mpath).is_dir():
+                log.error(
+                    f"[STRICT] mlx {alias_label} model dir missing: {mpath} — "
+                    f"AX_GEMMA_{alias_label}_MODEL_PATH 또는 기본 경로 확인"
+                )
+                ok = False
+    return ok
 
 
 def _check_discord_webhook(log: Any) -> bool:

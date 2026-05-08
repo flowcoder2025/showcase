@@ -1,51 +1,66 @@
-"""Ollama Gemma 4 wrapper — 영수증/세금계산서 OCR.
+"""MLX Gemma 4 wrapper — 영수증/세금계산서 OCR.
 
 NOTE: 외부 호출은 모듈 참조로 호출 (safe_mode patch 격리):
     from core.ocr import gemma
     gemma.extract(...)
 
 INTERCEPT_TARGETS["ollama_gemma"] = ("core.ocr.gemma", "extract") — 단일 patch point.
+INTERCEPT_TARGETS 키 이름은 외부 계약(meta.yaml ``external_apis``)이라 그대로 유지.
+내부 백엔드는 ollama → mlx_vlm.server (OpenAI 호환) 로 교체됐다.
 
 Architecture
-- ``warmup`` / ``_model_exists`` / ``_safe_dummy`` / ``_call_ollama`` / ``_parse_response``
-  은 internal helper. 외부에서 직접 호출하지 않는다 (safe_mode가 ``extract``만 patch).
-- client-side timeout: ``ollama.Options``는 generation params 전용이라 timeout을 받지
-  못한다. 따라서 ``concurrent.futures.ThreadPoolExecutor`` + ``future.result(timeout=...)``
-  로 wall-clock timeout을 강제한다 (R3-O2).
+- ``warmup`` / ``_safe_dummy`` / ``_call_mlx`` / ``_parse_response`` 은 internal helper.
+  외부에서 직접 호출하지 않는다 (safe_mode가 ``extract``만 patch).
+- client-side timeout: ``concurrent.futures.ThreadPoolExecutor`` + ``future.result(timeout=...)``
+  로 wall-clock timeout을 강제한다 (R3-O2). openai SDK 자체 timeout과 별개로 작동.
 - 실패 시 모두 ``safe_mode.force_safe`` 호출 + ``_safe_dummy`` 반환 — 시연 흐름이
   깨지지 않게 한다.
+- 백엔드 spawn/cleanup은 ``core.ocr._mlx_server``가 관리. ``extract`` 진입 시
+  ``mlx_server.ensure_running``으로 idempotent 보장. ``runner.py`` 종료 시 atexit
+  + signal handler로 process group 단위 회수.
 """
 
 from __future__ import annotations
 
+import base64
 import concurrent.futures
 import hashlib
 import json
+import mimetypes
 import threading
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import jsonschema
-import ollama
+from openai import (
+    APIConnectionError,
+    APIError,
+    APIStatusError,
+    APITimeoutError,
+    OpenAI,
+    RateLimitError,
+)
 
 from core.common import safe_mode
 from core.common.demo_logger import demo_logger
+from core.ocr import _mlx_server
 
 ModelLiteral = Literal["gemma4:e2b", "gemma4:e4b"]
-_TIMEOUTS_SEC: dict[str, int] = {"gemma4:e2b": 15, "gemma4:e4b": 30}
+_TIMEOUTS_SEC: dict[str, int] = {"gemma4:e2b": 30, "gemma4:e4b": 60}
 _WARMUP_DONE: dict[str, bool] = {}
 _WARMUP_LOCK = threading.Lock()
+_MAX_OUTPUT_TOKENS: int = 2048
 
 
 # -- public API -------------------------------------------------------------
 
 
 def warmup(model: ModelLiteral = "gemma4:e2b") -> None:
-    """백그라운드 thread로 더미 추론 1회 — 콜드스타트 회피.
+    """백그라운드 thread로 mlx_vlm.server 기동 + 더미 추론 1회 — 콜드스타트 회피.
 
-    runner.py 시작 시점에 호출 (R1-O5 결정).
-    이미 warmup 완료된 모델은 재실행 안 함 (idempotent, lock 보호).
-    실패 시 ``_WARMUP_DONE[model]``을 False로 reset해 재시도 가능하게 한다.
+    runner.py 시작 시점에 호출. 이미 warmup 완료된 모델은 재실행 안 함
+    (idempotent, lock 보호). 실패 시 ``_WARMUP_DONE[model]``을 False로 reset해
+    재시도 가능하게 한다.
     """
     with _WARMUP_LOCK:
         if _WARMUP_DONE.get(model):
@@ -71,17 +86,21 @@ def extract(
         prompt: 사용자 지정 프롬프트 (없으면 ``_default_prompt`` 사용).
 
     Returns:
-        성공: ollama 응답을 schema 가이드로 파싱한 dict.
+        성공: mlx 응답을 schema 가이드로 파싱한 dict.
         실패: ``{"_safe": True, "qualname": ..., "image_hash": ...}`` (safe_dummy).
 
     Failure modes (모두 force_safe + dummy 반환):
-        - ollama 모델 미설치 (``_model_exists`` False)
-        - timeout (gemma4:e2b 15s, gemma4:e4b 30s — client-side concurrent.futures)
-        - ``ollama.RequestError`` / ``ollama.ResponseError``
+        - mlx_vlm.server 미기동 + spawn 실패 (binary/모델 경로 부재 등)
+        - timeout (gemma4:e2b 30s, gemma4:e4b 60s — client-side concurrent.futures)
+        - openai SDK 예외 (APIConnectionError / APITimeoutError / APIStatusError /
+          RateLimitError / 일반 APIError)
     """
     img_path = Path(image_path)
-    if not _model_exists(model):
-        safe_mode.force_safe(f"ollama model {model} missing")
+
+    try:
+        _mlx_server.ensure_running(model)
+    except (FileNotFoundError, RuntimeError) as e:
+        safe_mode.force_safe(f"mlx server unavailable: {type(e).__name__}: {e}")
         return _safe_dummy(img_path)
 
     timeout = _TIMEOUTS_SEC[model]
@@ -101,17 +120,16 @@ def extract(
             stricter = (
                 f"{user_prompt}\n\n"
                 "이전 응답이 schema를 만족하지 못했습니다. 다음 JSON schema를 정확히 준수하세요:\n"
-                f"{json.dumps(schema, ensure_ascii=False)}"
+                f"{json.dumps(schema, ensure_ascii=False)}\n"
+                "출력은 JSON만, 마크다운 코드펜스(```) 없이."
             )
             retry_parsed = _run_with_timeout(img_path, model, stricter, timeout, schema)
             if retry_parsed is None:
-                # retry 자체가 timeout/외부 오류로 실패 — 원본 schema error 보존
                 return {
                     "_raw_text": json.dumps(parsed, ensure_ascii=False),
                     "_parse_error": f"schema validation: {err}",
                 }
             if "_raw_text" in retry_parsed:
-                # retry는 응답을 받았지만 JSON parse 실패
                 return retry_parsed
             valid2, err2 = _validate_against_schema(retry_parsed, schema)
             if valid2:
@@ -130,22 +148,28 @@ def _run_with_timeout(
     timeout: int,
     schema: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """ollama 1회 호출 + parse. 실패 시 ``None`` 반환 (caller가 ``_safe_dummy`` 결정).
+    """mlx_vlm.server 1회 호출 + parse. 실패 시 ``None`` 반환 (caller가 ``_safe_dummy`` 결정).
 
     NOTE: ``ThreadPoolExecutor.__exit__``는 모든 worker 완료까지 block한다.
     timeout 시 즉시 반환해야 하므로 ``with`` 블록을 쓰지 않고 ``shutdown(wait=False)``로
-    백그라운드 thread를 fire-and-forget 한다 (daemon-like). worker가 ollama
+    백그라운드 thread를 fire-and-forget 한다 (daemon-like). worker가 mlx
     호출에 갇혀도 메인 흐름은 차단되지 않는다.
     """
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        future = pool.submit(_call_ollama, img_path, model, prompt)
+        future = pool.submit(_call_mlx, img_path, model, prompt, timeout)
         try:
             response = future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
             safe_mode.force_safe(f"gemma {model} timeout {timeout}s")
             return None
-        except (ollama.RequestError, ollama.ResponseError) as e:
+        except (
+            APIConnectionError,
+            APITimeoutError,
+            RateLimitError,
+            APIStatusError,
+            APIError,
+        ) as e:
             safe_mode.force_safe(f"gemma {model} failed: {type(e).__name__}: {e}")
             return None
         return _parse_response(response, schema)
@@ -170,7 +194,6 @@ def _validate_against_schema(
         msg = (e.message or str(e)).split("\n")[0]
         return False, msg
     except jsonschema.SchemaError as e:
-        # schema 자체가 invalid — caller(개발자) 잘못이지만 OCR 흐름은 살린다.
         return False, f"invalid schema: {e.message}"
 
 
@@ -180,75 +203,95 @@ def _validate_against_schema(
 def _warmup_blocking(model: str) -> None:
     """동기 warmup. 실패는 silent (extract 호출 시 정식 처리)."""
     try:
-        ollama.chat(
-            model=model,
-            messages=[{"role": "user", "content": "warmup"}],
-        )
-    except (ollama.RequestError, ollama.ResponseError):
-        # extract() 호출 시 정식 force_safe 경로로 진입
+        alias = cast(ModelLiteral, model)
+        _mlx_server.ensure_running(alias)
+        # /health가 통과하면 모델은 로딩 완료 상태. 별도 chat 호출 없이도 충분.
+    except (FileNotFoundError, RuntimeError, OSError):
         with _WARMUP_LOCK:
             _WARMUP_DONE[model] = False  # 실패 시 재시도 가능
 
 
-def _model_exists(model: str) -> bool:
-    """``ollama list``로 모델 설치 여부 확인.
+def _client(model_alias: ModelLiteral) -> OpenAI:
+    """OpenAI 호환 클라이언트. mlx_vlm.server는 인증을 안 보지만 SDK가 키를 요구."""
+    return OpenAI(base_url=_mlx_server.base_url(model_alias), api_key="not-needed")
 
-    응답 shape는 SDK 버전에 따라 dict 또는 객체일 수 있어 양쪽 모두 처리.
+
+def _to_data_url(image_path: Path) -> str:
+    """이미지 파일 → ``data:<mime>;base64,...`` URL.
+
+    OpenAI vision content array 표준 (``{"type": "image_url", "image_url":
+    {"url": "data:..."}})`` 형식. mlx_vlm.server v0.4+가 이 표준 형식을
+    그대로 받는다.
     """
-    try:
-        listing: Any = ollama.list()
-    except (ConnectionError, OSError, ollama.RequestError, ollama.ResponseError):
-        return False
+    mime = mimetypes.guess_type(str(image_path))[0] or "image/png"
+    data = image_path.read_bytes()
+    b64 = base64.b64encode(data).decode("ascii")
+    return f"data:{mime};base64,{b64}"
 
-    models_raw: Any = (
-        listing.get("models", []) if isinstance(listing, dict) else getattr(listing, "models", [])
+
+def _call_mlx(img_path: Path, model: str, prompt: str, timeout: int) -> dict[str, Any]:
+    """mlx_vlm.server `/v1/chat/completions` 호출 + 표준화된 응답 dict 반환."""
+    alias = cast(ModelLiteral, model)
+    client = _client(alias)
+    data_url = _to_data_url(img_path)
+    mpath = _mlx_server.model_path(alias)
+
+    resp = client.chat.completions.create(
+        model=mpath,
+        messages=cast(
+            Any,
+            [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ],
+        ),
+        max_tokens=_MAX_OUTPUT_TOKENS,
+        timeout=timeout,
     )
-    prefix = model.split(":")[0]  # "gemma4"
-    for m in models_raw:
-        name = (
-            (m.get("model") or m.get("name") or "")
-            if isinstance(m, dict)
-            else (getattr(m, "model", None) or getattr(m, "name", None) or "")
-        )
-        if name and str(name).startswith(prefix):
-            return True
-    return False
-
-
-def _call_ollama(img_path: Path, model: str, prompt: str) -> dict[str, Any]:
-    """``ollama.chat`` 호출 — 이미지 첨부 + JSON output 요청."""
-    response: Any = ollama.chat(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-                "images": [str(img_path)],
-            }
-        ],
-        format="json",  # ollama 0.4+ structured output
-    )
-    if isinstance(response, dict):
-        return response
-    # ollama._types.ChatResponse 객체 케이스
-    msg = getattr(response, "message", None)
-    content = getattr(msg, "content", "") if msg is not None else ""
+    content = resp.choices[0].message.content or ""
     return {"message": {"content": content}}
 
 
 def _default_prompt(schema: dict[str, Any] | None) -> str:
-    """schema가 있으면 JSON 키 안내, 없으면 일반 OCR."""
+    """schema가 있으면 JSON 키 안내, 없으면 일반 OCR.
+
+    mlx_vlm.server는 ``response_format: json_object`` 미지원이라 프롬프트로
+    JSON-only 출력을 강제하고, ``_parse_response``에서 코드펜스를 제거한다.
+    """
     if schema and "properties" in schema:
         keys = list(schema["properties"].keys())
         return (
             f"이 이미지의 텍스트를 OCR하여 다음 JSON 키로 구조화하세요: {keys}. "
-            "결과는 반드시 valid JSON으로 반환하세요."
+            "결과는 valid JSON만 반환하세요 — 마크다운 코드펜스(```) 없이."
         )
     return "이 이미지의 모든 텍스트를 추출해주세요. (OCR)"
 
 
+def _strip_code_fence(content: str) -> str:
+    """``\\`\\`\\`json ... \\`\\`\\``` 같은 마크다운 코드펜스를 제거.
+
+    mlx_vlm는 response_format JSON을 강제하지 못해 모델이 종종 ```json ... ```
+    펜스로 감싼다. 단순한 fence(```/```json)만 제거 — 내부에 fence가 또 있는
+    edge case는 jsonschema retry 채널에서 처리된다.
+    """
+    s = content.strip()
+    if not s.startswith("```"):
+        return s
+    lines = s.splitlines()
+    if len(lines) < 2:
+        return s
+    # 첫 줄(```json 또는 ```)을 버림. 마지막 줄이 ```이면 그것도 버림.
+    body = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+    return "\n".join(body).strip()
+
+
 def _parse_response(response: dict[str, Any], schema: dict[str, Any] | None) -> dict[str, Any]:
-    """ollama 응답에서 content 추출 → JSON parse 시도.
+    """mlx 응답에서 content 추출 → 코드펜스 strip → JSON parse 시도.
 
     parse 실패 시 ``{"_raw_text": ..., "_parse_error": ...}`` 반환 + warning log.
     """
@@ -259,15 +302,15 @@ def _parse_response(response: dict[str, Any], schema: dict[str, Any] | None) -> 
     elif "response" in response:
         content = str(response["response"])
 
+    cleaned = _strip_code_fence(content)
     log = demo_logger("ocr.gemma")
     try:
-        parsed = json.loads(content)
+        parsed = json.loads(cleaned)
         if isinstance(parsed, dict):
             return parsed
-        # JSON valid but not a dict (e.g. list / scalar) → wrap
         return {"_raw_value": parsed}
     except (json.JSONDecodeError, TypeError) as e:
-        log.warning(f"ollama response not valid JSON: {e}; raw={content!r}")
+        log.warning(f"mlx response not valid JSON: {e}; raw={content!r}")
         return {"_raw_text": content, "_parse_error": str(e)}
 
 

@@ -181,9 +181,10 @@ def test_check_strict_gmail_sender_with_gmail_oauth_passes(
 def test_warm_up_gemma_async_delegates_to_gemma_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """runner.warm_up_gemma_async()는 core.ocr.gemma.warmup("gemma4:e2b")만 호출.
+    """runner.warm_up_gemma_async()는 core.ocr.gemma.warmup으로 위임.
 
-    SSOT 일원화: runner는 더 이상 ollama.generate를 직접 호출하지 않는다.
+    MLX 백엔드 전환 후 E2B/E4B 두 모델 모두 백그라운드 spawn 대상.
+    SSOT 일원화: runner는 더 이상 backend client(ollama 등)를 직접 호출하지 않는다.
     """
     captured: list[str] = []
 
@@ -194,7 +195,7 @@ def test_warm_up_gemma_async_delegates_to_gemma_module(
 
     monkeypatch.setattr(gemma_mod, "warmup", fake_warmup)
     runner_mod.warm_up_gemma_async()
-    assert captured == ["gemma4:e2b"], captured
+    assert captured == ["gemma4:e2b", "gemma4:e4b"], captured
 
 
 def test_warm_up_gemma_async_silent_on_import_error(
