@@ -54,34 +54,41 @@ showcase/
 7. **subagent-driven workflow**: implementer + N.5 fixer per task. Phase 종료 시 3-reviewer 병렬 audit
 8. **익명화**: 실고객 데이터 매핑은 1Password/age 외부 보관, 레포에는 `.no_real_data` sentinel만
 
-## Phase 진행 상황 (2026-05-02 — Phase 2 종료)
+## Phase 진행 상황 (2026-05-08 — T28 MLX 백엔드 전환 완료)
 
 - **Phase 1 ✅ 완료**: 17/17 tasks + T18 cleanup. HEAD `95fea4f`, 83 passed.
 - **Phase 2 ✅ 완료**: T0~T26 (Group A~H + DoD + 3-reviewer audit + cleanup + docs).
-  - HEAD `b4e4628` (T25 audit cleanup), T26은 docs-only close commit
   - 테스트: **507 passed, 3 skipped** (Phase 1 baseline 83 + Phase 2 신규 424)
-  - Production lock (`mypy --strict core/ runner.py cases/`): **52 source files clean**
-  - tests/ mypy 부채: **65 errors / 8 files** (Phase 1 legacy, ceiling locked)
-  - 시연 가능: **10/10** 케이스 (case01~case10)
-  - 진행 순서 (Plan v2 Deviation 1 swap 반영): **04 → 05 → 03 → 07 → 10 → 08 → 06** (case03이 case05 PDF 모듈에 의존)
-  - 5건 deviation: case03↔case05 swap, rhwp PoC 실패 (Phase 3 deferred), case10 whisper deferral, DoD §13 N6 partially passed, weasyprint 폴백 dropped
-- **Phase 3 🔒 게이트**: 외부 사용 2회 이상 (현재 0/2, 하드 마감 **2026-05-09**) → 피드백 반영 후 진입
-  - 후보: rhwp 재평가, 실 영수증 hold-out, whisper 통합, safe_mode dummy 통일, excel reader 헬퍼, tests/ 부채 정리, weasyprint/reportlab 평가
-  - 자세한 backlog: `README.md` Phase 3 섹션
+  - Production lock: 52 source files clean
+- **T27/T28 (Maintenance, 2026-05-08)**: case10 whisper deferral 결정 문서 복원 + Ollama → MLX(mlx_vlm.server OpenAI-호환) 백엔드 전환.
+  - HEAD `cf76f50` (T28). 좀비 0 보장(Popen `start_new_session=True` + atexit/SIGTERM/SIGINT/SIGHUP → killpg SIGTERM→5s grace→SIGKILL).
+  - 테스트: **539 passed, 4 skipped** (T26 + 신규 32 회귀 0). mypy --strict source: **53 files clean**.
+  - 시연 가능: **10/10** (case07/08 e2e 검증: 88/100 + 28/30, 좀비 회수 확인).
+  - 외부 사용 게이트는 변동 없음 — 본 작업은 maintenance.
+- **Phase 3 🔒 게이트**: 외부 사용 2회 이상 (현재 0/2, 하드 마감 **2026-05-09**) → 피드백 반영 후 진입.
+  - **설계 + 플랜 (2026-05-08)**: `specs/2026-05-08-phase3-design.md` (전체 설계, 깨지는 5개 가정 G1~G5 처방, target 아키, layer 책임), `specs/2026-05-08-phase3-plan.md` (T29~T52 task map, 즉시 wins W1~W3, 패키징 P1~P3).
+  - **다음 세션 첫 명령**: 게이트 상태 확인 → 충족/retract 결정 → Phase 3-A T29부터 시작.
 
 ## 관련 외부 리소스
 
 - 기획 워크스페이스 (사업/제안서/리서치): `/Volumes/포터블/AX/기획`
 - 글로벌 인덱스 메모리: `~/.claude/projects/-Volumes-----AX---/memory/MEMORY.md` (프로젝트 이전 마킹 보존)
 
-## 작업 시작 체크리스트 (다음 세션 — Phase 3 또는 외부 사용)
+## 작업 시작 체크리스트 (다음 세션 — Phase 3-A 진입 또는 외부 사용)
 
 ```bash
-cd /Volumes/포터블/AX/showcase
+cd /Users/jerome/AX/showcase
 /mem-resume                                    # 컨텍스트 로드
-git log --oneline -5                           # HEAD T26 확인
-uv run pytest -q                               # 507 passed, 3 skipped 재확인
-uv run python runner.py --check --strict       # 시연 환경 점검
+git log --oneline -5                           # HEAD T28 확인 (cf76f50)
+uv run pytest -q                               # 539 passed, 4 skipped 재확인
+uv run python runner.py --check --strict       # 시연 환경 점검 (MLX E2B/E4B 포함)
+
+# Phase 3 진입 결정
+cat specs/phase2-external-usage-promise.md     # 게이트 0/2 → 진입 결정
+cat specs/2026-05-08-phase3-design.md          # 설계 ★
+cat specs/2026-05-08-phase3-plan.md            # task map (T29~T52) ★
 ```
 
-**Phase 3 진입 전 외부 사용 2회 이상 충족 필요** — `specs/phase2-external-usage-promise.md` 추적표에 일자/청중/관찰 row append.
+**Phase 3-A 진입 전 의사결정**: 외부 사용 ≥2/2 충족 또는 production-ready 주장 명시 retract. plan §1 진입 절차 참조.
+
+**E4B 4bit weight (W1, 즉시 wins)**: 현재 bf16(7GB)으로 동작. `huggingface-cli download mlx-community/gemma-4-e4b-it-4bit` 후 symlink 갱신 시 case08 평균 8.7s → 3s 수준 기대.

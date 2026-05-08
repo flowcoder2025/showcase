@@ -182,14 +182,32 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - S5 Ollama 검증: `startswith("gemma4")` 매칭 (warmup 코드와 동일 패턴)
 - Group D test fix 별도 commit 불필요 — C1 1줄 (`AssertionError` → `ValueError`)은 source change와 같이 묶음
 
-## 다음 세션 진입 (Phase 3 또는 외부 사용 / 다음 컨설팅 프로젝트)
+## T27/T28 (2026-05-08, Maintenance — Phase 2 외 트랙)
+
+- T27 `c3428e2`: case10 whisper deferral 결정 문서 복원 (`specs/case10-whisper-decision.md` 정식 등록)
+- T28 `cf76f50`: Ollama → MLX(mlx_vlm.server OpenAI-호환) 백엔드 전환 + 좀비 0 보장
+  - `core/ocr/_mlx_server.py` (subprocess + atexit/SIGTERM/SIGINT/SIGHUP cleanup)
+  - `core/ocr/gemma.py` (openai SDK + base64 vision + 코드펜스 strip)
+  - 두 인스턴스 분리 (E2B 11437, E4B 11438), `AX_OCR_BASE_URL_*` 외부 모드 공존
+  - `deploy/launchd/*.plist` 옵션 + `.env.example` 신규 스키마
+  - **e2e 검증**: case07 88/100 (E2B, 210s), case08 28/30 (E4B bf16, 262s), 좀비 회수 OK
+  - 539 passed + 4 skipped, mypy strict 53 source files clean
+
+## Phase 3 설계 + 플랜 (2026-05-08 작성 완료, 코드 진입 전)
+
+- `specs/2026-05-08-phase3-design.md`: 깨지는 5개 CLI 가정 G1~G5, target 아키, layer 책임, 비기능 요구
+- `specs/2026-05-08-phase3-plan.md`: T29~T52 task map (3-A Refactor → 3-B FastAPI → 3-C Queue+Storage → 3-D Frontend → 3-E Multi-tenant), 즉시 wins W1~W3, 패키징 P1~P3
+- **진입 절차**: 외부 사용 ≥2/2 충족 또는 production-ready 주장 retract 후 T29부터
+
+## 다음 세션 진입 (Phase 3-A 또는 외부 사용)
 
 ```bash
-cd /Volumes/포터블/AX/showcase && claude
+cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -5
-uv run pytest -q                          # 507 passed, 3 skipped 재확인
-uv run python runner.py --check --strict  # 시연 환경 점검
+git log --oneline -5                      # HEAD cf76f50 (T28) 확인
+uv run pytest -q                          # 539 passed, 4 skipped
+uv run python runner.py --check --strict  # 시연 환경 점검 (MLX 두 모델)
+cat specs/2026-05-08-phase3-plan.md       # task map + 다음 명령 ★
 ```
 
 ### 진입 경로 분기
