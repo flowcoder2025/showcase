@@ -2,6 +2,11 @@
 
 기획 워크스페이스의 `lessons.md`에서 ax-showcase 관련 항목만 분리. 신규 교훈은 여기에 누적.
 
+## Phase 3 (2026-05-08 ~)
+
+- [2026-05-08] **design 작업은 brainstorming-skill 선행 필수** (Phase 3 v1 → v2 → v2.1 self-revise 부채 catch). v1 design + plan을 brainstorming 없이 단발 작성 → 사용자 의도(재사용 우선)와 어긋난 SaaS 방향까지 커버하려 함 → 같은 날 v2로 self-revise → v2도 v1 plan 추정을 그대로 reuse → 3-reviewer audit에서 R3가 framing 거짓 (게이트 회피, "풀 잠금" 표현, 추정 베끼기) 3건 catch → v2.1로 또 정정. **교훈**: non-trivial design은 (a) brainstorming-skill로 사용자 의도 align (b) self-revise 1회로 끝내지 않고 3-reviewer audit 거치기 (c) 추정은 v1 reuse 금지, task별 실측 베이스로 재계산.
+- [2026-05-08] **외부 사용 약속(promise.md) framing 정직 — 약속을 게이트 재정의로 약화시키지 말 것**. v2가 v1 약속을 "production-ready SaaS 가정과 정합 안 함"으로 재구성하고 dogfood CI 통과를 게이트 (a)로 둠 → R3가 "straw man + after-the-fact reframe" catch. 본래 우려는 "외부 reviewer feedback 부재 → self-validation 위험" 일반 명제이고 dogfood는 "자기 코드가 자기 코드를 import"일 뿐. 추가 검증은 가능, 약속 대체는 불가. **교훈**: 약속 파일(promise.md, contract.md 등)을 변경 시 본래 우려를 명시 재기술하고 그 우려가 새 게이트로 해결되는지 cross-check. "정합 안 함"이라는 표현이 약화 framing의 신호.
+
 ## Phase 2 (2026-05-01 ~ 진행 중)
 
 - [2026-05-01] **plan 작성 시 외부 의존성은 ls/grep으로 실재 검증 후 기술**. 추정·가정은 plan 보호 효과를 약화시킨다. v1 plan에서 md-to-pdf 경로 (`convert.js` 가짜), client.chat 시그니처 (str 반환인데 response.content 가정), hwpx-editor 호출 (subprocess 가정인데 Python `sys.path.insert + import` 패턴) 3건이 R3 audit에서 적발. v2에서 모두 정정. 같은 패턴: subagent dispatch prompt에서 정확한 사실 정보 제공 시에도 ls/grep으로 실재 확인 우선.
