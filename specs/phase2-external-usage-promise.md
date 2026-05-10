@@ -24,12 +24,39 @@
 
 ## Status
 
-- **상태**: under-fulfilled (0/1 시연 — 약속 자체는 보존)
+- **상태**: **expired-without-fulfillment** (0/1 시연 — 약속 자체는 보존, 향후 충족 가능)
 - **마감**: Phase 2 종료 (T26 README finalize) + 1주
-- **하드 마감일** (R3-L2): **2026-05-09** — 본 약속은 캘린더상 이 날짜까지
-  미충족 시 "production-ready" 주장을 retract하고 Phase 3 게이트를 차단한다.
-  (작성일 2026-05-02 기준 +7일.)
+- **하드 마감일** (R3-L2): **2026-05-09** — 도과 (오늘 2026-05-10 기준 +1일).
+  미충족 처리는 아래 §"Hard Deadline Expiration" 참조.
 - **소유자**: 본인 (showcase 운영자)
+
+## Hard Deadline Expiration (2026-05-10, T34.5 commit)
+
+**사실 인정**: 2026-05-09 하드 마감일까지 외부 시연 0회 (0/1 미충족).
+
+**이미 처리된 retract** (T32, 2026-05-08):
+- "production-ready" 라벨 retracted (아래 §Retraction 섹션 참조).
+- Phase 3 의도 재정렬 (재사용 라이브러리 + 사내 단일 user 데모) 완료.
+
+**Phase 3 진입 결정 (옵션 a — 마감 도과 인정 + 진입)**:
+- 본래 우려 ("외부 reviewer feedback 부재 → self-validation 위험")는 다음 두 트랙으로
+  지속 처리. 마감 도과는 (1) 트랙의 미충족이지 (1)의 폐기가 아님:
+  - **(1) 외부 사용 약속**: **보존**. 향후 시연 시 위 추적표에 row append + 상태
+    `partially-fulfilled (1+/?)`로 변경. 마감 자체는 도과했으므로 더 이상 추가
+    연장 마감일을 두지 않는다 (정직성).
+  - **(2) dogfood fixture CI**: **추가 검증으로 활성화** (design v2.1 §5.1, T45 영구
+    PR merge 차단 조건). dogfood 통과는 (1)의 대체가 아니라 코드 import 가능성의
+    별도 증거.
+- **Phase 3 코드 진입은 (1) 미충족을 명시 인정한 상태로 진행**. 외부 reviewer
+  feedback 없는 self-validation 위험은 진행 중에도 본 파일에 명시되어 reviewer
+  부담을 옮기지 않는다.
+
+**design §2.3 (T33 gate alignment) 처리**:
+- 원 design 의도는 T32 retract → T33 게이트 정의 4-file cross-link → T34 코드 진입.
+- 실제 git: T32 retract ✓ / T33 plan v2 / T34 plan v2.1.1 / **T34.5 (이 commit)** gate
+  정합화 — README + CLAUDE + MEMORY는 T26 close 시점에 이미 정합화됨, 본 파일
+  Status 갱신만 잔여 → 본 commit으로 처리.
+- 실 코드 진입은 T35 (`cases/_protocols.py` 골격, plan v2.1.1).
 
 ## Retraction (2026-05-08, T32 commit)
 
