@@ -3,31 +3,48 @@
 규칙:
 - 외부 호출 함수는 모듈 참조로 호출해야 patch가 먹는다 (`from core.x import y; y.fn()` ✓)
 - INTERCEPT_TARGETS에 (모듈경로, 함수명) 등록된 함수만 patch
+
+T37 (Phase 3-A): ``is_safe()`` / ``force_safe()`` 모두 :mod:`core.common.safe_mode_v2`
+(ContextVar 기반)에 위임. ``force_safe()`` 는 더 이상 ``os.environ`` 을 변경하지
+않는다 (R1-H3). ``intercept()`` 는 T44 까지 동작 유지 — 새 코드는 Backends DI
+패턴 (``core.backends.factory.safe_backends``) 사용을 권장.
 """
 
 import hashlib
 import importlib
 import json
-import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from contextvars import Token
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 from rich.console import Console
 
+from core.common import safe_mode_v2
+
 _console = Console()
 
 
 def is_safe() -> bool:
-    return os.getenv("DEMO_SAFE", "0") == "1"
+    """T37 shim — :func:`core.common.safe_mode_v2.is_safe` 위임."""
+    return safe_mode_v2.is_safe()
 
 
-def force_safe(reason: str) -> None:
-    """런타임 자동 폴백 — OpenRouter 429/Ollama timeout 등에서 호출."""
-    os.environ["DEMO_SAFE"] = "1"
+def force_safe(reason: str) -> Token[bool | None]:
+    """런타임 자동 폴백 — OpenRouter 429/MLX timeout 등에서 호출.
+
+    T37 변경:
+        - ``os.environ["DEMO_SAFE"]`` 변경 0 (R1-H3) — ContextVar 기반.
+        - Token 반환 (R2-M3) — 호출자가 caller-controlled scope에서 reset 가능.
+        - 기존 호출자 (``core/ocr/gemma.py``, ``core/ai/client.py``,
+          ``core/messaging/email.py``) 는 token을 discard — context 수명 동안
+          override 유지. T38 에서 scenario 시그니처 변경 시 scope 정합화.
+    """
+    token = safe_mode_v2.force_safe()
     _console.print(f"[bold yellow][AUTO-SAFE] {reason}[/bold yellow]")
+    return token
 
 
 INTERCEPT_TARGETS: dict[str, tuple[str, str]] = {

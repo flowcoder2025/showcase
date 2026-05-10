@@ -227,9 +227,10 @@ def test_extract_connection_error_triggers_force_safe(
     monkeypatch.setattr(gemma, "_client", lambda _alias: fake_client)
 
     result = gemma.extract(img, model="gemma4:e2b")
-    import os
+    from core.common import safe_mode
 
-    assert os.environ.get("DEMO_SAFE") == "1"
+    # T37 (R1-H3): force_safe는 env 변경 없이 ContextVar로만 표시.
+    assert safe_mode.is_safe() is True
     assert result["_safe"] is True
     assert result["qualname"] == "core.ocr.gemma.extract"
 
@@ -291,9 +292,10 @@ def test_extract_ensure_running_failure_force_safe(
 
     monkeypatch.setattr(_mlx_server, "ensure_running", raise_not_found)
     result = gemma.extract(img, model="gemma4:e2b")
-    import os
+    from core.common import safe_mode
 
-    assert os.environ.get("DEMO_SAFE") == "1"
+    # T37 (R1-H3): force_safe는 env 변경 없이 ContextVar로만 표시.
+    assert safe_mode.is_safe() is True
     assert result["_safe"] is True
 
 

@@ -28,10 +28,14 @@ def test_is_safe_reads_env(monkeypatch):
     assert safe_mode.is_safe() is False
 
 
-def test_force_safe_sets_env_and_logs(monkeypatch, capsys):
+def test_force_safe_makes_safe_and_logs(monkeypatch, capsys):
+    """T37 (R1-H3): force_safe는 더 이상 os.environ을 변경하지 않는다.
+    is_safe()는 ContextVar 기반으로 True를 반환, env는 그대로 보존.
+    """
     monkeypatch.setenv("DEMO_SAFE", "0")
     safe_mode.force_safe("test reason")
-    assert os.getenv("DEMO_SAFE") == "1"
+    assert safe_mode.is_safe() is True
+    assert os.getenv("DEMO_SAFE") == "0"  # env 보존 (R1-H3)
     assert "test reason" in capsys.readouterr().out
 
 
