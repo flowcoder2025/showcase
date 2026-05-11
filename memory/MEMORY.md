@@ -44,11 +44,11 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Phase 2** (2~3주): 나머지 7개 케이스 (case03~08, case10) — 진행 순서 04→03→05→07→10→08→06
 - **Phase 3** (선택): 회귀 테스트 자동화 + webapp(Streamlit/FastAPI 그때 결정) + `core/` 사내 패키지(`flowcoder-office-tools`) 분리
 
-## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ 종료 (T35~T41 + T41.5 정합)**
+## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ 종료 + Phase 3-Pkg T42 ✅ (scaffold)**
 
-- **HEAD**: T41.5 commit pending — T41 `bdd1489` 직후 부채 ceiling 정합 추가 commit 예정
-- **테스트**: **667 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A 신규 128, 회귀 0)
-- **Production lock (mypy --strict)**: `core/ + runner.py + cases/` **65 source files clean** (53 → 65, +12)
+- **HEAD**: `7d55a58` (T42 — packages/flowcoder-office-tools/ scaffold + uv workspace)
+- **테스트**: **668 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg-scaffold 신규 129, 회귀 0)
+- **Production lock (mypy --strict)**: `core/ + runner.py + cases/` **65 source files clean** (53 → 65, +12). packages/는 T43 이주 후 strict scope 편입 예정
 - **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 시점 ceiling 잠금 (`tests/test_test_tree_strict_debt_does_not_grow.py`). Phase 2 close 65/8 → T41 직전 107/16 (+42/+8 무방어 누적), T41.5 신규 4 errors fix → 103/13 lock
 - **ruff**: clean (`ruff check .` + `ruff format --check .`)
 - **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드)
@@ -75,12 +75,25 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - case06 `template_path`, case09 `incoming_message`은 `config[...]`로 전달
 - ProgressEvent (TypedDict) + step/done/emit + rich_progress_adapter (context manager)
 
-### T41.5 — 부채 정합 + ceiling lock (2026-05-11 추가)
+### T41.5~T42 — 정합 + Phase 3-Pkg 진입 (2026-05-11 추가, 3 commits)
 
-전체 완성도 체크에서 발견된 stale fact 3건 정정:
+**T41.5** `1a36885` — 전체 완성도 체크에서 발견된 stale fact 3건 정정:
 - mypy strict 신규 부채 4 errors fix (test_backends_safe / test_case10_signature / test_g5)
 - ceiling lock test 재구현 (`tests/test_test_tree_strict_debt_does_not_grow.py`) — 103 errors / 13 files lock
-- MEMORY.md / critical-gaps.md 갱신 (T39~T41 완료 반영, 본 commit)
+- MEMORY.md / critical-gaps.md 갱신 (T39~T41 완료 반영)
+
+**T41.6** `b65732d` — critical-gaps §1 해결 (force_safe Token leak 차단):
+- `safe_mode.intercept(case_id, apis)` 가 entry-time `is_safe()` 값을 `safe_mode_v2.safe_mode_scope` 로 lock
+- gemma/client/email 의 force_safe(token discard) 패턴 그대로 보존 — within-case sticky failover 의도 유지
+- cross-case leak 만 boundary 가 자동 복원 → 회귀 차단 test 추가 (`test_intercept_boundary_isolates_force_safe_between_cases`)
+- 핵심 교훈: "caller-controlled scope ≠ caller가 token reset" — boundary가 책임지는 게 더 안전 (lessons.md 추가)
+
+**T42** `7d55a58` — Phase 3-Pkg 진입 (scaffold + uv workspace):
+- `packages/flowcoder-office-tools/` 디렉토리 + pyproject.toml (hatchling, optional deps: ocr/messaging/docgen/ai)
+- `__version__ = "0.1.0a1"` + README (alpha 상태)
+- root pyproject: `[tool.uv.workspace]` + `[tool.uv.sources]` + dependencies 등록
+- 검증: `uv pip show` editable from packages/.../src ✓, `import flowcoder_office_tools` ✓, 회귀 0
+- Plan deviation 2건 (정직): requires-python `<3.14` → `>=3.11` (Python 3.14.4 차단 회피), license="Proprietary" 라인 제거 (SPDX 표준 외 hatchling parse 실패)
 
 ### 외부 사용 게이트 (T34.5 정직 정정 후)
 
@@ -155,25 +168,31 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
 - **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
-## 다음 세션 진입 (Phase 3-A T39 진입)
+## 다음 세션 진입 (Phase 3-Pkg T43 진입)
 
 ```bash
 cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -6                       # HEAD dffe360 (T38) 확인
-uv run pytest -q                           # 640 passed, 4 skipped
+git log --oneline -10                      # HEAD 7d55a58 (T42) 확인
+uv run pytest -q                           # 668 passed, 4 skipped
 uv run mypy --strict core/ runner.py cases/   # 65 source files clean
-grep -n "^### T39" specs/2026-05-08-phase3-plan-v2.md  # T39 스펙 (line 970)
+uv run python -c "import flowcoder_office_tools; print(flowcoder_office_tools.__version__)"  # 0.1.0a1 (T42 scaffold)
+grep -n "^### T43" specs/2026-05-08-phase3-plan-v2.md  # T43 spec (line 1321)
 ```
 
-**즉시 진입 가능**: T39 (G5 cwd-coupling 잔여 검증). plan v2.1.1 line 970부터. 광역 grep + 절대 경로 default 정합화 검증 + 잔여 정정.
+**즉시 진입 가능**: T43 (`core/` → `packages/.../src/flowcoder_office_tools/` 이주). plan v2.1.1 line 1321~. 큰 작업이라 단계 분할 권장:
+- (a) `scripts/migrate_imports.py` (libcst codemod, ImportFrom + Import + SimpleString) 작성 + dry-run 검증
+- (b) 모듈 이주 (`core/{common,excel,messaging,docgen,ocr,ai,backends}`, `core/progress.py`, `cases/_protocols.py`)
+- (c) string-based monkeypatch / patch 13+건 변환 (사전 grep 필수)
+- (d) `core/__init__.py` shim with `__getattr__` lazy forward (R2-M2)
+- (e) 회귀 0 + mypy strict + ruff clean
 
-### Phase 3-A 진행 순서 (남은 task)
+### Phase 3-Pkg 진행 순서 (남은 task)
 
-- T39: G5 cwd-coupling 잔여 검증 (~0.5d)
-- T40: progress_cb 표준화 (~0.75d)
-- T41: Phase 3-A 통합 검증 + 정직 카운트 (~0.5d)
-- 그 후 Phase 3-Pkg (T42~T46): packages/flowcoder-office-tools/ 추출 + dogfood CI
+- **T43**: `core/` → packages 이주 + libcst codemod + 13+ string mock 변환
+- **T44**: `core/` shim (`__getattr__` lazy forward) + 외부 import 안정 contract 선언
+- **T45**: dogfood fixture: showcase 가 packages 만으로 동작하는지 CI 검증
+- **T46**: Phase 3-Pkg close + dogfood CI 통과 시 외부 사용 게이트 (b) 충족
 
 ## 시연 추천 조합
 
