@@ -44,12 +44,12 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Phase 2** (2~3주): 나머지 7개 케이스 (case03~08, case10) — 진행 순서 04→03→05→07→10→08→06
 - **Phase 3** (선택): 회귀 테스트 자동화 + webapp(Streamlit/FastAPI 그때 결정) + `core/` 사내 패키지(`flowcoder-office-tools`) 분리
 
-## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T43.5 ✅ (이주 완료)**
+## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T44 ✅ (이주 + shim 안정화)**
 
-- **HEAD**: `ed68a4f` (T43.5 — py.typed marker, 부채 회귀 0)
-- **테스트**: **668 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg 신규 130, 회귀 0)
-- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/` **65 source files clean**. T43 이주 후 lock scope 갱신 — `core/` 는 lazy shim 만 남았고 lock 외 (T46 제거 예정)
-- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 유지 (`tests/test_test_tree_strict_debt_does_not_grow.py`). T43 직후 272 폭증 → T43.5 `py.typed` 추가로 정확 회복
+- **HEAD**: `d5ac2e9` (T44 — shim 안정화 + meta path finder, plan note 정정)
+- **테스트**: **673 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg 신규 134, 회귀 0)
+- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/` **65 source files clean**. T43 이주 후 lock scope 갱신 — `core/` 는 shim 만 남았고 lock 외 (T46 제거 예정)
+- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 유지. T43 직후 272 폭증 → T43.5 `py.typed` 정확 회복. T44 shim test 신규 5 errors → type: ignore 정정 후 ceiling 변동 0
 - **ruff**: clean (`ruff check .` + `ruff format --check .`)
 - **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드)
 
@@ -105,6 +105,13 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - test_phase2_dod_integration.py mypy 명령 `core` → `packages/.../src/` 갱신
 - Plan deviation 4건 (commit body disclose): cases._protocols 매핑 plan 누락, multi-line docstring, runner.py import-as, dod_integration path
 - uv add --dev libcst==1.8.6
+
+**T44** `d5ac2e9` — shim 안정화 + meta path finder (plan note 정정):
+- `core/__init__.py`: `__getattr__` 만 있던 shim 에 `importlib.abc.MetaPathFinder + Loader` 추가, `sys.meta_path.insert(0, ...)` 등록
+- `tests/test_shim_compat.py` 신규 5 test (deep import 동작 + `is` alias + warn-once + warn-per-submodule)
+- **Plan note 2건 틀림 발견**: (1) "Python ModuleType `__getattr__` 가 import 시점에 자동 해결" — `__getattr__` 는 attribute access hook 이라 sub-sub deep import 에 트리거 안 됨. (2) `sys.meta_path.append(...)` — 기본 `PathFinder` 가 앞에 있어서 sub-sub 가 path-based 별도 module 로 import (alias 깨짐). `insert(0, ...)` 필요
+- 기타 deviation: plan example `read_excel` → 실 export `read_dir` (test 갱신), `# type: ignore[import-not-found]` 3건 (shim 경유 import 의 mypy 보고 mute, ceiling 변동 0)
+- 검증: 673 passed (+5), mypy 65 clean, tests/ 103/13 ceiling 유지, ruff clean
 
 **T43.5** `ed68a4f` — `py.typed` marker (PEP 561) + 부채 회귀 0:
 - T43 직후 `mypy --strict tests/` 103 → 272 errors / 13 → 73 files 폭증 → 분석 결과 169 errors / 60 files 가 모두 `import-untyped: missing py.typed marker`
@@ -186,28 +193,28 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
 - **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
-## 다음 세션 진입 (Phase 3-Pkg T44 진입)
+## 다음 세션 진입 (Phase 3-Pkg T45 진입)
 
 ```bash
 cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -5                           # HEAD ed68a4f (T43.5) 확인
-uv run pytest -q                               # 668 passed, 4 skipped
+git log --oneline -10                          # HEAD d5ac2e9 (T44) 확인
+uv run pytest -q                               # 673 passed, 4 skipped
 uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/   # 65 clean
-grep -n "^### T44" specs/2026-05-08-phase3-plan-v2.md  # T44 spec (line 1496)
+grep -n "^### T45" specs/2026-05-08-phase3-plan-v2.md  # T45 spec (line 1562~)
 ```
 
-**T44 핵심 (plan v2.1.1 line 1496~)**: shim deep-import 검증 + `tests/test_shim_compat.py` 작성.
-- AC: `from core.excel.reader import read_excel` deep import 동작, 양쪽 `is` 비교 통과, DeprecationWarning sub-module 당 1회, 회귀 0
-- Step 1: `tests/test_shim_compat.py` — deep import via shim test 2개
-- Step 2: shim 안정화 — plan note: "sub-sub forward 는 Python ModuleType __getattr__ 가 자동 해결" → 현 shim 그대로 사용
-- Step 3: 회귀 + commit
+**T45 핵심 (plan v2.1.1 line 1562~)**: `__all__` 명시 + signature snapshot final baseline + internal helper deny-list.
+- Files: 각 sub-package `__init__.py` (excel/messaging/docgen/ocr/ai/common/backends/protocols.py) 에 `__all__` 명시 + signature snapshot 도구
+- AC: external usage contract 명시 + internal helper 위반 시 deny-list 위반 detection
+- 비교적 큰 task — 단계 분할 권장 (Step 1: __all__ 작성, Step 2: snapshot 도구, Step 3: deny-list, Step 4: 회귀)
 
 ### Phase 3-Pkg 진행 순서 (남은 task)
 
+- **T42** ✅ scaffold (어제)
 - **T43** ✅ `6b6b32b` — `core/` → packages 이주 + libcst codemod
 - **T43.5** ✅ `ed68a4f` — `py.typed` marker (PEP 561) + 부채 회귀 0
-- **T44**: shim 안정화 + deep import 검증 (`tests/test_shim_compat.py`)
+- **T44** ✅ `d5ac2e9` — shim 안정화 + meta path finder (plan note 정정)
 - **T45**: `__all__` 명시 + signature snapshot final baseline + internal helper deny-list
 - **T46**: shim 제거 + dogfood fixture + CI matrix (외부 사용 게이트 (b) 충족 조건)
 
