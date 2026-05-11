@@ -95,10 +95,10 @@ def test_run_processes_all_transcripts(tmp_path: Path, monkeypatch: pytest.Monke
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 5
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 5
+    assert result["metrics"]["errors"] == 0
     md_files = sorted(out_dir.glob("meeting_summary_*.md"))
     assert len(md_files) == 5
 
@@ -119,10 +119,10 @@ def test_run_missing_attendees_meta_skips_with_warning(
 
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 0
-    assert summary["errors"] == 2  # 2건 모두 skip → errors 카운트
+    assert result["metrics"]["processed"] == 0
+    assert result["metrics"]["errors"] == 2  # 2건 모두 skip → errors 카운트
 
 
 # ---------------------------------------------------------------------------
@@ -141,13 +141,13 @@ def test_run_uses_personas_fallback_when_input_empty(
     meta = [{"filename": f"m{i:03d}.txt", "attendees": DEFAULT_ATTENDEES} for i in range(5)]
     (seed_dir / scenario.DEFAULT_META_FILENAME).write_text(json.dumps(meta), encoding="utf-8")
 
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", seed_dir)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", seed_dir)
 
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=None, output_dir=out_dir)
+    result = scenario.run(input_dir=None, output_dir=out_dir)
 
-    assert summary["processed"] == 5
+    assert result["metrics"]["processed"] == 5
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +170,10 @@ def test_run_continues_after_per_meeting_failure(
 
     _mock_summarize(monkeypatch, fail_filenames=("token_1", "token_3"))
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 2
-    assert summary["errors"] == 2
+    assert result["metrics"]["processed"] == 2
+    assert result["metrics"]["errors"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -194,9 +194,9 @@ def test_run_safe_mode_uses_dummy_summary(tmp_path: Path, monkeypatch: pytest.Mo
     _mock_summarize(monkeypatch, response=safe_response)
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 2
+    assert result["metrics"]["processed"] == 2
     md = (out_dir / "meeting_summary_m000.md").read_text(encoding="utf-8")
     assert "[SAFE-FALLBACK" in md
     assert "[safe] 결정사항 더미" in md
@@ -279,9 +279,9 @@ def test_run_summary_files_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     in_dir = _seed_input(tmp_path, n=2)
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    files = summary["files"]
+    files = result["extras"]["files"]
     assert isinstance(files, list)
     assert len(files) == 2
     for entry in files:
@@ -306,11 +306,11 @@ def test_run_skips_underscore_prefix_files(tmp_path: Path, monkeypatch: pytest.M
     )
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
     # _meeting_meta.json + _temp.txt + _notes.txt 모두 skip
-    assert summary["processed"] == 2
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 2
+    assert result["metrics"]["errors"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -324,15 +324,15 @@ def test_run_zero_transcripts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     # personas fallback도 빈 디렉토리
     empty_seed = tmp_path / "empty_seed"
     empty_seed.mkdir()
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", empty_seed)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", empty_seed)
 
     _mock_summarize(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 0
-    assert summary["errors"] == 0
-    assert summary["files"] == []
+    assert result["metrics"]["processed"] == 0
+    assert result["metrics"]["errors"] == 0
+    assert result["extras"]["files"] == []
 
 
 # ---------------------------------------------------------------------------

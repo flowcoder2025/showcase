@@ -1,4 +1,4 @@
-"""Tests for case05 — 견적서/거래명세서 자동 생성 (docx + pdf)."""
+"""Tests for case05 — 견적서/거래명세서 자동 생성 (docx + pdf) — T38 ScenarioResult."""
 
 from pathlib import Path
 from typing import Any
@@ -6,10 +6,10 @@ from typing import Any
 import pandas as pd
 import pytest
 
+_INPUT_NAME = "quote_requests.xlsx"
+
 
 class _CaptureLogger:
-    """In-memory logger that captures messages by level — used to assert per-request log lines."""
-
     def __init__(self) -> None:
         self.infos: list[str] = []
         self.successes: list[str] = []
@@ -30,12 +30,10 @@ class _CaptureLogger:
 
 
 def _stub_pdf(md_path: Path | str, out_path: Path | str, **_kw: Any) -> None:
-    """md_to_pdf mock — 실제 npx 호출 없이 빈 PDF stub 작성."""
     Path(out_path).write_bytes(b"%PDF-1.4\n%stub")
 
 
 def _make_quote_df(n_requests: int = 10, items_per: int = 4) -> pd.DataFrame:
-    """헬퍼: 표준 스키마 입력 DataFrame 생성."""
     rows: list[dict[str, Any]] = []
     for i in range(1, n_requests + 1):
         for j in range(items_per):
@@ -54,40 +52,38 @@ def _make_quote_df(n_requests: int = 10, items_per: int = 4) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _write_input(in_dir: Path, df: pd.DataFrame) -> Path:
+    in_dir.mkdir(parents=True, exist_ok=True)
+    df.to_excel(in_dir / _INPUT_NAME, index=False)
+    return in_dir
+
+
 @pytest.fixture
-def quote_input(tmp_path: Path) -> Path:
-    """10 requests × 4 items = 40 rows (standard column schema)."""
-    df = _make_quote_df(n_requests=10, items_per=4)
-    p = tmp_path / "quote_requests.xlsx"
-    df.to_excel(p, index=False)
-    return p
+def quote_input_dir(tmp_path: Path) -> Path:
+    return _write_input(tmp_path / "in", _make_quote_df(n_requests=10, items_per=4))
 
 
 def test_run_creates_docx_and_pdf_per_request(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """10 견적번호 시드 → docx 10개 + pdf 10개."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=quote_input, output_dir=out)
+    result = scenario.run(input_dir=quote_input_dir, output_dir=out)
 
-    assert summary["docx_count"] == 10
-    assert summary["pdf_count"] == 10
-    assert summary["errors"] == 0
-    docx_files = list(out.glob("*.docx"))
-    pdf_files = list(out.glob("*.pdf"))
-    assert len(docx_files) == 10
-    assert len(pdf_files) == 10
+    assert result["metrics"]["docx_count"] == 10
+    assert result["metrics"]["pdf_count"] == 10
+    assert result["metrics"]["errors"] == 0
+    assert len(list(out.glob("*.docx"))) == 10
+    assert len(list(out.glob("*.pdf"))) == 10
 
 
 def test_run_pdf_failure_does_not_block_other_requests(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """일부 md_to_pdf 호출이 MdToPdfError → docx 모두 생성, pdf 일부만, errors >= 1."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -102,17 +98,16 @@ def test_run_pdf_failure_does_not_block_other_requests(
     monkeypatch.setattr(pdf_mod, "md_to_pdf", flaky)
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=quote_input, output_dir=out)
+    result = scenario.run(input_dir=quote_input_dir, output_dir=out)
 
-    assert summary["docx_count"] == 10  # word.build_quote 모두 성공
-    assert summary["pdf_count"] == 8  # 2건 실패
-    assert summary["errors"] >= 1
+    assert result["metrics"]["docx_count"] == 10
+    assert result["metrics"]["pdf_count"] == 8
+    assert result["metrics"]["errors"] >= 1
 
 
 def test_run_uses_column_map_for_alternate_schema(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """다른 입력 컬럼 스키마 + column_map override → 정상 처리."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -131,31 +126,30 @@ def test_run_uses_column_map_for_alternate_schema(
                     "delivery": "2026-07-01",
                 }
             )
-    df = pd.DataFrame(rows)
-    inp = tmp_path / "alt.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", pd.DataFrame(rows))
 
     out = tmp_path / "out"
-    summary = scenario.run(
-        input_path=inp,
+    result = scenario.run(
+        input_dir=in_dir,
         output_dir=out,
-        column_map={
-            "request_id": "request_no",
-            "vendor": "customer",
-            "name": "product",
-            "qty": "units",
-            "price": "unit_price",
-            "due_date": "delivery",
+        config={
+            "column_map": {
+                "request_id": "request_no",
+                "vendor": "customer",
+                "name": "product",
+                "qty": "units",
+                "price": "unit_price",
+                "due_date": "delivery",
+            }
         },
     )
 
-    assert summary["docx_count"] == 3
-    assert summary["pdf_count"] == 3
-    assert summary["errors"] == 0
+    assert result["metrics"]["docx_count"] == 3
+    assert result["metrics"]["pdf_count"] == 3
+    assert result["metrics"]["errors"] == 0
 
 
 def test_run_with_zero_requests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """빈 입력 → summary 모두 0."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -164,35 +158,35 @@ def test_run_with_zero_requests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     df = pd.DataFrame(
         columns=["견적번호", "거래처명", "담당자", "이메일", "품목", "수량", "단가", "납기일"]
     )
-    inp = tmp_path / "empty.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", df)
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["docx_count"] == 0
-    assert summary["pdf_count"] == 0
-    assert summary["errors"] == 0
-    assert summary["requests"] == []
+    assert result["metrics"]["docx_count"] == 0
+    assert result["metrics"]["pdf_count"] == 0
+    assert result["metrics"]["errors"] == 0
+    assert result["extras"]["requests"] == []
 
 
 def test_run_summary_structure(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """summary key 보장 + requests 항목 구조."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=quote_input, output_dir=out)
+    result = scenario.run(input_dir=quote_input_dir, output_dir=out)
+    metrics = result["metrics"]
+    requests = result["extras"]["requests"]
 
-    for key in ("docx_count", "pdf_count", "errors", "requests"):
-        assert key in summary, f"missing key: {key}"
-    assert isinstance(summary["requests"], list)
-    assert len(summary["requests"]) == 10
-    for entry in summary["requests"]:
+    for key in ("docx_count", "pdf_count", "errors"):
+        assert key in metrics, f"missing key: {key}"
+    assert isinstance(requests, list)
+    assert len(requests) == 10
+    for entry in requests:
         assert "request_id" in entry
         assert "vendor" in entry
         assert "n_items" in entry
@@ -201,9 +195,8 @@ def test_run_summary_structure(
 
 
 def test_run_creates_output_dir_if_missing(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """output_dir 미존재 → 자동 생성."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -212,17 +205,16 @@ def test_run_creates_output_dir_if_missing(
     target = tmp_path / "nested" / "deeper" / "out"
     assert not target.exists()
 
-    summary = scenario.run(input_path=quote_input, output_dir=target)
+    result = scenario.run(input_dir=quote_input_dir, output_dir=target)
 
     assert target.exists()
     assert target.is_dir()
-    assert summary["docx_count"] == 10
+    assert result["metrics"]["docx_count"] == 10
 
 
 def test_run_docx_contains_vendor_and_items(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """결과 docx 1건 → vendor명 + 품목명 + '견적번호' 포함."""
     from docx import Document
 
     from cases.case05_doc_quote_generator import scenario
@@ -231,7 +223,7 @@ def test_run_docx_contains_vendor_and_items(
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
 
-    scenario.run(input_path=quote_input, output_dir=out)
+    scenario.run(input_dir=quote_input_dir, output_dir=out)
 
     docx_files = sorted(out.glob("*.docx"))
     assert docx_files, "no docx generated"
@@ -243,14 +235,12 @@ def test_run_docx_contains_vendor_and_items(
     )
     combined = full_text + "\n" + table_text
 
-    assert "거래처01" in combined  # vendor
-    assert "견적번호" in combined  # label
-    # at least 1 품목 (품목명 prefix from fixture)
+    assert "거래처01" in combined
+    assert "견적번호" in combined
     assert "부품-1-" in combined
 
 
 def test_run_continues_after_word_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """일부 word.build_quote 실패 → 다른 견적은 정상 진행."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
     from core.docgen import word as word_mod
@@ -268,23 +258,19 @@ def test_run_continues_after_word_failure(tmp_path: Path, monkeypatch: pytest.Mo
 
     monkeypatch.setattr(word_mod, "build_quote", flaky_build)
 
-    df = _make_quote_df(n_requests=4, items_per=3)
-    inp = tmp_path / "in.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", _make_quote_df(n_requests=4, items_per=3))
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["docx_count"] == 3  # 1건 실패
-    assert summary["errors"] >= 1
-    # other 3 requests should still have been attempted (and pdf built for those)
-    assert summary["pdf_count"] >= 3
+    assert result["metrics"]["docx_count"] == 3
+    assert result["metrics"]["errors"] >= 1
+    assert result["metrics"]["pdf_count"] >= 3
 
 
 def test_run_logs_per_request_progress(
-    quote_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """10 견적 입력 → per-request info 로그가 견적번호 + vendor + 품목 수 포함."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -294,27 +280,20 @@ def test_run_logs_per_request_progress(
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=quote_input, output_dir=out)
+    result = scenario.run(input_dir=quote_input_dir, output_dir=out)
 
-    assert summary["docx_count"] == 10
-    # at least 10 info lines for 10 requests
+    assert result["metrics"]["docx_count"] == 10
     request_lines = [m for m in cap.infos if "Q-2026-" in m]
     assert len(request_lines) == 10, f"expected 10 progress lines, got {len(request_lines)}"
-    # each line should include the vendor name (거래처NN) and item count (4개)
     sample = request_lines[0]
     assert "Q-2026-001" in sample
     assert "거래처01" in sample
-    assert "4" in sample  # items_per=4
+    assert "4" in sample
 
 
 def test_run_progress_log_escapes_markup_in_vendor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """vendor가 markup-like 패턴을 포함 → rich.markup.escape 흔적이 로그에 보임 (lessons L10).
-
-    rich.markup.escape는 ASCII 마크업 태그처럼 보이는 패턴만 escape한다 (Korean 내부
-    bracket은 이미 안전). 따라서 실제로 markup으로 해석될 위험이 있는 패턴만 검증.
-    """
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -332,21 +311,17 @@ def test_run_progress_log_escapes_markup_in_vendor(
             "납기일": "2026-06-30",
         }
     ]
-    df = pd.DataFrame(rows)
-    inp = tmp_path / "bracket.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", pd.DataFrame(rows))
 
     cap = _CaptureLogger()
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
     out = tmp_path / "out"
-    scenario.run(input_path=inp, output_dir=out)
+    scenario.run(input_dir=in_dir, output_dir=out)
 
-    # Find the progress info line for this request
     progress = [m for m in cap.infos if "Q-X-001" in m]
     assert progress, f"no progress log found, infos={cap.infos!r}"
     line = progress[0]
-    # Escaped form: rich.markup.escape inserts backslash before [bold] and [/bold].
     assert "\\[bold]" in line, f"expected escaped bracket form in: {line!r}"
     assert "\\[/bold]" in line, f"expected escaped closing tag in: {line!r}"
 
@@ -354,14 +329,12 @@ def test_run_progress_log_escapes_markup_in_vendor(
 def test_run_skips_empty_vendor_with_warning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """vendor 빈 문자열 견적 → skip + warning(request_id 포함) + summary['errors'] += 1."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
     rows: list[dict[str, Any]] = []
-    # request 1: empty vendor
     rows.append(
         {
             "견적번호": "Q-EMPTY-001",
@@ -374,7 +347,6 @@ def test_run_skips_empty_vendor_with_warning(
             "납기일": "2026-06-30",
         }
     )
-    # request 2: normal
     rows.append(
         {
             "견적번호": "Q-OK-002",
@@ -387,25 +359,21 @@ def test_run_skips_empty_vendor_with_warning(
             "납기일": "2026-06-30",
         }
     )
-    df = pd.DataFrame(rows)
-    inp = tmp_path / "mixed.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", pd.DataFrame(rows))
 
     cap = _CaptureLogger()
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["docx_count"] == 1  # only Q-OK-002 created
-    assert summary["errors"] >= 1
-    # warning should mention request_id
+    assert result["metrics"]["docx_count"] == 1
+    assert result["metrics"]["errors"] >= 1
     matched = [w for w in cap.warnings if "Q-EMPTY-001" in w]
     assert matched, f"expected warning mentioning Q-EMPTY-001, got {cap.warnings!r}"
 
 
 def test_run_skips_whitespace_vendor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """vendor가 공백만(\"   \")인 견적도 동일하게 skip."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -433,24 +401,21 @@ def test_run_skips_whitespace_vendor(tmp_path: Path, monkeypatch: pytest.MonkeyP
             "납기일": "2026-06-30",
         },
     ]
-    df = pd.DataFrame(rows)
-    inp = tmp_path / "ws.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", pd.DataFrame(rows))
 
     cap = _CaptureLogger()
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["docx_count"] == 1
-    assert summary["errors"] >= 1
+    assert result["metrics"]["docx_count"] == 1
+    assert result["metrics"]["errors"] >= 1
     matched = [w for w in cap.warnings if "Q-WS-001" in w]
     assert matched, f"expected warning mentioning Q-WS-001, got {cap.warnings!r}"
 
 
 def test_run_error_log_contains_request_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """word.build_quote가 raise → warning 로그에 request_id + 예외 타입 포함."""
     from cases.case05_doc_quote_generator import scenario
     from core.docgen import pdf as pdf_mod
     from core.docgen import word as word_mod
@@ -471,14 +436,11 @@ def test_run_error_log_contains_request_id(tmp_path: Path, monkeypatch: pytest.M
     cap = _CaptureLogger()
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
-    df = _make_quote_df(n_requests=3, items_per=2)
-    inp = tmp_path / "in.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = _write_input(tmp_path / "in", _make_quote_df(n_requests=3, items_per=2))
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["errors"] >= 1
-    # the failed request id is the 2nd: Q-2026-002
+    assert result["metrics"]["errors"] >= 1
     matched = [w for w in cap.warnings if "Q-2026-002" in w and "RuntimeError" in w]
     assert matched, f"expected warning with request_id and RuntimeError, got {cap.warnings!r}"

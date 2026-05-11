@@ -1,19 +1,8 @@
-"""case05 — 견적서/거래명세서 일괄 생성 (docx + pdf).
-
-Architecture
-- thin wrapper: scenario.py가 ``core.docgen.{word, pdf}``만 호출 (외부 API 없음).
-- per-request error isolation: word/pdf 일부 실패해도 다른 견적은 진행.
-- column_map 강제: 다른 입력 컬럼 스키마에서도 동일 시나리오 재호출 가능.
-- pandas read_excel 직접 호출 — ``core/excel/reader.py``에 read_excel 헬퍼 없음 (T2 deviation 동일).
-
-NOTE: 외부 호출은 모듈 참조로 호출(safe_mode patch 격리):
-    from core.docgen import pdf, word
-    word.build_quote(...)
-    pdf.md_to_pdf(...)
-"""
+"""case05 — 견적서/거래명세서 일괄 생성 (docx + pdf) — T38 ScenarioResult signature."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -21,10 +10,19 @@ from typing import Any
 import pandas as pd
 import rich.markup
 
+from cases._protocols import Backends, ScenarioResult
+from core.backends.factory import default_backends, safe_backends
 from core.common import timer
 from core.common.demo_logger import demo_logger
+from core.common.safe_mode_v2 import is_safe
 from core.docgen import pdf as pdf_mod
 from core.docgen import word as word_mod
+from core.progress import ProgressEvent
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_IN = _REPO_ROOT / "personas/sample_data"
+_DEFAULT_OUT = Path(__file__).resolve().parent / "output"
+_INPUT_NAME = "quote_requests.xlsx"
 
 COLUMN_MAP: dict[str, str] = {
     "request_id": "견적번호",
@@ -37,7 +35,7 @@ COLUMN_MAP: dict[str, str] = {
 
 
 def _make_md(vendor: str, items: list[dict[str, Any]], meta: dict[str, str]) -> str:
-    """간단한 markdown — md_to_pdf 입력용. 견적서와 동일 데이터를 별도 표현."""
+    """간단한 markdown — md_to_pdf 입력용."""
     lines = [
         "# 견 적 서",
         "",
@@ -60,63 +58,62 @@ def _make_md(vendor: str, items: list[dict[str, Any]], meta: dict[str, str]) -> 
     return "\n".join(lines) + "\n"
 
 
+def _resolve_input_path(input_dir: Path | None) -> Path:
+    if input_dir is not None:
+        return Path(input_dir) / _INPUT_NAME
+    case_dir = Path(__file__).resolve().parent
+    cand = case_dir / "input" / _INPUT_NAME
+    if cand.exists():
+        return cand
+    return _DEFAULT_IN / _INPUT_NAME
+
+
 def run(
-    input_path: Path | str | None = None,
-    output_dir: Path | str | None = None,
     *,
-    column_map: dict[str, str] | None = None,
-) -> dict[str, Any]:
-    """견적 요청 Excel → docx + pdf 일괄 생성.
-
-    Returns
-    -------
-    summary : dict
-        ``{"docx_count": int, "pdf_count": int, "errors": int,
-           "requests": [{"request_id", "vendor", "n_items"}, ...]}``
-    """
-    log = demo_logger("case05_doc_quote_generator")
-    case_dir = Path(__file__).parent
-    cm = {**COLUMN_MAP, **(column_map or {})}
-
-    if input_path is None:
-        # 기본: case input/ → 없으면 personas 시드 fallback
-        cand = case_dir / "input" / "quote_requests.xlsx"
-        if not cand.exists():
-            cand = Path("personas/sample_data/quote_requests.xlsx")
-        input_path = cand
-
-    if output_dir is None:
-        output_dir = case_dir / "output"
-    out_dir = Path(output_dir)
+    input_dir: Path | None = None,
+    output_dir: Path | None = None,
+    backends: Backends | None = None,
+    progress_cb: Callable[[ProgressEvent], None] | None = None,
+    config: dict[str, Any] | None = None,
+) -> ScenarioResult:
+    """견적 요청 Excel → docx + pdf 일괄 생성."""
+    out_dir = Path(output_dir) if output_dir else _DEFAULT_OUT
     out_dir.mkdir(parents=True, exist_ok=True)
+    _ = backends or (safe_backends() if is_safe() else default_backends())  # T40 wire-up
+    cfg = config or {}
+    cm = {**COLUMN_MAP, **(cfg.get("column_map") or {})}
+    input_path = _resolve_input_path(input_dir)
 
-    df = pd.read_excel(Path(input_path))
-    summary: dict[str, Any] = {
-        "docx_count": 0,
-        "pdf_count": 0,
-        "errors": 0,
-        "requests": [],
-    }
+    log = demo_logger("case05_doc_quote_generator")
+    df = pd.read_excel(input_path)
+    docx_count = 0
+    pdf_count = 0
+    errors = 0
+    requests_list: list[dict[str, Any]] = []
+    output_files: list[Path] = []
 
     if df.empty:
         log.success("입력이 비어있어 생성할 견적서가 없습니다.")
-        return summary
+        return {
+            "case_id": "case05",
+            "summary_text": "생성 대상 0건",
+            "output_files": [],
+            "metrics": {"docx_count": 0, "pdf_count": 0, "errors": 0},
+            "failures": [],
+            "extras": {"requests": requests_list},
+        }
 
-    # 견적번호별 group → 1 docx + 1 pdf
     grouped = df.groupby(cm["request_id"], sort=False)
-    requests_list: list[dict[str, Any]] = summary["requests"]
 
     with timer.measure(log, "견적서 일괄 생성 (docx + pdf)", before_minutes=30):
         for request_id, group in grouped:
             request_id_str = str(request_id)
             vendor_raw = group.iloc[0][cm["vendor"]]
-            # pandas Excel roundtrip: 빈 문자열은 NaN으로 읽힘 → pd.isna로 명시 처리.
             vendor = "" if pd.isna(vendor_raw) else str(vendor_raw).strip()
 
-            # 사전 가드: vendor 빈/공백만 → skip + warning. word.build_quote 재진입 전에 차단.
             if not vendor:
                 log.warning(f"[{request_id_str}] vendor empty — skipping")
-                summary["errors"] = int(summary["errors"]) + 1
+                errors += 1
                 continue
 
             items = [
@@ -127,11 +124,8 @@ def run(
                 }
                 for _, row in group.iterrows()
             ]
-            # R2-L1: 하드코딩 날짜 → 실행일 ISO. 시연 시 "오늘 날짜" 견적이 생성된다.
             meta = {"date": date.today().isoformat(), "quote_no": request_id_str}
 
-            # per-request 진행 로그 — 시연자가 진행을 시각적으로 확인.
-            # rich.markup 안전(lessons L10): vendor 명에 [..] 포함 시 콘솔에서 markup 해석 방지.
             vendor_safe = rich.markup.escape(vendor)
             log.info(f"[{request_id_str}] {vendor_safe} — {len(items)}개 품목 → docx + pdf")
 
@@ -144,27 +138,28 @@ def run(
                     items=items,
                     meta=meta,
                 )
-                summary["docx_count"] = int(summary["docx_count"]) + 1
+                docx_count += 1
                 docx_built = True
-            except Exception as e:  # noqa: BLE001 — per-request 실패 격리
+                output_files.append(docx_path)
+            except Exception as e:  # noqa: BLE001 — per-request 격리
                 log.warning(f"[{request_id_str}] docx failed: {type(e).__name__}: {e}")
-                summary["errors"] = int(summary["errors"]) + 1
+                errors += 1
 
             if docx_built:
-                # pdf via md
                 md_text = _make_md(vendor, items, meta)
                 md_path = out_dir / f"{request_id_str}.md"
                 pdf_path = out_dir / f"{request_id_str}.pdf"
                 try:
                     md_path.write_text(md_text, encoding="utf-8")
                     pdf_mod.md_to_pdf(md_path, pdf_path)
-                    summary["pdf_count"] = int(summary["pdf_count"]) + 1
+                    pdf_count += 1
+                    output_files.append(pdf_path)
                 except pdf_mod.MdToPdfError as e:
                     log.warning(f"[{request_id_str}] pdf failed: {type(e).__name__}: {e}")
-                    summary["errors"] = int(summary["errors"]) + 1
+                    errors += 1
                 except Exception as e:  # noqa: BLE001 — md write 등 보호
                     log.warning(f"[{request_id_str}] pdf step failed: {type(e).__name__}: {e}")
-                    summary["errors"] = int(summary["errors"]) + 1
+                    errors += 1
 
             requests_list.append(
                 {
@@ -174,11 +169,19 @@ def run(
                 }
             )
 
-    log.success(
-        f"docx {summary['docx_count']}건 / pdf {summary['pdf_count']}건 / "
-        f"실패 {summary['errors']}건"
-    )
-    return summary
+    log.success(f"docx {docx_count}건 / pdf {pdf_count}건 / 실패 {errors}건")
+    return {
+        "case_id": "case05",
+        "summary_text": f"docx {docx_count}건 + pdf {pdf_count}건 / 실패 {errors}건",
+        "output_files": output_files,
+        "metrics": {
+            "docx_count": docx_count,
+            "pdf_count": pdf_count,
+            "errors": errors,
+        },
+        "failures": [],
+        "extras": {"requests": requests_list},
+    }
 
 
 if __name__ == "__main__":

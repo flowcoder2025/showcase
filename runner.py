@@ -309,8 +309,17 @@ def run_case(case_id: str, safe: bool) -> int:
 
     # 시나리오 시작 시점을 기록 — 자동 열기 시 "이번 실행"이 만든 파일만 대상
     start_mtime = time.time()
+    # T38: scenario.run() 은 ScenarioResult 를 반환하는 keyword-only 시그니처.
+    # input_dir/output_dir/backends/progress_cb/config 는 각 scenario 의 default
+    # (절대 경로 + safe_backends/default_backends 자동 분기) 에 위임.
     with safe_mode.intercept(case_id, apis=apis):
         result = mod.run()
+
+    # 결과 표시 — ScenarioResult 의 summary_text + output_files
+    if isinstance(result, dict) and "summary_text" in result and "output_files" in result:
+        console.print(f"[bold]{result['summary_text']}[/bold]")
+        for p in result["output_files"]:
+            console.print(f"  → {p}")
 
     # 결과 자동 열기 — 이번 실행 이후 생성/갱신된 비-언더스코어 파일만
     out_dir = case_dir / "output"
@@ -319,7 +328,7 @@ def run_case(case_id: str, safe: bool) -> int:
             if f.is_file() and not f.name.startswith("_") and f.stat().st_mtime >= start_mtime:
                 open_finder(f)
                 break
-    return 0 if result is None or result == 0 else 1
+    return 0
 
 
 def cmd_menu() -> int:

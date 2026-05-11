@@ -1,4 +1,4 @@
-"""Tests for case04 — 미수금 단계별 Discord 알림."""
+"""Tests for case04 — 미수금 단계별 Discord 알림 (T38 ScenarioResult)."""
 
 from pathlib import Path
 from typing import Any
@@ -6,21 +6,29 @@ from typing import Any
 import pandas as pd
 import pytest
 
+_INPUT_NAME = "overdue_invoices.xlsx"
+
 
 def _make_overdue_df(rows: list[dict[str, Any]]) -> pd.DataFrame:
-    """헬퍼: 미수금 입력 DataFrame을 생성한다."""
     return pd.DataFrame(rows)
 
 
+def _write_input(in_dir: Path, df: pd.DataFrame) -> Path:
+    in_dir.mkdir(parents=True, exist_ok=True)
+    p = in_dir / _INPUT_NAME
+    df.to_excel(p, index=False)
+    return in_dir
+
+
 @pytest.fixture
-def overdue_input(tmp_path: Path) -> Path:
+def overdue_input_dir(tmp_path: Path) -> Path:
     """4단계 분포가 보장된 60건 입력. (24/18/12/6 = friendly/neutral/strict/final)"""
     rows: list[dict[str, Any]] = []
     counts = [
-        (24, 7, "friendly"),  # 0~14일
-        (18, 22, "neutral"),  # 15~30일
-        (12, 45, "strict"),  # 31~60일
-        (6, 90, "final"),  # 60+일
+        (24, 7, "friendly"),
+        (18, 22, "neutral"),
+        (12, 45, "strict"),
+        (6, 90, "final"),
     ]
     seq = 0
     for n, days, _level in counts:
@@ -36,14 +44,10 @@ def overdue_input(tmp_path: Path) -> Path:
                     "담당자": "박과장",
                 }
             )
-    df = _make_overdue_df(rows)
-    p = tmp_path / "overdue.xlsx"
-    df.to_excel(p, index=False)
-    return p
+    return _write_input(tmp_path / "in", _make_overdue_df(rows))
 
 
 def test_classify_level_boundaries() -> None:
-    """경계값: 0/14/15/30/31/60/61/9999 + 음수 raise."""
     from cases.case04_discord_overdue_alert.scenario import classify_level
 
     assert classify_level(0) == "friendly"
@@ -64,10 +68,10 @@ def test_classify_level_negative_raises() -> None:
 
 
 def test_run_dispatches_per_row_in_safe_mode(
-    overdue_input: Path,
+    overdue_input_dir: Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """60건 input → send_with_level 60회 호출."""
     from cases.case04_discord_overdue_alert import scenario
     from core.messaging import discord
 
@@ -79,37 +83,37 @@ def test_run_dispatches_per_row_in_safe_mode(
 
     monkeypatch.setattr(discord, "send_with_level", _capture)
 
-    summary = scenario.run(input_path=overdue_input)
+    result = scenario.run(input_dir=overdue_input_dir, output_dir=tmp_path / "out")
 
-    assert summary["sent"] == 60
+    assert result["metrics"]["sent"] == 60
     assert len(sent) == 60
 
 
 def test_run_summary_by_level_counts_correct(
-    overdue_input: Path,
+    overdue_input_dir: Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """입력 분포 (24/18/12/6) → summary['by_level'] 정확 매칭."""
     from cases.case04_discord_overdue_alert import scenario
     from core.messaging import discord
 
     monkeypatch.setattr(discord, "send_with_level", lambda **k: {"status": 204})
 
-    summary = scenario.run(input_path=overdue_input)
+    result = scenario.run(input_dir=overdue_input_dir, output_dir=tmp_path / "out")
+    by_level = result["extras"]["by_level"]
 
-    assert set(summary["by_level"].keys()) == {"friendly", "neutral", "strict", "final"}
-    assert summary["by_level"]["friendly"] == 24
-    assert summary["by_level"]["neutral"] == 18
-    assert summary["by_level"]["strict"] == 12
-    assert summary["by_level"]["final"] == 6
-    assert sum(summary["by_level"].values()) == 60
+    assert set(by_level.keys()) == {"friendly", "neutral", "strict", "final"}
+    assert by_level["friendly"] == 24
+    assert by_level["neutral"] == 18
+    assert by_level["strict"] == 12
+    assert by_level["final"] == 6
+    assert sum(by_level.values()) == 60
 
 
 def test_run_uses_escape_for_vendor_name(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """vendor명에 [브래킷] 포함 → title에 escape 적용된 형태로 들어감."""
     import rich.markup
 
     from cases.case04_discord_overdue_alert import scenario
@@ -125,9 +129,7 @@ def test_run_uses_escape_for_vendor_name(
             "담당자": "박과장",
         }
     ]
-    df = _make_overdue_df(rows)
-    p = tmp_path / "in.xlsx"
-    df.to_excel(p, index=False)
+    in_dir = _write_input(tmp_path / "in", _make_overdue_df(rows))
 
     seen_titles: list[str] = []
 
@@ -137,13 +139,12 @@ def test_run_uses_escape_for_vendor_name(
 
     monkeypatch.setattr(discord, "send_with_level", _capture)
 
-    scenario.run(input_path=p)
+    scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
     expected_escaped = rich.markup.escape("[브래킷] 회사")
     assert any(expected_escaped in t for t in seen_titles), (
         f"escape 미적용 — titles: {seen_titles!r}"
     )
-    # 추가: 원문 그대로(미escape)는 들어가지 않아야 함 — escape 결과와 다르다.
     assert all("[브래킷] 회사" not in t or expected_escaped in t for t in seen_titles)
 
 
@@ -151,13 +152,11 @@ def test_run_handles_zero_rows(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """빈 DataFrame → sent==0, errors==0, 예외 없음."""
     from cases.case04_discord_overdue_alert import scenario
     from core.messaging import discord
 
     df = pd.DataFrame(columns=["거래처명", "거래번호", "금액", "납기일", "연체일", "담당자"])
-    p = tmp_path / "empty.xlsx"
-    df.to_excel(p, index=False)
+    in_dir = _write_input(tmp_path / "in", df)
 
     calls: list[Any] = []
 
@@ -167,18 +166,18 @@ def test_run_handles_zero_rows(
 
     monkeypatch.setattr(discord, "send_with_level", _record)
 
-    summary = scenario.run(input_path=p)
+    result = scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
-    assert summary["sent"] == 0
-    assert summary["errors"] == 0
+    assert result["metrics"]["sent"] == 0
+    assert result["metrics"]["errors"] == 0
     assert len(calls) == 0
 
 
 def test_run_continues_after_per_row_failure(
-    overdue_input: Path,
+    overdue_input_dir: Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """한 row가 raise해도 나머지 진행. errors >= 1, sent >= rest."""
     from cases.case04_discord_overdue_alert import scenario
     from core.messaging import discord
 
@@ -186,38 +185,30 @@ def test_run_continues_after_per_row_failure(
 
     def _flaky(**kwargs: Any) -> dict[str, int]:
         counter["n"] += 1
-        # 첫 호출만 raise — 나머지는 정상
         if counter["n"] == 1:
             raise RuntimeError("transient")
         return {"status": 204}
 
     monkeypatch.setattr(discord, "send_with_level", _flaky)
 
-    summary = scenario.run(input_path=overdue_input)
+    result = scenario.run(input_dir=overdue_input_dir, output_dir=tmp_path / "out")
 
-    assert summary["errors"] >= 1
-    assert summary["sent"] >= 59  # 60 입력 - 1 실패
-    assert summary["sent"] + summary["errors"] == 60
+    assert result["metrics"]["errors"] >= 1
+    assert result["metrics"]["sent"] >= 59
+    assert result["metrics"]["sent"] + result["metrics"]["errors"] == 60
 
 
 def test_case04_column_map_partial_override(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """R2-C1 regression: ``column_map`` 부분 override 시 default 키가 보존되어야 한다.
-
-    이전 버전: ``cmap = column_map or COLUMN_MAP`` — 부분 override가 제공되면
-    default 맵 전체가 교체되며 누락된 키 lookup이 silent KeyError로 잡혀
-    summary['errors']로 흘렀다.
-
-    수정 후: ``{**COLUMN_MAP, **column_map}`` 병합 — 누락 키는 default가 채움.
-    """
+    """R2-C1 regression: ``config["column_map"]`` 부분 override 시 default 키 보존."""
     from cases.case04_discord_overdue_alert import scenario
     from core.messaging import discord
 
     rows = [
         {
-            "회사명": "AX_VENDOR_001",  # vendor 키만 한국어 헤더 변경
+            "회사명": "AX_VENDOR_001",
             "거래번호": "INV-0001",
             "금액": 1_000_000,
             "납기일": "2026-04-01",
@@ -225,9 +216,7 @@ def test_case04_column_map_partial_override(
             "담당자": "박과장",
         }
     ]
-    df = _make_overdue_df(rows)
-    p = tmp_path / "partial.xlsx"
-    df.to_excel(p, index=False)
+    in_dir = _write_input(tmp_path / "in", _make_overdue_df(rows))
 
     sent: list[dict[str, Any]] = []
 
@@ -237,10 +226,13 @@ def test_case04_column_map_partial_override(
 
     monkeypatch.setattr(discord, "send_with_level", _capture)
 
-    # vendor 키만 override — 나머지(invoice_id/amount/due_date/days_overdue)는 default 사용.
-    summary = scenario.run(input_path=p, column_map={"vendor": "회사명"})
+    result = scenario.run(
+        input_dir=in_dir,
+        output_dir=tmp_path / "out",
+        config={"column_map": {"vendor": "회사명"}},
+    )
 
-    assert summary["sent"] == 1, f"부분 override 실패 — summary={summary!r}"
-    assert summary["errors"] == 0
+    assert result["metrics"]["sent"] == 1, f"부분 override 실패 — result={result!r}"
+    assert result["metrics"]["errors"] == 0
     assert len(sent) == 1
     assert "AX_VENDOR_001" in sent[0]["title"]

@@ -23,9 +23,11 @@ def case_input(tmp_path: Path) -> Path:
 def test_case01_run_produces_styled_report(case_input: Path, tmp_path: Path) -> None:
     from cases.case01_excel_vendor_report import scenario
 
-    out = tmp_path / "output" / "report.xlsx"
-    scenario.run(input_dir=case_input, output_path=out)
+    out_dir = tmp_path / "output"
+    result = scenario.run(input_dir=case_input, output_dir=out_dir)
+    out = result["output_files"][0]
     assert out.exists()
+    assert result["case_id"] == "case01"
 
     wb = load_workbook(out)
     ws = wb.active

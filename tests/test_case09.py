@@ -7,22 +7,12 @@ import pytest
 def test_case09_safe_mode_returns_deterministic_result(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """동일 입력 2회 실행 시 결과 동일 (강화: fake AI 응답으로 contract 검증)."""
+    """동일 입력 2회 실행 시 결과 동일 (T38: config["incoming_message"] 기반)."""
     monkeypatch.setenv("DEMO_SAFE", "1")
-    monkeypatch.chdir(tmp_path)
 
-    # 입력 파일 생성
-    case_dir = Path("cases/case09_ai_email_drafter")
-    case_dir.mkdir(parents=True, exist_ok=True)
-    (case_dir / "input").mkdir(exist_ok=True)
-    (case_dir / "output").mkdir(exist_ok=True)
-    (case_dir / "input" / "sample_incoming.txt").write_text(
-        "제목: 단가 문의\n본문: 안녕하세요. 단가표 부탁드립니다.",
-        encoding="utf-8",
-    )
+    incoming = "제목: 단가 문의\n본문: 안녕하세요. 단가표 부탁드립니다."
 
-    # client.chat을 deterministic fake로 교체 — safe-mode short-circuit을
-    # 우회하여 실제 파싱·직렬화 경로를 검증한다.
+    # client.chat을 deterministic fake로 교체.
     fake_drafts = '[{"option": 1, "subject": "테스트 답신", "body": "본문"}]'
     from core.ai import client as ai_client
 
@@ -30,18 +20,14 @@ def test_case09_safe_mode_returns_deterministic_result(
 
     from cases.case09_ai_email_drafter import scenario
 
-    scenario.run(
-        input_path=case_dir / "input" / "sample_incoming.txt",
-        output_path=case_dir / "output" / "drafts.json",
-    )
-    text1 = (case_dir / "output" / "drafts.json").read_text(encoding="utf-8")
-    scenario.run(
-        input_path=case_dir / "input" / "sample_incoming.txt",
-        output_path=case_dir / "output" / "drafts.json",
-    )
-    text2 = (case_dir / "output" / "drafts.json").read_text(encoding="utf-8")
+    out1 = tmp_path / "out1"
+    out2 = tmp_path / "out2"
+    r1 = scenario.run(output_dir=out1, config={"incoming_message": incoming})
+    r2 = scenario.run(output_dir=out2, config={"incoming_message": incoming})
 
-    # 두 번째 실행 결과가 첫 번째와 동일 (deterministic)
+    text1 = r1["output_files"][0].read_text(encoding="utf-8")
+    text2 = r2["output_files"][0].read_text(encoding="utf-8")
+
     assert text1 == text2
     parsed = json.loads(text1)
     assert isinstance(parsed, list)

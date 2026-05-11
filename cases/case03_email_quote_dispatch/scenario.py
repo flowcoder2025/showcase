@@ -1,9 +1,8 @@
-"""case03 — 견적 메일 일괄 발송 (개인화 + PDF 첨부).
+"""case03 — 견적 메일 일괄 발송 (개인화 + PDF 첨부) — T38 ScenarioResult signature.
 
-Architecture
+Architecture (T38 시그니처 정식화 후에도 보존):
 - thin wrapper: scenario.py가 ``core.messaging.email`` + ``core.docgen.{pdf, template}`` 만 호출.
 - 단일 patch point: ``email.send`` (T7b 결정 — INTERCEPT_TARGETS["gmail"]).
-  ``send`` 만 patch 되어도 모든 외부 호출이 격리된다 (gmail_api/smtp internal helper 미포함).
 - per-request error isolation: PDF 실패 시 첨부 없이 발송, send 실패 / build 실패 시 errors+1.
 - column_map 강제: 다른 입력 컬럼 스키마에서도 동일 시나리오 재호출 가능.
 - XSS 방어: HTML 본문은 ``email.build_html_body`` 사용 (autoescape, T7a.5).
@@ -18,17 +17,27 @@ NOTE: 외부 호출은 모듈 참조로 호출(safe_mode patch 격리)::
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import rich.markup
 
+from cases._protocols import Backends, ScenarioResult
+from core.backends.factory import default_backends, safe_backends
 from core.common import timer
 from core.common.demo_logger import demo_logger
+from core.common.safe_mode_v2 import is_safe
 from core.docgen import pdf as pdf_mod
 from core.docgen import template as tmpl_mod
 from core.messaging import email as email_mod
+from core.progress import ProgressEvent
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_IN = _REPO_ROOT / "personas/sample_data"
+_DEFAULT_OUT = Path(__file__).resolve().parent / "output"
+_INPUT_NAME = "quote_dispatch_list.xlsx"
 
 COLUMN_MAP: dict[str, str] = {
     "vendor": "거래처명",
@@ -75,56 +84,54 @@ def _build_quote_md(ctx: dict[str, str]) -> str:
     )
 
 
+def _resolve_input_path(input_dir: Path | None) -> Path:
+    """T38: input_dir / quote_dispatch_list.xlsx; default falls back to case input/ then personas."""  # noqa: E501
+    if input_dir is not None:
+        return Path(input_dir) / _INPUT_NAME
+    case_dir = Path(__file__).resolve().parent
+    cand = case_dir / "input" / _INPUT_NAME
+    if cand.exists():
+        return cand
+    return _DEFAULT_IN / _INPUT_NAME
+
+
 def run(
-    input_path: Path | str | None = None,
-    output_dir: Path | str | None = None,
     *,
-    column_map: dict[str, str] | None = None,
-) -> dict[str, Any]:
-    """50건 일괄 발송: 단순 PDF 생성 + 개인화 메일 + 첨부.
-
-    Returns
-    -------
-    summary : dict
-        ``{"built": int, "sent": int, "errors": int, "pdf_failed": int,
-           "transports": {transport: count}, "rows": [...]}``
-
-        - ``built`` — ``build_message`` 성공한 건수
-        - ``sent`` — ``email.send`` 가 ``sent=True`` 또는 transport
-          ``safe-fallback`` 을 반환한 건수 (시연 측면에선 둘 다 "처리됨")
-        - ``errors`` — build_message / send 실패 건수 (PDF 실패는 제외 — 첨부만 누락)
-        - ``pdf_failed`` — md_to_pdf 단계 실패 건수 (T8.5 — 시연 시 PDF 실패 가시)
-    """
-    log = demo_logger("case03_email_quote_dispatch")
-    case_dir = Path(__file__).parent
-    cm = {**COLUMN_MAP, **(column_map or {})}
-
-    if input_path is None:
-        cand = case_dir / "input" / "quote_dispatch_list.xlsx"
-        if not cand.exists():
-            cand = Path("personas/sample_data/quote_dispatch_list.xlsx")
-        input_path = cand
-
-    if output_dir is None:
-        output_dir = case_dir / "output"
-    out_dir = Path(output_dir)
+    input_dir: Path | None = None,
+    output_dir: Path | None = None,
+    backends: Backends | None = None,
+    progress_cb: Callable[[ProgressEvent], None] | None = None,
+    config: dict[str, Any] | None = None,
+) -> ScenarioResult:
+    """50건 일괄 발송: 단순 PDF 생성 + 개인화 메일 + 첨부."""
+    out_dir = Path(output_dir) if output_dir else _DEFAULT_OUT
     out_dir.mkdir(parents=True, exist_ok=True)
+    _ = backends or (safe_backends() if is_safe() else default_backends())  # T40 wire-up
+    cfg = config or {}
+    column_map = cfg.get("column_map")
+    cm = {**COLUMN_MAP, **(column_map or {})}
+    input_path = _resolve_input_path(input_dir)
 
-    df = pd.read_excel(Path(input_path))
-    summary: dict[str, Any] = {
-        "built": 0,
-        "sent": 0,
-        "errors": 0,
-        "pdf_failed": 0,  # T8.5 — PDF 실패 별도 카운터 (시연 가시성)
-        "transports": {},
-        "rows": [],
-    }
-    rows_list: list[dict[str, Any]] = summary["rows"]
-    transports: dict[str, int] = summary["transports"]
+    log = demo_logger("case03_email_quote_dispatch")
+    df = pd.read_excel(input_path)
+    built = 0
+    sent_count = 0
+    errors = 0
+    pdf_failed = 0
+    transports: dict[str, int] = {}
+    rows_list: list[dict[str, Any]] = []
+    output_pdfs: list[Path] = []
 
     if df.empty:
         log.success("입력이 비어있어 발송할 견적이 없습니다.")
-        return summary
+        return {
+            "case_id": "case03",
+            "summary_text": "발송 대상 0건",
+            "output_files": [],
+            "metrics": {"built": 0, "sent": 0, "errors": 0, "pdf_failed": 0},
+            "failures": [],
+            "extras": {"transports": transports, "rows": rows_list},
+        }
 
     with timer.measure(log, "견적 메일 일괄 발송", before_minutes=60):
         for _, row in df.iterrows():
@@ -132,7 +139,6 @@ def run(
             vendor = str(row[cm["vendor"]]).strip()
             contact = str(row[cm["contact"]])
             to_addr = str(row[cm["to"]])
-            # T8.5 — NaN 명시 검증. pandas read_excel은 빈 셀을 float('nan')로 채운다.
             amount_raw = row[cm["amount"]]
             if pd.isna(amount_raw):
                 log.warning(f"[{quote_no}] amount is NaN — using 0")
@@ -152,7 +158,6 @@ def run(
                 "history": str(row[cm["history"]]),
             }
 
-            # PDF 생성 (단순 견적서 1건) — 실패는 첨부만 누락하고 발송 진행.
             md_path = out_dir / f"{quote_no}.md"
             pdf_target = out_dir / f"{quote_no}.pdf"
             pdf_ok = False
@@ -160,14 +165,14 @@ def run(
                 md_path.write_text(_build_quote_md(ctx), encoding="utf-8")
                 pdf_mod.md_to_pdf(md_path, pdf_target)
                 pdf_ok = True
+                output_pdfs.append(pdf_target)
             except pdf_mod.MdToPdfError as e:
                 log.warning(f"[{quote_no}] pdf failed: {type(e).__name__}: {e}")
-                summary["pdf_failed"] = int(summary["pdf_failed"]) + 1
+                pdf_failed += 1
             except Exception as e:  # noqa: BLE001 — pdf 단계 보호 (md write 등)
                 log.warning(f"[{quote_no}] pdf step failed: {type(e).__name__}: {e}")
-                summary["pdf_failed"] = int(summary["pdf_failed"]) + 1
+                pdf_failed += 1
 
-            # 메일 빌드 + 발송 — 실패는 errors+1, 다른 row 진행.
             try:
                 html_body = email_mod.build_html_body(EMAIL_HTML_TEMPLATE, ctx)
                 text_body = tmpl_mod.render_string(EMAIL_TEXT_TEMPLATE, ctx)
@@ -182,11 +187,9 @@ def run(
                     body_html=html_body,
                     attachments=attachments,
                 )
-                summary["built"] = int(summary["built"]) + 1
+                built += 1
 
                 result = email_mod.send(msg)
-                # safe_mode.intercept 가 patch한 경우 dummy = {"_safe": True, ...}.
-                # 정상 경로는 :class:`SendResult` (transport 키 보장).
                 if isinstance(result, dict) and result.get("_safe") is True:
                     transport_name = "safe-fallback"
                     sent_flag = False
@@ -194,7 +197,7 @@ def run(
                     transport_name = str(result["transport"])
                     sent_flag = bool(result["sent"])
                 if sent_flag or transport_name == "safe-fallback":
-                    summary["sent"] = int(summary["sent"]) + 1
+                    sent_count += 1
                 transports[transport_name] = transports.get(transport_name, 0) + 1
 
                 vendor_safe = rich.markup.escape(vendor)
@@ -209,13 +212,22 @@ def run(
                 )
             except Exception as e:  # noqa: BLE001 — per-request 격리
                 log.warning(f"[{quote_no}] failed: {type(e).__name__}: {e}")
-                summary["errors"] = int(summary["errors"]) + 1
+                errors += 1
 
-    log.success(
-        f"빌드 {summary['built']}건 / 발송 {summary['sent']}건 / "
-        f"PDF 실패 {summary['pdf_failed']}건 / 에러 {summary['errors']}건"
-    )
-    return summary
+    log.success(f"빌드 {built}건 / 발송 {sent_count}건 / PDF 실패 {pdf_failed}건 / 에러 {errors}건")
+    return {
+        "case_id": "case03",
+        "summary_text": f"발송 {sent_count}건 / 빌드 {built}건 / 에러 {errors}건",
+        "output_files": output_pdfs,
+        "metrics": {
+            "built": built,
+            "sent": sent_count,
+            "errors": errors,
+            "pdf_failed": pdf_failed,
+        },
+        "failures": [],
+        "extras": {"transports": transports, "rows": rows_list},
+    }
 
 
 if __name__ == "__main__":

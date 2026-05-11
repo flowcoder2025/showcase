@@ -52,9 +52,11 @@ def invoices_input(tmp_path: Path) -> Path:
             },
         ]
     )
-    p = tmp_path / "invoices.xlsx"
-    df.to_excel(p, index=False)
-    return p
+    # T38: scenario takes input_dir, expects `invoices.xlsx` inside.
+    in_dir = tmp_path / "in"
+    in_dir.mkdir()
+    df.to_excel(in_dir / "invoices.xlsx", index=False)
+    return in_dir
 
 
 def test_case02_run_detects_outliers_and_calls_discord(
@@ -73,8 +75,9 @@ def test_case02_run_detects_outliers_and_calls_discord(
 
     monkeypatch.setattr(discord, "send", _capture)
 
-    out = tmp_path / "output" / "outliers.xlsx"
-    scenario.run(input_path=invoices_input, output_path=out, discord_alert=True)
+    out_dir = tmp_path / "output"
+    result = scenario.run(input_dir=invoices_input, output_dir=out_dir)
+    out = result["output_files"][0]
 
     assert out.exists()
     assert len(sent) >= 1

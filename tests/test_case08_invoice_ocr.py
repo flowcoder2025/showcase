@@ -1,8 +1,4 @@
-"""T15: case08 — 세금계산서 일괄 OCR → 회계 CSV.
-
-``core.ocr.invoice.extract`` mock 기반 contract 검증. 실제 Ollama 호출 없음.
-seed 30장은 ``personas/sample_data/invoices_scanned/`` 에 미리 생성돼 있어야 한다.
-"""
+"""T15: case08 — 세금계산서 일괄 OCR → 회계 CSV (T38 ScenarioResult)."""
 
 from __future__ import annotations
 
@@ -18,7 +14,6 @@ from cases.case08_ocr_invoice_to_csv import scenario
 from core.ocr import invoice
 from core.ocr.invoice import InvoiceData
 
-# 알고리즘 검증된 known-valid 공개 사업자번호 (test_ocr_invoice.py와 동일).
 _VALID_SUPPLIER = "220-81-62517"  # 삼성전자
 _VALID_BUYER = "120-81-47521"  # 카카오
 
@@ -59,13 +54,6 @@ def _mock_invoice(
     fail_filenames: tuple[str, ...] = (),
     invalid_biznum_filenames: tuple[str, ...] = (),
 ) -> list[Path]:
-    """``invoice.extract`` mock.
-
-    Args:
-        response: 기본 InvoiceData (None이면 valid 1건).
-        fail_filenames: ValueError raise 할 파일.
-        invalid_biznum_filenames: 응답 자체는 성공하지만 supplier_biznum이 invalid.
-    """
     calls: list[Path] = []
     default = response or _make_invoice_data()
 
@@ -75,11 +63,18 @@ def _mock_invoice(
         if p.name in fail_filenames:
             raise ValueError(f"mock OCR failure for {p.name}")
         if p.name in invalid_biznum_filenames:
-            return _make_invoice_data(supplier_biznum="123-45-67890")  # 체크섬 fail
+            return _make_invoice_data(supplier_biznum="123-45-67890")
         return default
 
     monkeypatch.setattr(invoice, "extract", _fake)
     return calls
+
+
+def _output_paths(result: dict, out_dir: Path) -> tuple[Path, Path, Path]:
+    """case08 output_files 순서: utf8 csv / cp949 csv / failures json."""
+    files = result["output_files"]
+    assert len(files) == 3
+    return files[0], files[1], files[2]
 
 
 # -- 1. deterministic safe mode --------------------------------------------
@@ -88,7 +83,6 @@ def _mock_invoice(
 def test_scenario_runs_safe_mode_returns_deterministic_result(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """safe-mode 두 번 실행 → elapsed_seconds 제외 핵심 키 동일."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(3):
@@ -98,16 +92,14 @@ def test_scenario_runs_safe_mode_returns_deterministic_result(
     out1 = tmp_path / "out1"
     out2 = tmp_path / "out2"
 
-    summary1 = scenario.run(input_dir=input_dir, output_dir=out1)
-    summary2 = scenario.run(input_dir=input_dir, output_dir=out2)
+    r1 = scenario.run(input_dir=input_dir, output_dir=out1)
+    r2 = scenario.run(input_dir=input_dir, output_dir=out2)
 
-    # 핵심 invariants — elapsed_seconds와 per_image_ms는 시간 의존이라 제외.
-    assert summary1["processed"] == summary2["processed"] == 3
-    assert summary1["verified"] == summary2["verified"] == 3
-    assert summary1["failed"] == summary2["failed"] == 0
-    assert summary1["failures"] == summary2["failures"] == []
+    assert r1["metrics"]["processed"] == r2["metrics"]["processed"] == 3
+    assert r1["metrics"]["verified"] == r2["metrics"]["verified"] == 3
+    assert r1["metrics"]["failed"] == r2["metrics"]["failed"] == 0
+    assert r1["failures"] == r2["failures"] == []
 
-    # CSV 내용도 동일해야 한다 (deterministic input mock).
     assert (out1 / "invoices_utf8.csv").read_bytes() == (out2 / "invoices_utf8.csv").read_bytes()
     assert (out1 / "invoices_cp949.csv").read_bytes() == (out2 / "invoices_cp949.csv").read_bytes()
 
@@ -122,22 +114,17 @@ def test_scenario_creates_both_csv_outputs(tmp_path: Path, monkeypatch: pytest.M
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    utf8_path = out_dir / "invoices_utf8.csv"
-    cp949_path = out_dir / "invoices_cp949.csv"
+    utf8_path, cp949_path, failures_path = _output_paths(result, out_dir)
     assert utf8_path.exists()
     assert cp949_path.exists()
-    assert str(utf8_path) in summary["outputs"]
-    assert str(cp949_path) in summary["outputs"]
+    assert failures_path.name == "validation_failures.json"
 
-    # utf-8 BOM 확인 (utf-8-sig).
     with utf8_path.open("rb") as f:
         assert f.read(3) == b"\xef\xbb\xbf"
-    # cp949는 BOM 없음.
     with cp949_path.open("rb") as f:
         assert f.read(3) != b"\xef\xbb\xbf"
-    # cp949 인코딩으로 읽을 수 있어야 한다.
     cp949_text = cp949_path.read_text(encoding="cp949")
     assert "거래일" in cp949_text
 
@@ -153,8 +140,6 @@ def test_scenario_separates_verified_from_failed(
     for i in range(5):
         _make_blank_png(input_dir / f"inv_{i:03d}.png")
 
-    # inv_001: extract raises (OCR 실패).
-    # inv_003: post-validation에서 supplier_biznum 체크섬 fail.
     _mock_invoice(
         monkeypatch,
         fail_filenames=("inv_001.png",),
@@ -162,11 +147,11 @@ def test_scenario_separates_verified_from_failed(
     )
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 5
-    assert summary["verified"] == 3
-    assert summary["failed"] == 2
+    assert result["metrics"]["processed"] == 5
+    assert result["metrics"]["verified"] == 3
+    assert result["metrics"]["failed"] == 2
 
     failures_path = out_dir / "validation_failures.json"
     assert failures_path.exists()
@@ -180,26 +165,24 @@ def test_scenario_separates_verified_from_failed(
 def test_scenario_writes_empty_failures_when_all_pass(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """실패 0건이어도 validation_failures.json은 작성 (빈 리스트)."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     _make_blank_png(input_dir / "inv_001.png")
     _mock_invoice(monkeypatch)
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
     failures_path = out_dir / "validation_failures.json"
     assert failures_path.exists()
     assert json.loads(failures_path.read_text(encoding="utf-8")) == []
-    assert summary["failed"] == 0
+    assert result["metrics"]["failed"] == 0
 
 
 # -- 4. processes all seeds (real seeds on disk) ---------------------------
 
 
 def test_scenario_processes_all_seeds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """personas/sample_data/invoices_scanned/ 전체를 처리한다."""
     seed_dir = Path("personas/sample_data/invoices_scanned")
     if not seed_dir.exists():
         pytest.skip("invoices_scanned seed missing — run generate_invoices.py first")
@@ -211,10 +194,10 @@ def test_scenario_processes_all_seeds(tmp_path: Path, monkeypatch: pytest.Monkey
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=seed_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=seed_dir, output_dir=out_dir)
 
-    assert summary["processed"] == seed_count
-    assert seed_count >= 30  # T15 요구: 30장 이상.
+    assert result["metrics"]["processed"] == seed_count
+    assert seed_count >= 30
 
 
 # -- 5. meta.yaml 구조 ------------------------------------------------------
@@ -246,8 +229,8 @@ def test_scenario_skips_underscore_prefix_files(
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
-    assert summary["processed"] == 2
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    assert result["metrics"]["processed"] == 2
 
 
 # -- 7. personas fallback ---------------------------------------------------
@@ -260,20 +243,19 @@ def test_scenario_uses_personas_fallback_when_input_empty(
     seed_dir.mkdir()
     for i in range(3):
         _make_blank_png(seed_dir / f"inv_{i:03d}.png")
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", seed_dir)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", seed_dir)
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=None, output_dir=out_dir)
+    result = scenario.run(input_dir=None, output_dir=out_dir)
 
-    assert summary["processed"] == 3
+    assert result["metrics"]["processed"] == 3
 
 
 # -- 8. 면세 거래 통과 ------------------------------------------------------
 
 
 def test_scenario_accepts_tax_free_invoice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """vat=0 (면세) 거래도 verified로 통과한다."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     _make_blank_png(input_dir / "inv_001.png")
@@ -282,9 +264,9 @@ def test_scenario_accepts_tax_free_invoice(tmp_path: Path, monkeypatch: pytest.M
     _mock_invoice(monkeypatch, response=tax_free)
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
-    assert summary["verified"] == 1
-    assert summary["failed"] == 0
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    assert result["metrics"]["verified"] == 1
+    assert result["metrics"]["failed"] == 0
 
 
 # -- 9. _classify_failure 단위 검증 -----------------------------------------
@@ -310,8 +292,6 @@ def test_classify_failure_invalid_buyer_biznum() -> None:
 
 
 def test_classify_failure_vat_mismatch() -> None:
-    # vat이 0도 아니고 supply // 10 ±1 허용범위 밖이면 불일치로 분류.
-    # ±1 tolerance는 R2-H3 (banker's rounding tolerance) 반영.
     data = _make_invoice_data(total_supply=1_000_000, total_vat=99_000)
     reason = scenario._classify_failure(data)
     assert reason is not None
@@ -319,13 +299,11 @@ def test_classify_failure_vat_mismatch() -> None:
 
 
 def test_classify_failure_vat_within_tolerance() -> None:
-    # ±1 tolerance: supply=1005 → expected=100 (truncation), actual=101 → 통과.
     data = _make_invoice_data(total_supply=1005, total_vat=101, total_amount=1106)
     assert scenario._classify_failure(data) is None
 
 
 def test_classify_failure_tax_free_passes() -> None:
-    """vat=0은 면세로 간주 → 통과."""
     data = _make_invoice_data(total_supply=1_000_000, total_vat=0, total_amount=1_000_000)
     assert scenario._classify_failure(data) is None
 
@@ -333,9 +311,7 @@ def test_classify_failure_tax_free_passes() -> None:
 # -- 10. per-image timer + summary 구조 ------------------------------------
 
 
-def test_scenario_summary_includes_per_image_ms(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scenario_extras_per_image_ms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(4):
@@ -343,16 +319,16 @@ def test_scenario_summary_includes_per_image_ms(
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    per_image: list[dict[str, Any]] = summary["per_image_ms"]
+    per_image: list[dict[str, Any]] = result["extras"]["per_image_ms"]
     assert len(per_image) == 4
     for entry in per_image:
         assert "filename" in entry
         assert "elapsed_ms" in entry
         assert isinstance(entry["elapsed_ms"], float)
-    assert "elapsed_seconds" in summary
-    assert isinstance(summary["elapsed_seconds"], float)
+    assert "elapsed_seconds" in result["metrics"]
+    assert isinstance(result["metrics"]["elapsed_seconds"], float)
 
 
 # -- 11. 빈 디렉토리 --------------------------------------------------------
@@ -363,19 +339,15 @@ def test_scenario_zero_invoices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     input_dir.mkdir()
     empty_seed = tmp_path / "empty"
     empty_seed.mkdir()
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", empty_seed)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", empty_seed)
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
-    assert summary["processed"] == 0
-    # CSV는 헤더만 작성, JSON은 빈 리스트.
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    assert result["metrics"]["processed"] == 0
     utf8_text = (out_dir / "invoices_utf8.csv").read_text(encoding="utf-8-sig")
     assert "거래일" in utf8_text
     assert utf8_text.count("\n") == 1
-
-
-# -- 12. CSV 컬럼 ------------------------------------------------------------
 
 
 # -- 13. T15.5: 품질 경고 (failure_rate >= 50%) ----------------------------
@@ -384,13 +356,11 @@ def test_scenario_zero_invoices(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 def test_scenario_warns_on_high_failure_rate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """>=50% 실패 시 quality_warning=True + failure_rate 정확."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(4):
         _make_blank_png(input_dir / f"inv_{i:03d}.png")
 
-    # 4장 중 2장(50%)를 invalid biznum으로 모킹.
     _mock_invoice(
         monkeypatch,
         invalid_biznum_filenames=("inv_000.png", "inv_001.png"),
@@ -414,13 +384,12 @@ def test_scenario_warns_on_high_failure_rate(
     monkeypatch.setattr(scenario, "demo_logger", lambda case_id: _WarnSpy())
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 4
-    assert summary["failed"] == 2
-    assert summary["failure_rate"] == 0.5
-    assert summary["quality_warning"] is True
-    # prominent warning이 demo_logger.warning을 통해 출력됐는지 확인.
+    assert result["metrics"]["processed"] == 4
+    assert result["metrics"]["failed"] == 2
+    assert result["metrics"]["failure_rate"] == 0.5
+    assert result["metrics"]["quality_warning"] is True
     assert any("품질 경고" in w for w in warnings_captured)
     assert any("DEMO_SAFE" in w for w in warnings_captured)
 
@@ -428,40 +397,37 @@ def test_scenario_warns_on_high_failure_rate(
 def test_scenario_no_warning_below_threshold(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """실패율이 50% 미만이면 quality_warning=False (기본 시드 ~7% 실패에 해당)."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(10):
         _make_blank_png(input_dir / f"inv_{i:03d}.png")
 
-    # 10장 중 1장만 실패 (10%) — threshold 미만.
     _mock_invoice(monkeypatch, fail_filenames=("inv_005.png",))
 
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 10
-    assert summary["failed"] == 1
-    assert summary["failure_rate"] == 0.1
-    assert summary["quality_warning"] is False
+    assert result["metrics"]["processed"] == 10
+    assert result["metrics"]["failed"] == 1
+    assert result["metrics"]["failure_rate"] == 0.1
+    assert result["metrics"]["quality_warning"] is False
 
 
 def test_scenario_no_warning_when_zero_processed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """processed=0 (빈 디렉토리)일 때 quality_warning=False, failure_rate=0.0."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     empty_seed = tmp_path / "empty"
     empty_seed.mkdir()
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", empty_seed)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", empty_seed)
 
     _mock_invoice(monkeypatch)
     out_dir = tmp_path / "out"
-    summary = scenario.run(input_dir=input_dir, output_dir=out_dir)
-    assert summary["processed"] == 0
-    assert summary["failure_rate"] == 0.0
-    assert summary["quality_warning"] is False
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    assert result["metrics"]["processed"] == 0
+    assert result["metrics"]["failure_rate"] == 0.0
+    assert result["metrics"]["quality_warning"] is False
 
 
 def test_scenario_csv_has_standard_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

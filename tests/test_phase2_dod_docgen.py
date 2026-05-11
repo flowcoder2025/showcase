@@ -39,12 +39,15 @@ def _stub_pdf_ok(md_path: Path | str, out_path: Path | str, **_kw: Any) -> None:
 
 
 @pytest.fixture
-def case05_seed_input() -> Path:
-    """Real 10-request seed used by case05 demo (42 rows). DoD requires this exact file."""
+def case05_seed_input(tmp_path: Path) -> Path:
+    """Real 10-request seed used by case05 demo. T38 returns input_dir (file copied)."""
     p = Path("personas/sample_data/quote_requests.xlsx")
     if not p.exists():
         pytest.skip(f"DoD gap: seed file missing at {p}")
-    return p
+    in_dir = tmp_path / "case05_in"
+    in_dir.mkdir()
+    (in_dir / "quote_requests.xlsx").write_bytes(p.read_bytes())
+    return in_dir
 
 
 @pytest.fixture
@@ -75,11 +78,15 @@ def test_case05_generates_docx_and_pdf(
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=case05_seed_input, output_dir=out)
+    result = scenario.run(input_dir=case05_seed_input, output_dir=out)
 
-    assert summary["docx_count"] == 10, f"DoD gap: docx_count={summary['docx_count']}, expected 10"
-    assert summary["pdf_count"] == 10, f"DoD gap: pdf_count={summary['pdf_count']}, expected 10"
-    assert summary["errors"] == 0
+    assert result["metrics"]["docx_count"] == 10, (
+        f"DoD gap: docx_count={result['metrics']['docx_count']}, expected 10"
+    )
+    assert result["metrics"]["pdf_count"] == 10, (
+        f"DoD gap: pdf_count={result['metrics']['pdf_count']}, expected 10"
+    )
+    assert result["metrics"]["errors"] == 0
 
     docx_files = sorted(out.glob("*.docx"))
     pdf_files = sorted(out.glob("*.pdf"))
@@ -99,7 +106,7 @@ def test_case05_docx_is_valid_zip(
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
     out = tmp_path / "out"
-    scenario.run(input_path=case05_seed_input, output_dir=out)
+    scenario.run(input_dir=case05_seed_input, output_dir=out)
 
     docx_files = sorted(out.glob("*.docx"))
     assert docx_files, "DoD gap: no docx files produced"
@@ -123,7 +130,7 @@ def test_case05_pdf_starts_with_pdf_magic(
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
     out = tmp_path / "out"
-    scenario.run(input_path=case05_seed_input, output_dir=out)
+    scenario.run(input_dir=case05_seed_input, output_dir=out)
 
     pdf_files = sorted(out.glob("*.pdf"))
     assert pdf_files, "DoD gap: no pdf files produced"
@@ -148,19 +155,20 @@ def test_case05_processes_all_quote_requests(
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
-    df = pd.read_excel(case05_seed_input)
+    df = pd.read_excel(case05_seed_input / "quote_requests.xlsx")
     expected_requests = int(df["견적번호"].nunique())
     assert expected_requests == 10, (
         f"DoD gap: seed unique 견적번호 = {expected_requests} (expected 10)"
     )
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=case05_seed_input, output_dir=out)
+    result = scenario.run(input_dir=case05_seed_input, output_dir=out)
+    requests = result["extras"]["requests"]
 
-    assert len(summary["requests"]) == expected_requests, (
-        f"DoD gap: requests={len(summary['requests'])}, expected {expected_requests}"
+    assert len(requests) == expected_requests, (
+        f"DoD gap: requests={len(requests)}, expected {expected_requests}"
     )
-    for entry in summary["requests"]:
+    for entry in requests:
         for key in ("request_id", "vendor", "n_items"):
             assert key in entry, f"DoD gap: requests entry missing key {key!r}"
         assert int(entry["n_items"]) >= 1
@@ -181,17 +189,17 @@ def test_case06_fills_grant_application(
     from core.docgen import hwpx as hwpx_mod
     from personas.sample_data.grant_data import AX_TRADING_GRANT
 
-    summary = scenario.run(template_path=hwpx_template, output_dir=tmp_path)
+    result = scenario.run(output_dir=tmp_path, config={"template_path": hwpx_template})
 
-    out_path = Path(summary["output_path"])
+    out_path = result["output_files"][0]
     assert out_path.exists(), f"DoD gap: output .hwpx missing at {out_path}"
     assert out_path.suffix == ".hwpx"
     assert out_path.stat().st_size > 0
     assert zipfile.is_zipfile(out_path), f"DoD gap: {out_path.name} is not a valid zip"
 
-    assert summary["fields_filled"] == 8
-    assert summary["verification_passed"] is True
-    assert summary["missing_values"] == []
+    assert result["metrics"]["fields_filled"] == 8
+    assert result["metrics"]["verification_passed"] is True
+    assert result["extras"]["missing_values"] == []
 
     # extract_text 로 8 필드 값(표시 형식 적용 후) 모두 포함 확인.
     text = hwpx_mod.extract_text(out_path)
@@ -277,7 +285,7 @@ def test_case06_demo_logger_emits_hangul_gui_guidance(
     cap = _CaptureLogger()
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
-    scenario.run(template_path=hwpx_template, output_dir=tmp_path)
+    scenario.run(output_dir=tmp_path, config={"template_path": hwpx_template})
 
     combined = "\n".join(cap.infos + cap.successes + cap.warnings)
     # "한글" 문자열 또는 "Hancom" 영문 표기 중 하나는 반드시 등장.

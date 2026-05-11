@@ -42,21 +42,27 @@ def _safe_send_result(msg: EmailMessage, **_kw: Any) -> dict[str, Any]:
 
 
 @pytest.fixture
-def case03_seed_input() -> Path:
-    """Real 50-row seed used by case03 demo. DoD requires this exact file."""
+def case03_seed_input(tmp_path: Path) -> Path:
+    """Real 50-row seed used by case03 demo (T38: input_dir 형태로 변환)."""
     p = Path("personas/sample_data/quote_dispatch_list.xlsx")
     if not p.exists():
         pytest.skip(f"DoD gap: seed file missing at {p}")
-    return p
+    in_dir = tmp_path / "case03_in"
+    in_dir.mkdir()
+    (in_dir / "quote_dispatch_list.xlsx").write_bytes(p.read_bytes())
+    return in_dir
 
 
 @pytest.fixture
-def case04_seed_input() -> Path:
-    """Real 60-row seed (24/18/12/6 4-level split) used by case04 demo."""
+def case04_seed_input(tmp_path: Path) -> Path:
+    """Real 60-row seed (24/18/12/6 4-level split) used by case04 demo (T38: input_dir)."""
     p = Path("personas/sample_data/overdue_invoices.xlsx")
     if not p.exists():
         pytest.skip(f"DoD gap: seed file missing at {p}")
-    return p
+    in_dir = tmp_path / "case04_in"
+    in_dir.mkdir()
+    (in_dir / "overdue_invoices.xlsx").write_bytes(p.read_bytes())
+    return in_dir
 
 
 @pytest.fixture(autouse=True)
@@ -99,11 +105,15 @@ def test_case03_dispatches_50_emails_safe_mode(
     monkeypatch.setattr(email_mod, "send", capture_send)
 
     out = tmp_path / "out"
-    summary = scenario.run(input_path=case03_seed_input, output_dir=out)
+    result = scenario.run(input_dir=case03_seed_input, output_dir=out)
 
-    assert summary["built"] == 50, f"DoD gap: built={summary['built']}, expected 50"
-    assert summary["sent"] == 50, f"DoD gap: sent={summary['sent']}, expected 50"
-    assert summary["errors"] == 0
+    assert result["metrics"]["built"] == 50, (
+        f"DoD gap: built={result['metrics']['built']}, expected 50"
+    )
+    assert result["metrics"]["sent"] == 50, (
+        f"DoD gap: sent={result['metrics']['sent']}, expected 50"
+    )
+    assert result["metrics"]["errors"] == 0
     assert len(captured) == 50
 
 
@@ -186,9 +196,9 @@ def test_case04_runs_all_four_levels(
 
     monkeypatch.setattr(discord, "send_with_level", capture)
 
-    summary = scenario.run(input_path=case04_seed_input)
+    result = scenario.run(input_dir=case04_seed_input)
 
-    by_level = summary["by_level"]
+    by_level = result["extras"]["by_level"]
     assert set(by_level.keys()) == {"friendly", "neutral", "strict", "final"}, (
         f"DoD gap: missing levels — by_level={by_level!r}"
     )
@@ -196,16 +206,12 @@ def test_case04_runs_all_four_levels(
         assert by_level[level] >= 1, (
             f"DoD gap: level={level} not triggered (count={by_level[level]})"
         )
-    # secondary assertion: capture stream confirms send_with_level invoked per level.
     assert set(captured_levels) == {"friendly", "neutral", "strict", "final"}
 
 
 def test_case04_seed_distribution(case04_seed_input: Path) -> None:
-    """DoD: 60건 시드가 24/18/12/6 분포 (friendly/neutral/strict/final)를 만족.
-
-    case04 시연의 기준 시드 — 분포가 깨지면 4단계 시연이 약화된다.
-    """
-    df = pd.read_excel(case04_seed_input)
+    """DoD: 60건 시드가 24/18/12/6 분포 (friendly/neutral/strict/final)를 만족."""
+    df = pd.read_excel(case04_seed_input / "overdue_invoices.xlsx")
     assert len(df) == 60, f"DoD gap: seed has {len(df)} rows, expected 60"
 
     from cases.case04_discord_overdue_alert.scenario import classify_level
@@ -264,7 +270,7 @@ def test_discord_send_logs_do_not_leak_url(
     # demo_logger 경로 (timer.measure success/info 라인 등)를 검사 대상으로 본다.
     monkeypatch.setattr(discord, "send_with_level", lambda **_k: {"status": 204})
 
-    scenario.run(input_path=case04_seed_input)
+    scenario.run(input_dir=case04_seed_input)
 
     out = capsys.readouterr()
     combined = out.out + out.err

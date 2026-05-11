@@ -1,6 +1,7 @@
-"""T11: case07 — 영수증 일괄 OCR → 경비 정리 엑셀.
+"""T11: case07 — 영수증 일괄 OCR → 경비 정리 엑셀 (T38 ScenarioResult).
 
 ``core.ocr.receipt.extract`` mock 기반 contract 검증. 실제 Ollama 호출 없음.
+output_dir 기반 (T38) — 결과 xlsx 파일은 ``result["output_files"][0]`` 로 접근.
 """
 
 from __future__ import annotations
@@ -16,11 +17,8 @@ from cases.case07_ocr_receipt_to_excel import scenario
 from core.ocr import receipt
 from core.ocr.receipt import ReceiptData
 
-# -- helpers ---------------------------------------------------------------
-
 
 def _make_blank_png(path: Path) -> None:
-    """1x1 흰색 PNG — input 디렉토리 채움 용도."""
     Image.new("RGB", (10, 10), "white").save(path)
 
 
@@ -29,7 +27,6 @@ def _mock_receipt(
     response: ReceiptData | None = None,
     fail_filenames: tuple[str, ...] = (),
 ) -> list[Path]:
-    """``receipt.extract`` mock — ``fail_filenames``는 ValueError raise."""
     calls: list[Path] = []
     default: ReceiptData = response or ReceiptData(
         merchant="스타벅스 강남점",
@@ -50,6 +47,12 @@ def _mock_receipt(
     return calls
 
 
+def _output_xlsx(result: dict) -> Path:
+    out_path = result["output_files"][0]
+    assert out_path.name == "expense_report.xlsx"
+    return out_path
+
+
 # -- 1. 기본 처리 ----------------------------------------------------------
 
 
@@ -62,18 +65,18 @@ def test_run_processes_all_images_in_input_dir(
         _make_blank_png(input_dir / f"r{i:03d}.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
+    out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    assert summary["processed"] == 5
-    assert summary["errors"] == 0
-    assert output_path.exists()
+    assert result["metrics"]["processed"] == 5
+    assert result["metrics"]["errors"] == 0
+    assert out_path.exists()
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
-    # 헤더 1행 + 데이터 5행 = 총 6행
     assert ws.max_row == 6
 
 
@@ -83,25 +86,20 @@ def test_run_processes_all_images_in_input_dir(
 def test_run_uses_personas_fallback_when_input_empty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """case input/ 디렉토리가 비어 있으면 personas/sample_data/receipts/ 사용."""
-    # personas 디렉토리에 시드가 없어도 동작하도록 fallback 위치를 monkeypatch
     seed_dir = tmp_path / "seeds"
     seed_dir.mkdir()
     for i in range(3):
         _make_blank_png(seed_dir / f"r{i:03d}.png")
-    # 정답 파일도 추가 — _underscore prefix 스킵 검증 겸함
     (seed_dir / "_ground_truth.json").write_text("[]", encoding="utf-8")
 
-    # case 디렉토리의 input은 빈 디렉토리로 두고 fallback 경로를 monkeypatch
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", seed_dir)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", seed_dir)
     _mock_receipt(monkeypatch)
 
-    output_path = tmp_path / "out" / "expense.xlsx"
-    # input_dir=None → 기본값 (case_dir/input → 비어있음 → fallback)
-    summary = scenario.run(input_dir=None, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=None, output_dir=out_dir)
 
-    assert summary["processed"] == 3
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 3
+    assert result["metrics"]["errors"] == 0
 
 
 # -- 3. per-image 실패 격리 -------------------------------------------------
@@ -116,17 +114,17 @@ def test_run_continues_after_per_image_failure(
         _make_blank_png(input_dir / f"r{i:03d}.png")
 
     _mock_receipt(monkeypatch, fail_filenames=("r001.png", "r003.png"))
-    output_path = tmp_path / "out" / "expense.xlsx"
+    out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    assert summary["processed"] == 2
-    assert summary["errors"] == 2
+    assert result["metrics"]["processed"] == 2
+    assert result["metrics"]["errors"] == 2
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
-    # 헤더 + 성공 2건 = 3행
     assert ws.max_row == 3
 
 
@@ -149,14 +147,15 @@ def test_run_safe_mode_returns_safe_fallback_data(
         raw_text="safe_dummy: abc123",
     )
     _mock_receipt(monkeypatch, response=safe_data)
-    output_path = tmp_path / "out" / "expense.xlsx"
+    out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    assert summary["processed"] == 4
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 4
+    assert result["metrics"]["errors"] == 0
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     merchants = [ws.cell(row=r, column=2).value for r in range(2, 6)]
@@ -171,16 +170,16 @@ def test_run_skips_underscore_prefix_files(tmp_path: Path, monkeypatch: pytest.M
     input_dir.mkdir()
     _make_blank_png(input_dir / "r001.png")
     _make_blank_png(input_dir / "r002.png")
-    _make_blank_png(input_dir / "_temp.png")  # underscore → 스킵
-    (input_dir / "_ground_truth.json").write_text("[]", encoding="utf-8")  # 스킵
+    _make_blank_png(input_dir / "_temp.png")
+    (input_dir / "_ground_truth.json").write_text("[]", encoding="utf-8")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
+    out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 2
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 2
+    assert result["metrics"]["errors"] == 0
 
 
 # -- 6. xlsx 컬럼 헤더 ------------------------------------------------------
@@ -192,10 +191,11 @@ def test_run_output_xlsx_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     _make_blank_png(input_dir / "r001.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     headers = [ws.cell(row=1, column=c).value for c in range(1, 6)]
@@ -224,20 +224,19 @@ def test_run_zero_images(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     input_dir = tmp_path / "in"
     input_dir.mkdir()
 
-    # personas fallback도 빈 디렉토리로
     empty_seed = tmp_path / "empty_seed"
     empty_seed.mkdir()
-    monkeypatch.setattr(scenario, "_DEFAULT_FALLBACK_DIR", empty_seed)
+    monkeypatch.setattr(scenario, "_DEFAULT_IN", empty_seed)
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
+    out_dir = tmp_path / "out"
 
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    assert summary["processed"] == 0
-    assert summary["errors"] == 0
-    # xlsx은 헤더만 있어야 함
-    wb = openpyxl.load_workbook(output_path)
+    assert result["metrics"]["processed"] == 0
+    assert result["metrics"]["errors"] == 0
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     assert ws.max_row == 1
@@ -256,11 +255,11 @@ def test_run_filters_only_image_extensions(tmp_path: Path, monkeypatch: pytest.M
     (input_dir / "doc.pdf").write_bytes(b"%PDF-1.4 fake")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    assert summary["processed"] == 3
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 3
+    assert result["metrics"]["errors"] == 0
 
 
 # -- 10. output 디렉토리 자동 생성 -----------------------------------------
@@ -272,29 +271,30 @@ def test_run_creates_output_dir_if_missing(tmp_path: Path, monkeypatch: pytest.M
     _make_blank_png(input_dir / "r001.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "deep" / "nested" / "out" / "expense.xlsx"
-    assert not output_path.parent.exists()
+    out_dir = tmp_path / "deep" / "nested" / "out"
+    assert not out_dir.exists()
 
-    scenario.run(input_dir=input_dir, output_path=output_path)
-    assert output_path.exists()
-
-
-# -- 11. summary["rows"] 구조 -----------------------------------------------
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
+    assert out_path.exists()
 
 
-def test_run_summary_rows_structure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+# -- 11. extras["receipts"] 구조 -------------------------------------------
+
+
+def test_run_extras_receipts_structure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     _make_blank_png(input_dir / "r001.png")
     _make_blank_png(input_dir / "r002.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    rows: list[dict[str, Any]] = summary["rows"]
-    assert len(rows) == 2
-    for row in rows:
+    receipts: list[dict[str, Any]] = result["extras"]["receipts"]
+    assert len(receipts) == 2
+    for row in receipts:
         assert "filename" in row
         assert "merchant" in row
         assert "amount" in row
@@ -309,10 +309,11 @@ def test_run_xlsx_amount_is_integer(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     _make_blank_png(input_dir / "r001.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     amount_cell = ws.cell(row=2, column=5).value
@@ -326,7 +327,6 @@ def test_run_xlsx_amount_is_integer(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def test_run_extracts_payment_from_raw_text(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """raw_text에 '삼성페이' 포함 → xlsx 결제수단 == '삼성페이'."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     _make_blank_png(input_dir / "r001.png")
@@ -339,10 +339,11 @@ def test_run_extracts_payment_from_raw_text(
         raw_text="스타벅스 5500 삼성페이 결제 완료",
     )
     _mock_receipt(monkeypatch, response=samsung_data)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     payment_cell = ws.cell(row=2, column=4).value
@@ -350,7 +351,6 @@ def test_run_extracts_payment_from_raw_text(
 
 
 def test_run_payment_unknown_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """raw_text에 결제수단 키워드 없음 → 빈 문자열."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     _make_blank_png(input_dir / "r001.png")
@@ -363,14 +363,14 @@ def test_run_payment_unknown_returns_empty(tmp_path: Path, monkeypatch: pytest.M
         raw_text="스타벅스 5500 영수증 발행",
     )
     _mock_receipt(monkeypatch, response=no_payment)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
+    out_path = _output_xlsx(result)
 
-    wb = openpyxl.load_workbook(output_path)
+    wb = openpyxl.load_workbook(out_path)
     ws = wb.active
     assert ws is not None
     payment_cell = ws.cell(row=2, column=4).value
-    # openpyxl는 빈 문자열을 None으로 정규화해 반환 — 둘 다 "매칭 없음" 의미
     assert payment_cell in (None, "")
 
 
@@ -404,26 +404,23 @@ def test_guess_payment_no_match_returns_empty() -> None:
 
 
 def test_guess_payment_priority_order() -> None:
-    """등록 순서대로 매칭 — 신용카드가 카카오페이보다 우선."""
-    # 두 키워드 모두 포함되면 등록 순서대로 매칭됨
     assert scenario._guess_payment("VISA 카드결제 / 카카오페이도 가능") == "신용카드"
 
 
 # -- 14. T11.5: per-image timer --------------------------------------------
 
 
-def test_run_summary_includes_per_image_ms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """5장 처리 → summary['per_image_ms']에 5개 항목 + elapsed_ms float."""
+def test_run_extras_per_image_ms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(5):
         _make_blank_png(input_dir / f"r{i:03d}.png")
 
     _mock_receipt(monkeypatch)
-    output_path = tmp_path / "out" / "expense.xlsx"
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    per_image: list[dict[str, Any]] = summary["per_image_ms"]
+    per_image: list[dict[str, Any]] = result["extras"]["per_image_ms"]
     assert len(per_image) == 5
     for entry in per_image:
         assert "filename" in entry
@@ -435,17 +432,16 @@ def test_run_summary_includes_per_image_ms(tmp_path: Path, monkeypatch: pytest.M
 def test_run_per_image_ms_includes_error_flag(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """OCR 실패한 영수증의 per_image_ms 항목에는 error: True 플래그."""
     input_dir = tmp_path / "in"
     input_dir.mkdir()
     for i in range(4):
         _make_blank_png(input_dir / f"r{i:03d}.png")
 
     _mock_receipt(monkeypatch, fail_filenames=("r001.png", "r003.png"))
-    output_path = tmp_path / "out" / "expense.xlsx"
-    summary = scenario.run(input_dir=input_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = scenario.run(input_dir=input_dir, output_dir=out_dir)
 
-    per_image: list[dict[str, Any]] = summary["per_image_ms"]
+    per_image: list[dict[str, Any]] = result["extras"]["per_image_ms"]
     assert len(per_image) == 4
     by_name = {e["filename"]: e for e in per_image}
     assert by_name["r001.png"].get("error") is True

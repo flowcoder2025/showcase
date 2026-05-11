@@ -154,11 +154,14 @@ def test_case07_processes_all_seeds_safe_mode(
 
     monkeypatch.setattr(receipt, "extract", lambda _p: _make_receipt_data())
 
-    output_path = tmp_path / "expense.xlsx"
-    summary = case07_scenario.run(input_dir=receipt_seed_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = case07_scenario.run(input_dir=receipt_seed_dir, output_dir=out_dir)
+    output_path = result["output_files"][0]
 
-    assert summary["processed"] == 100, f"DoD gap: processed={summary['processed']}, expected 100"
-    assert summary["errors"] == 0
+    assert result["metrics"]["processed"] == 100, (
+        f"DoD gap: processed={result['metrics']['processed']}, expected 100"
+    )
+    assert result["metrics"]["errors"] == 0
     assert output_path.exists()
 
 
@@ -204,10 +207,10 @@ def test_case07_per_image_timer_recorded(
     """
     monkeypatch.setattr(receipt, "extract", lambda _p: _make_receipt_data())
 
-    output_path = tmp_path / "expense.xlsx"
-    summary = case07_scenario.run(input_dir=receipt_seed_dir, output_path=output_path)
+    out_dir = tmp_path / "out"
+    result = case07_scenario.run(input_dir=receipt_seed_dir, output_dir=out_dir)
 
-    per_image = summary.get("per_image_ms")
+    per_image = result["extras"].get("per_image_ms")
     assert isinstance(per_image, list), "DoD gap: per_image_ms not recorded"
     assert len(per_image) == 100, (
         f"DoD gap: per_image_ms has {len(per_image)} entries, expected 100"
@@ -240,9 +243,11 @@ def test_case08_processes_all_30_seeds_safe_mode(
 
     monkeypatch.setattr(invoice, "extract", lambda _p: _make_invoice_data())
 
-    summary = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
+    result = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
 
-    assert summary["processed"] == 30, f"DoD gap: processed={summary['processed']}, expected 30"
+    assert result["metrics"]["processed"] == 30, (
+        f"DoD gap: processed={result['metrics']['processed']}, expected 30"
+    )
 
 
 def test_case08_biznum_validation_runs(
@@ -265,15 +270,16 @@ def test_case08_biznum_validation_runs(
 
     monkeypatch.setattr(invoice, "extract", _fake_extract)
 
-    summary = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
+    result = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
+    metrics = result["metrics"]
 
     for key in ("processed", "verified", "failed", "failure_rate", "quality_warning"):
-        assert key in summary, f"DoD gap: case08 summary missing {key!r}"
-    assert summary["processed"] == 30
-    assert summary["verified"] == 29
-    assert summary["failed"] == 1
-    assert abs(summary["failure_rate"] - (1 / 30)) < 1e-9
-    assert summary["quality_warning"] is False  # 1/30 < 50% threshold
+        assert key in metrics, f"DoD gap: case08 metrics missing {key!r}"
+    assert metrics["processed"] == 30
+    assert metrics["verified"] == 29
+    assert metrics["failed"] == 1
+    assert abs(metrics["failure_rate"] - (1 / 30)) < 1e-9
+    assert metrics["quality_warning"] is False  # 1/30 < 50% threshold
 
 
 def test_case08_dual_encoding_csv_output(
@@ -362,10 +368,10 @@ def test_case08_synthetic_accuracy_at_least_90_percent(
 
     monkeypatch.setattr(invoice, "extract", _fake_extract)
 
-    summary = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
+    result = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
 
-    processed = summary["processed"]
-    verified = summary["verified"]
+    processed = result["metrics"]["processed"]
+    verified = result["metrics"]["verified"]
     assert processed == 30
     accuracy = verified / processed if processed > 0 else 0.0
     corrupt_count = sum(
@@ -486,15 +492,16 @@ def test_case08_csv_row_count_matches_verified(
     """
     monkeypatch.setattr(invoice, "extract", lambda _p: _make_invoice_data())
 
-    summary = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
+    result = case08_scenario.run(input_dir=invoice_seed_dir, output_dir=tmp_path)
 
     utf8_path = tmp_path / "invoices_utf8.csv"
     with utf8_path.open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.reader(f))
     # rows[0] = header
     data_rows = len(rows) - 1
-    assert data_rows == summary["verified"], (
-        f"DoD gap: utf-8 CSV has {data_rows} data rows but verified={summary['verified']}"
+    verified = result["metrics"]["verified"]
+    assert data_rows == verified, (
+        f"DoD gap: utf-8 CSV has {data_rows} data rows but verified={verified}"
     )
 
 

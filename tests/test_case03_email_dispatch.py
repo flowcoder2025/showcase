@@ -1,15 +1,8 @@
 """Tests for case03 — 견적 메일 일괄 발송 (개인화 + PDF 첨부).
 
-Strong contract checks for T8:
-- safe-mode 50건 빌드/발송
-- per-request quote_no 로그
-- XSS 방어 (build_html_body 경유)
-- PDF 첨부 (생성 성공 시) / PDF 실패 시 첨부 없이 발송
-- transports breakdown
-- 빈 입력 / 잘못된 이메일 per-row 격리
-- 개인화 본문 (vendor + history)
-- column_map override
-- subject에 quote_no + vendor 포함
+T38: scenario.run() 시그니처가 ``(*, input_dir, output_dir, config)`` 으로 정식화되어
+각 테스트가 ``quote_dispatch_list.xlsx`` 를 ``input_dir`` 안에 생성하고 ScenarioResult
+의 ``metrics`` / ``extras`` 를 통해 검증한다.
 """
 
 from __future__ import annotations
@@ -20,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 import pytest
+
+_INPUT_NAME = "quote_dispatch_list.xlsx"
 
 
 class _CaptureLogger:
@@ -77,12 +72,16 @@ def _make_dispatch_df(n: int = 50) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _write_input(in_dir: Path, df: pd.DataFrame) -> None:
+    in_dir.mkdir(parents=True, exist_ok=True)
+    df.to_excel(in_dir / _INPUT_NAME, index=False)
+
+
 @pytest.fixture
-def dispatch_input(tmp_path: Path) -> Path:
-    df = _make_dispatch_df(50)
-    p = tmp_path / "quote_dispatch_list.xlsx"
-    df.to_excel(p, index=False)
-    return p
+def dispatch_input_dir(tmp_path: Path) -> Path:
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, _make_dispatch_df(50))
+    return in_dir
 
 
 @pytest.fixture(autouse=True)
@@ -116,7 +115,7 @@ def _patch_externals(
 
 
 def test_run_safe_mode_builds_50_messages(
-    dispatch_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    dispatch_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """50건 입력 → built==50, sent==50 (safe-fallback도 카운트)."""
     from cases.case03_email_quote_dispatch import scenario
@@ -124,16 +123,16 @@ def test_run_safe_mode_builds_50_messages(
     captured = _patch_externals(monkeypatch)
     out = tmp_path / "out"
 
-    summary = scenario.run(input_path=dispatch_input, output_dir=out)
+    result = scenario.run(input_dir=dispatch_input_dir, output_dir=out)
 
-    assert summary["built"] == 50
-    assert summary["sent"] == 50
-    assert summary["errors"] == 0
+    assert result["metrics"]["built"] == 50
+    assert result["metrics"]["sent"] == 50
+    assert result["metrics"]["errors"] == 0
     assert len(captured) == 50
 
 
 def test_run_per_request_logs_quote_no(
-    dispatch_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    dispatch_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """각 row마다 quote_no가 info 로그에 등장."""
     from cases.case03_email_quote_dispatch import scenario
@@ -143,7 +142,7 @@ def test_run_per_request_logs_quote_no(
     monkeypatch.setattr(scenario, "demo_logger", lambda _case: cap)
 
     out = tmp_path / "out"
-    scenario.run(input_path=dispatch_input, output_dir=out)
+    scenario.run(input_dir=dispatch_input_dir, output_dir=out)
 
     quote_lines = [m for m in cap.infos if "Q-2026-" in m]
     assert len(quote_lines) == 50, f"expected 50 progress lines, got {len(quote_lines)}"
@@ -170,15 +169,14 @@ def test_run_uses_build_html_body_for_xss_safety(
             }
         ]
     )
-    inp = tmp_path / "xss.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
 
     out = tmp_path / "out"
-    scenario.run(input_path=inp, output_dir=out)
+    scenario.run(input_dir=in_dir, output_dir=out)
 
     assert len(captured) == 1
     msg = captured[0]
-    # extract HTML alternative (walk handles multipart/alternative trees)
     html_parts = [p.get_content() for p in msg.walk() if p.get_content_type() == "text/html"]
     assert html_parts, "no HTML alternative attached"
     html_body = html_parts[0]
@@ -193,10 +191,10 @@ def test_run_attaches_pdf_when_generated(tmp_path: Path, monkeypatch: pytest.Mon
     captured = _patch_externals(monkeypatch)
 
     df = _make_dispatch_df(2)
-    inp = tmp_path / "in.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
     out = tmp_path / "out"
-    scenario.run(input_path=inp, output_dir=out)
+    scenario.run(input_dir=in_dir, output_dir=out)
 
     assert len(captured) == 2
     for msg in captured:
@@ -224,16 +222,14 @@ def test_run_continues_when_pdf_fails(tmp_path: Path, monkeypatch: pytest.Monkey
     captured = _patch_externals(monkeypatch, pdf_fn=flaky)
 
     df = _make_dispatch_df(5)
-    inp = tmp_path / "in.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
     out = tmp_path / "out"
-    summary = scenario.run(input_path=inp, output_dir=out)
+    result = scenario.run(input_dir=in_dir, output_dir=out)
 
-    assert summary["built"] == 5
-    assert summary["sent"] == 5
-    # PDF 실패는 errors 아닌 warning (첨부만 누락) — per-row PDF 실패 정책
-    assert summary["errors"] == 0
-    # 5 messages built; 2 of them missing pdf attachment
+    assert result["metrics"]["built"] == 5
+    assert result["metrics"]["sent"] == 5
+    assert result["metrics"]["errors"] == 0
     no_pdf_count = 0
     for msg in captured:
         names = [part.get_filename() or "" for part in msg.iter_attachments()]
@@ -243,16 +239,16 @@ def test_run_continues_when_pdf_fails(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_run_summary_transports_breakdown(
-    dispatch_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    dispatch_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """safe-fallback 50건 → transports['safe-fallback'] == 50."""
     from cases.case03_email_quote_dispatch import scenario
 
     _patch_externals(monkeypatch)
 
-    summary = scenario.run(input_path=dispatch_input, output_dir=tmp_path / "out")
+    result = scenario.run(input_dir=dispatch_input_dir, output_dir=tmp_path / "out")
 
-    assert summary["transports"].get("safe-fallback") == 50
+    assert result["extras"]["transports"].get("safe-fallback") == 50
 
 
 def test_run_with_zero_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -272,14 +268,14 @@ def test_run_with_zero_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
             "과거거래",
         ]
     )
-    inp = tmp_path / "empty.xlsx"
-    df.to_excel(inp, index=False)
-    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
+    result = scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
-    assert summary["built"] == 0
-    assert summary["sent"] == 0
-    assert summary["errors"] == 0
-    assert summary["rows"] == []
+    assert result["metrics"]["built"] == 0
+    assert result["metrics"]["sent"] == 0
+    assert result["metrics"]["errors"] == 0
+    assert result["extras"]["rows"] == []
 
 
 def test_run_invalid_email_in_input_raises_per_row(
@@ -321,14 +317,14 @@ def test_run_invalid_email_in_input_raises_per_row(
             },
         ]
     )
-    inp = tmp_path / "mixed.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
 
-    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    result = scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
-    assert summary["built"] == 2
-    assert summary["sent"] == 2
-    assert summary["errors"] == 1
+    assert result["metrics"]["built"] == 2
+    assert result["metrics"]["sent"] == 2
+    assert result["metrics"]["errors"] == 1
 
 
 def test_run_personalization_includes_vendor_and_history(
@@ -352,10 +348,10 @@ def test_run_personalization_includes_vendor_and_history(
             }
         ]
     )
-    inp = tmp_path / "p.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
 
-    scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
     assert len(captured) == 1
     msg = captured[0]
@@ -368,7 +364,7 @@ def test_run_personalization_includes_vendor_and_history(
 def test_run_uses_column_map_for_alternate_schema(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """다른 컬럼명 입력 + column_map override → 정상 처리."""
+    """다른 컬럼명 입력 + column_map override (config["column_map"]) → 정상 처리."""
     from cases.case03_email_quote_dispatch import scenario
 
     captured = _patch_externals(monkeypatch)
@@ -386,38 +382,35 @@ def test_run_uses_column_map_for_alternate_schema(
         for i in range(1, 4)
     ]
     df = pd.DataFrame(rows)
-    inp = tmp_path / "alt.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
 
-    summary = scenario.run(
-        input_path=inp,
+    result = scenario.run(
+        input_dir=in_dir,
         output_dir=tmp_path / "out",
-        column_map={
-            "vendor": "vendor_name",
-            "contact": "contact_name",
-            "to": "to_addr",
-            "quote_no": "quote_no_alt",
-            "summary": "summary_alt",
-            "amount": "amt",
-            "history": "hist",
+        config={
+            "column_map": {
+                "vendor": "vendor_name",
+                "contact": "contact_name",
+                "to": "to_addr",
+                "quote_no": "quote_no_alt",
+                "summary": "summary_alt",
+                "amount": "amt",
+                "history": "hist",
+            }
         },
     )
 
-    assert summary["built"] == 3
-    assert summary["sent"] == 3
-    assert summary["errors"] == 0
+    assert result["metrics"]["built"] == 3
+    assert result["metrics"]["sent"] == 3
+    assert result["metrics"]["errors"] == 0
     assert len(captured) == 3
 
 
 def test_run_summary_includes_pdf_failed_counter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """T8.5 — summary에 별도 ``pdf_failed`` 카운터 (시연 시 PDF 실패 가시).
-
-    - md_to_pdf 일부 호출이 ``MdToPdfError`` raise → ``summary["pdf_failed"] == 실패수``
-    - 정상 케이스는 ``pdf_failed == 0``.
-    - PDF 실패는 errors와 무관 (errors는 send/build 실패만).
-    """
+    """T8.5 — metrics에 별도 ``pdf_failed`` 카운터 (시연 시 PDF 실패 가시)."""
     from cases.case03_email_quote_dispatch import scenario
     from core.docgen import pdf as pdf_mod
 
@@ -432,35 +425,30 @@ def test_run_summary_includes_pdf_failed_counter(
     _patch_externals(monkeypatch, pdf_fn=flaky)
 
     df = _make_dispatch_df(5)
-    inp = tmp_path / "in.xlsx"
-    df.to_excel(inp, index=False)
-    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
+    result = scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
-    assert summary["pdf_failed"] == 2
-    assert summary["built"] == 5
-    assert summary["sent"] == 5
-    assert summary["errors"] == 0
+    assert result["metrics"]["pdf_failed"] == 2
+    assert result["metrics"]["built"] == 5
+    assert result["metrics"]["sent"] == 5
+    assert result["metrics"]["errors"] == 0
 
 
 def test_run_summary_pdf_failed_zero_on_clean_run(
-    dispatch_input: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    dispatch_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """T8.5 — 모든 PDF 정상 생성 시 ``pdf_failed == 0``."""
     from cases.case03_email_quote_dispatch import scenario
 
     _patch_externals(monkeypatch)
-    summary = scenario.run(input_path=dispatch_input, output_dir=tmp_path / "out")
+    result = scenario.run(input_dir=dispatch_input_dir, output_dir=tmp_path / "out")
 
-    assert summary["pdf_failed"] == 0
+    assert result["metrics"]["pdf_failed"] == 0
 
 
 def test_run_handles_nan_amount(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """T8.5 — amount 컬럼이 NaN(빈 셀) → warning 로그 + amount_str='0', built+1.
-
-    pandas read_excel은 빈 셀을 ``float('nan')``로 채운다. 기존 ``int()`` 변환은
-    ``int(nan) → ValueError``로 잡혀 0이 되긴 했지만, NaN 케이스를 명시 검증해
-    의도를 드러낸다 (회귀 방지).
-    """
+    """T8.5 — amount NaN → warning + amount_str='0', built+1."""
     from cases.case03_email_quote_dispatch import scenario
 
     captured = _patch_externals(monkeypatch)
@@ -489,17 +477,15 @@ def test_run_handles_nan_amount(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
             },
         ]
     )
-    inp = tmp_path / "nan.xlsx"
-    df.to_excel(inp, index=False)
-    summary = scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
+    result = scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
-    assert summary["built"] == 2
-    assert summary["sent"] == 2
-    assert summary["errors"] == 0
-    # NaN row warning 발생
+    assert result["metrics"]["built"] == 2
+    assert result["metrics"]["sent"] == 2
+    assert result["metrics"]["errors"] == 0
     nan_warnings = [w for w in cap.warnings if "Q-NAN-001" in w and "NaN" in w]
     assert len(nan_warnings) == 1, f"expected NaN warning, got: {cap.warnings!r}"
-    # 본문에 0원 노출
     assert len(captured) == 2
     text_parts = [
         p.get_content() for p in captured[0].walk() if p.get_content_type() == "text/plain"
@@ -528,10 +514,10 @@ def test_run_subject_contains_quote_no_and_vendor(
             }
         ]
     )
-    inp = tmp_path / "s.xlsx"
-    df.to_excel(inp, index=False)
+    in_dir = tmp_path / "in"
+    _write_input(in_dir, df)
 
-    scenario.run(input_path=inp, output_dir=tmp_path / "out")
+    scenario.run(input_dir=in_dir, output_dir=tmp_path / "out")
 
     assert len(captured) == 1
     subject = str(captured[0]["Subject"] or "")

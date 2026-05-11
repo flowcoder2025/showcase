@@ -1,35 +1,28 @@
-"""case07 — 영수증 일괄 OCR → 경비 정리 엑셀.
-
-박과장 페르소나. 100장 영수증 이미지를 ``core.ocr.receipt.extract``로
-일괄 OCR 후 회계SW 임포트 가능한 5컬럼 엑셀 생성.
-
-Architecture
-- Thin wrapper: scenario는 ``core.ocr.receipt.extract``만 호출. safe_mode 인터셉트는
-  runner.py가 ``core.ocr.gemma.extract``를 patch하면 receipt가 자동으로 safe_dummy
-  를 받아 ``[SAFE-FALLBACK]`` ReceiptData로 정규화 → scenario는 그대로 정상 처리.
-- per-image 격리: ``ValueError``/``FileNotFoundError`` 발생 시 해당 영수증만 errors에
-  카운트하고 나머지는 계속 처리 (시연 흐름 보호).
-- 카테고리는 가맹점 prefix 룰베이스 매핑 — OCR 결과에 카테고리 필드가 없어도
-  실용적인 분류 가능.
-- ``_underscore`` prefix 파일은 자동 스킵 (시드 ground_truth.json 등).
-
-R2-M2 risk: 합성 영수증은 self-OCR 자기충족 위험. 실 영수증 hold-out 검증 필요.
-"""
+"""case07 — 영수증 일괄 OCR → 경비 정리 엑셀 (T38 ScenarioResult signature)."""
 
 from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import openpyxl
 
+from cases._protocols import Backends, ScenarioResult
+from core.backends.factory import default_backends, safe_backends
 from core.common import timer
 from core.common.demo_logger import demo_logger
+from core.common.safe_mode_v2 import is_safe
 from core.ocr import receipt
+from core.progress import ProgressEvent
 
-# 출력 엑셀 컬럼 표준 (회계SW 임포트 호환)
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_IN = _REPO_ROOT / "personas/sample_data/receipts"
+_DEFAULT_OUT = Path(__file__).resolve().parent / "output"
+_OUTPUT_NAME = "expense_report.xlsx"
+
 EXPENSE_COLUMNS: tuple[str, ...] = (
     "거래일",
     "가맹점",
@@ -38,10 +31,6 @@ EXPENSE_COLUMNS: tuple[str, ...] = (
     "금액",
 )
 
-# personas 시드 디렉토리 — 테스트에서 monkeypatch 가능하도록 모듈 변수로 노출.
-_DEFAULT_FALLBACK_DIR: Path = Path("personas/sample_data/receipts")
-
-# 가맹점 prefix → 카테고리 룰. generate_receipts.py와 동기화 (R3-O1: 같은 매핑 재사용).
 _CATEGORY_BY_MERCHANT_PREFIX: dict[str, str] = {
     "스타벅스": "커피",
     "이디야": "커피",
@@ -59,9 +48,6 @@ _CATEGORY_BY_MERCHANT_PREFIX: dict[str, str] = {
 
 _IMAGE_EXTENSIONS: frozenset[str] = frozenset({".png", ".jpg", ".jpeg"})
 
-# 결제수단 키워드 (등록 순서 = 매칭 우선순위). raw_text 정규식 매칭으로 추출.
-# 동시 매칭 시 등록 순서대로 가장 먼저 매칭된 라벨을 반환한다 — 신용카드가
-# 간편결제(N/K페이)보다 우선이므로 "VISA + 카카오페이" 같은 영수증은 신용카드로 분류.
 _PAYMENT_KEYWORDS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("신용카드", re.compile(r"신용카드|카드결제|체크카드|VISA|MASTER")),
     ("삼성페이", re.compile(r"삼성페이")),
@@ -72,115 +58,23 @@ _PAYMENT_KEYWORDS: tuple[tuple[str, re.Pattern[str]], ...] = (
 
 
 def _guess_payment(raw_text: str) -> str:
-    """raw_text 정규식 매칭 → 결제수단 라벨. 매칭 없으면 빈 문자열.
-
-    Args:
-        raw_text: ``ReceiptData.raw_text`` (OCR 원본 텍스트).
-
-    Returns:
-        결제수단 라벨 ("신용카드"/"삼성페이"/"네이버페이"/"카카오페이"/"현금")
-        또는 매칭 없음 시 빈 문자열.
-    """
     for label, pattern in _PAYMENT_KEYWORDS:
         if pattern.search(raw_text):
             return label
     return ""
 
 
-def run(
-    input_dir: Path | str | None = None,
-    output_path: Path | str | None = None,
-) -> dict[str, Any]:
-    """영수증 일괄 OCR → 경비 정리 엑셀.
-
-    Args:
-        input_dir: 영수증 이미지 디렉토리. ``None`` → ``cases/case07.../input/``,
-            비어 있으면 ``personas/sample_data/receipts/`` fallback.
-        output_path: 결과 xlsx 경로. ``None`` → ``cases/case07.../output/expense_report.xlsx``.
-
-    Returns:
-        ``{"processed": int, "errors": int, "rows": list[dict]}``.
-    """
-    log = demo_logger("case07_ocr_receipt_to_excel")
-    case_dir = Path(__file__).parent
-
-    resolved_input = _resolve_input_dir(input_dir, case_dir)
-    if output_path is not None:
-        out_path = Path(output_path)
-    else:
-        out_path = case_dir / "output" / "expense_report.xlsx"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    image_paths = _collect_image_paths(resolved_input)
-
-    summary: dict[str, Any] = {"processed": 0, "errors": 0, "rows": [], "per_image_ms": []}
-    rows: list[dict[str, Any]] = []
-
-    label = f"영수증 OCR ({len(image_paths)}장)"
-    with timer.measure(log, label):
-        for img_path in image_paths:
-            img_start = time.perf_counter()
-            try:
-                data = receipt.extract(img_path)
-            except (ValueError, FileNotFoundError) as e:
-                elapsed_ms = (time.perf_counter() - img_start) * 1000
-                summary["per_image_ms"].append(
-                    {"filename": img_path.name, "elapsed_ms": elapsed_ms, "error": True}
-                )
-                log.warning(f"[{img_path.name}] OCR failed: {e}")
-                summary["errors"] += 1
-                continue
-
-            elapsed_ms = (time.perf_counter() - img_start) * 1000
-            summary["per_image_ms"].append({"filename": img_path.name, "elapsed_ms": elapsed_ms})
-
-            merchant = data["merchant"]
-            amount = int(data["amount"])
-            rows.append(
-                {
-                    "거래일": data["date"],
-                    "가맹점": merchant,
-                    "카테고리": _guess_category(merchant),
-                    "결제수단": _guess_payment(data.get("raw_text", "")),
-                    "금액": amount,
-                }
-            )
-            summary["processed"] += 1
-            summary["rows"].append(
-                {
-                    "filename": img_path.name,
-                    "merchant": merchant,
-                    "amount": amount,
-                }
-            )
-
-    _write_xlsx(out_path, rows)
-
-    if summary["per_image_ms"]:
-        avg_ms = sum(p["elapsed_ms"] for p in summary["per_image_ms"]) / len(
-            summary["per_image_ms"]
-        )
-        log.info(f"평균 처리시간 {avg_ms:.0f}ms/장")
-
-    log.success(f"처리 {summary['processed']}장 / 실패 {summary['errors']}장 → {out_path}")
-    return summary
-
-
-# -- internal helpers -------------------------------------------------------
-
-
-def _resolve_input_dir(input_dir: Path | str | None, case_dir: Path) -> Path:
-    """input_dir 결정: 명시값 > case input/ > personas fallback."""
+def _resolve_input_dir(input_dir: Path | None) -> Path:
     if input_dir is not None:
         return Path(input_dir)
+    case_dir = Path(__file__).resolve().parent
     candidate = case_dir / "input"
     if candidate.exists() and any(p for p in candidate.iterdir() if not p.name.startswith(".")):
         return candidate
-    return _DEFAULT_FALLBACK_DIR
+    return _DEFAULT_IN
 
 
 def _collect_image_paths(input_dir: Path) -> list[Path]:
-    """이미지 확장자 + non-underscore prefix만 수집. 결정적 정렬."""
     if not input_dir.exists():
         return []
     return sorted(
@@ -191,7 +85,6 @@ def _collect_image_paths(input_dir: Path) -> list[Path]:
 
 
 def _write_xlsx(out_path: Path, rows: list[dict[str, Any]]) -> None:
-    """경비 정리 시트 생성. 헤더 + rows."""
     wb = openpyxl.Workbook()
     ws = wb.active
     if ws is None:  # pragma: no cover — openpyxl 계약상 항상 존재
@@ -204,11 +97,89 @@ def _write_xlsx(out_path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _guess_category(merchant: str) -> str:
-    """가맹점 prefix 매칭 → 카테고리. 매칭 실패 시 '기타'."""
     for prefix, category in _CATEGORY_BY_MERCHANT_PREFIX.items():
         if merchant.startswith(prefix):
             return category
     return "기타"
+
+
+def run(
+    *,
+    input_dir: Path | None = None,
+    output_dir: Path | None = None,
+    backends: Backends | None = None,
+    progress_cb: Callable[[ProgressEvent], None] | None = None,
+    config: dict[str, Any] | None = None,
+) -> ScenarioResult:
+    """영수증 일괄 OCR → 경비 정리 엑셀."""
+    out_dir = Path(output_dir) if output_dir else _DEFAULT_OUT
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _ = backends or (safe_backends() if is_safe() else default_backends())  # T40 wire-up
+    _ = config or {}
+    out_path = out_dir / _OUTPUT_NAME
+    resolved_input = _resolve_input_dir(input_dir)
+    image_paths = _collect_image_paths(resolved_input)
+
+    log = demo_logger("case07_ocr_receipt_to_excel")
+    processed = 0
+    errors = 0
+    rows: list[dict[str, Any]] = []
+    receipts_meta: list[dict[str, Any]] = []
+    per_image_ms: list[dict[str, Any]] = []
+
+    label = f"영수증 OCR ({len(image_paths)}장)"
+    with timer.measure(log, label):
+        for img_path in image_paths:
+            img_start = time.perf_counter()
+            try:
+                data = receipt.extract(img_path)
+            except (ValueError, FileNotFoundError) as e:
+                elapsed_ms = (time.perf_counter() - img_start) * 1000
+                per_image_ms.append(
+                    {"filename": img_path.name, "elapsed_ms": elapsed_ms, "error": True}
+                )
+                log.warning(f"[{img_path.name}] OCR failed: {e}")
+                errors += 1
+                continue
+
+            elapsed_ms = (time.perf_counter() - img_start) * 1000
+            per_image_ms.append({"filename": img_path.name, "elapsed_ms": elapsed_ms})
+
+            merchant = data["merchant"]
+            amount = int(data["amount"])
+            rows.append(
+                {
+                    "거래일": data["date"],
+                    "가맹점": merchant,
+                    "카테고리": _guess_category(merchant),
+                    "결제수단": _guess_payment(data.get("raw_text", "")),
+                    "금액": amount,
+                }
+            )
+            processed += 1
+            receipts_meta.append(
+                {
+                    "filename": img_path.name,
+                    "merchant": merchant,
+                    "amount": amount,
+                }
+            )
+
+    _write_xlsx(out_path, rows)
+
+    if per_image_ms:
+        avg_ms = sum(p["elapsed_ms"] for p in per_image_ms) / len(per_image_ms)
+        log.info(f"평균 처리시간 {avg_ms:.0f}ms/장")
+
+    log.success(f"처리 {processed}장 / 실패 {errors}장 → {out_path}")
+    return {
+        "case_id": "case07",
+        "summary_text": f"영수증 {processed}장 처리 / 실패 {errors}장 → {out_path.name}",
+        "output_files": [out_path],
+        "metrics": {"processed": processed, "errors": errors},
+        "failures": [],
+        "extras": {"receipts": receipts_meta, "per_image_ms": per_image_ms},
+    }
 
 
 if __name__ == "__main__":

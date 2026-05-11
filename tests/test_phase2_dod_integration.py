@@ -119,23 +119,20 @@ def test_all_external_api_cases_safe_mode_caches(
 
 
 def _check_case09_deterministic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> bool:
-    """case09 safe mode + faked AI → 2회 결과 byte-identical."""
+    """case09 safe mode + faked AI → 2회 결과 byte-identical (T38: config["incoming_message"])."""
     from cases.case09_ai_email_drafter import scenario
     from core.ai import client as ai_client
-
-    inp_dir = tmp_path / "input"
-    inp_dir.mkdir(parents=True)
-    inp = inp_dir / "in.txt"
-    inp.write_text("제목: T\n본문: B", encoding="utf-8")
-    out = tmp_path / "drafts.json"
 
     fake = json.dumps([{"option": 1, "subject": "S", "body": "B"}], ensure_ascii=False)
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake)
 
-    scenario.run(input_path=inp, output_path=out)
-    text1 = out.read_text(encoding="utf-8")
-    scenario.run(input_path=inp, output_path=out)
-    text2 = out.read_text(encoding="utf-8")
+    out1 = tmp_path / "out1"
+    out2 = tmp_path / "out2"
+    incoming = "제목: T\n본문: B"
+    r1 = scenario.run(output_dir=out1, config={"incoming_message": incoming})
+    r2 = scenario.run(output_dir=out2, config={"incoming_message": incoming})
+    text1 = r1["output_files"][0].read_text(encoding="utf-8")
+    text2 = r2["output_files"][0].read_text(encoding="utf-8")
     return text1 == text2
 
 

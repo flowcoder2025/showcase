@@ -32,18 +32,13 @@ DEFAULT_ATTENDEES = ["김사장", "이대리", "박과장"]
 # --- shared helpers --------------------------------------------------------
 
 
-def _seed_case09_input(tmp_path: Path) -> tuple[Path, Path]:
-    """case09 입력 파일을 tmp_path 안에 생성. (input_path, output_path) 반환."""
-    case_dir = tmp_path / "cases" / "case09_ai_email_drafter"
-    (case_dir / "input").mkdir(parents=True, exist_ok=True)
-    (case_dir / "output").mkdir(parents=True, exist_ok=True)
-    inp = case_dir / "input" / "sample_incoming.txt"
-    inp.write_text(
-        "제목: 단가 인하 요청\n본문: 안녕하세요. 단가 5% 인하 검토 부탁드립니다.",
-        encoding="utf-8",
-    )
-    out = case_dir / "output" / "drafts.json"
-    return inp, out
+_CASE09_INCOMING = "제목: 단가 인하 요청\n본문: 안녕하세요. 단가 5% 인하 검토 부탁드립니다."
+
+
+def _seed_case09_input(tmp_path: Path) -> tuple[str, Path]:
+    """case09 입력 (config["incoming_message"]) + 출력 디렉토리 반환."""
+    out_dir = tmp_path / "case09_out"
+    return _CASE09_INCOMING, out_dir
 
 
 def _seed_case10_input(tmp_path: Path, *, n: int = 2) -> Path:
@@ -70,7 +65,7 @@ def test_case09_safe_mode_deterministic(tmp_path: Path, monkeypatch: pytest.Monk
     경로 우회 → 실제 직렬화/파싱이 reproducible 함을 검증.
     """
     monkeypatch.setenv("DEMO_SAFE", "1")
-    inp, out = _seed_case09_input(tmp_path)
+    incoming, _ = _seed_case09_input(tmp_path)
 
     fake_drafts = json.dumps(
         [
@@ -82,10 +77,12 @@ def test_case09_safe_mode_deterministic(tmp_path: Path, monkeypatch: pytest.Monk
     )
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
 
-    case09_scenario.run(input_path=inp, output_path=out)
-    text1 = out.read_text(encoding="utf-8")
-    case09_scenario.run(input_path=inp, output_path=out)
-    text2 = out.read_text(encoding="utf-8")
+    out1 = tmp_path / "out1"
+    out2 = tmp_path / "out2"
+    r1 = case09_scenario.run(output_dir=out1, config={"incoming_message": incoming})
+    r2 = case09_scenario.run(output_dir=out2, config={"incoming_message": incoming})
+    text1 = r1["output_files"][0].read_text(encoding="utf-8")
+    text2 = r2["output_files"][0].read_text(encoding="utf-8")
 
     assert text1 == text2, "DoD gap: case09 not deterministic across re-runs"
 
@@ -93,7 +90,7 @@ def test_case09_safe_mode_deterministic(tmp_path: Path, monkeypatch: pytest.Monk
 def test_case09_returns_three_drafts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """DoD: case09는 3안의 답신 초안을 반환 (meta.yaml '3안 비교' 약속)."""
     monkeypatch.setenv("DEMO_SAFE", "1")
-    inp, out = _seed_case09_input(tmp_path)
+    incoming, out_dir = _seed_case09_input(tmp_path)
 
     fake_drafts = json.dumps(
         [
@@ -105,8 +102,8 @@ def test_case09_returns_three_drafts(tmp_path: Path, monkeypatch: pytest.MonkeyP
     )
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
 
-    case09_scenario.run(input_path=inp, output_path=out)
-    parsed = json.loads(out.read_text(encoding="utf-8"))
+    result = case09_scenario.run(output_dir=out_dir, config={"incoming_message": incoming})
+    parsed = json.loads(result["output_files"][0].read_text(encoding="utf-8"))
 
     assert isinstance(parsed, list)
     assert len(parsed) == 3, f"DoD gap: expected 3 drafts, got {len(parsed)}"
@@ -240,24 +237,31 @@ def test_case10_whisper_deferral_marker() -> None:
     assert "whisper" in content.lower(), "DoD gap: whisper not referenced"
 
 
-def test_case10_safe_mode_returns_dict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """DoD: case10 safe-mode 실행 시 반환 dict shape 안정.
-
-    ``processed/errors/files`` 키 보존 + ``files[].n_actions/n_decisions`` int.
-    """
+def test_case10_safe_mode_returns_scenario_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DoD: case10 safe-mode 실행 시 ScenarioResult shape 안정 (T38)."""
     monkeypatch.setenv("DEMO_SAFE", "1")
     in_dir = _seed_case10_input(tmp_path, n=2)
     out_dir = tmp_path / "out"
 
-    summary: dict[str, Any] = case10_scenario.run(input_dir=in_dir, output_dir=out_dir)
+    result: dict[str, Any] = case10_scenario.run(input_dir=in_dir, output_dir=out_dir)
 
-    assert set(summary.keys()) == {"processed", "errors", "files"}
-    assert isinstance(summary["processed"], int)
-    assert isinstance(summary["errors"], int)
-    assert summary["processed"] == 2
-    assert summary["errors"] == 0
+    assert set(result.keys()) == {
+        "case_id",
+        "summary_text",
+        "output_files",
+        "metrics",
+        "failures",
+        "extras",
+    }
+    assert result["case_id"] == "case10"
+    assert isinstance(result["metrics"]["processed"], int)
+    assert isinstance(result["metrics"]["errors"], int)
+    assert result["metrics"]["processed"] == 2
+    assert result["metrics"]["errors"] == 0
 
-    files = summary["files"]
+    files = result["extras"]["files"]
     assert isinstance(files, list)
     assert len(files) == 2
     for entry in files:
