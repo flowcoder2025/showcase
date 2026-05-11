@@ -16,7 +16,7 @@ from core.common import timer
 from core.common.demo_logger import demo_logger
 from core.common.safe_mode_v2 import is_safe
 from core.ocr import receipt
-from core.progress import ProgressEvent
+from core.progress import ProgressEvent, done, emit, step
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data/receipts"
@@ -128,8 +128,10 @@ def run(
     per_image_ms: list[dict[str, Any]] = []
 
     label = f"영수증 OCR ({len(image_paths)}장)"
+    total_images = len(image_paths)
     with timer.measure(log, label):
-        for img_path in image_paths:
+        for idx, img_path in enumerate(image_paths, start=1):
+            emit(progress_cb, step("case07", img_path.name, idx, total_images))
             img_start = time.perf_counter()
             try:
                 data = receipt.extract(img_path)
@@ -172,6 +174,7 @@ def run(
         log.info(f"평균 처리시간 {avg_ms:.0f}ms/장")
 
     log.success(f"처리 {processed}장 / 실패 {errors}장 → {out_path}")
+    emit(progress_cb, done("case07", f"완료 — {processed}장 처리"))
     return {
         "case_id": "case07",
         "summary_text": f"영수증 {processed}장 처리 / 실패 {errors}장 → {out_path.name}",

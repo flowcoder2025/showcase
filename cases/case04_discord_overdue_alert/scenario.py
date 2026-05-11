@@ -26,7 +26,7 @@ from core.common import timer
 from core.common.demo_logger import demo_logger
 from core.common.safe_mode_v2 import is_safe
 from core.messaging import discord
-from core.progress import ProgressEvent
+from core.progress import ProgressEvent, done, emit, step
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data"
@@ -88,13 +88,18 @@ def run(
     errors = 0
     by_level: dict[str, int] = {}
 
+    total_rows = int(len(df))
     with timer.measure(log, "미수금 단계별 Discord 알림", before_minutes=120):
-        for _, row in df.iterrows():
+        for idx, (_, row) in enumerate(df.iterrows(), start=1):
             try:
                 level = classify_level(int(row[cmap["days_overdue"]]))
                 vendor_safe = rich.markup.escape(str(row[cmap["vendor"]]))
                 amount = int(row[cmap["amount"]])
                 days = int(row[cmap["days_overdue"]])
+                emit(
+                    progress_cb,
+                    step("case04", f"{vendor_safe} ({level})", idx, total_rows),
+                )
                 discord.send_with_level(
                     webhook_url=url,
                     title=f"[{level.upper()}] {vendor_safe} 미수금",
@@ -108,6 +113,7 @@ def run(
                 errors += 1
 
     log.success(f"전송 {sent_total}건 / 실패 {errors}건")
+    emit(progress_cb, done("case04", f"전송 {sent_total}건"))
     return {
         "case_id": "case04",
         "summary_text": f"Discord {sent_total}건 발송 / 실패 {errors}건",

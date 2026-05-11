@@ -14,7 +14,7 @@ from core.common import timer
 from core.common.demo_logger import demo_logger
 from core.common.safe_mode_v2 import is_safe
 from core.ocr import invoice
-from core.progress import ProgressEvent
+from core.progress import ProgressEvent, done, emit, step
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data/invoices_scanned"
@@ -79,9 +79,11 @@ def run(
     per_image_ms: list[dict[str, Any]] = []
 
     label = f"세금계산서 OCR ({len(image_paths)}장)"
+    total_images = len(image_paths)
     run_start = time.perf_counter()
     with timer.measure(log, label):
-        for img_path in image_paths:
+        for idx, img_path in enumerate(image_paths, start=1):
+            emit(progress_cb, step("case08", img_path.name, idx, total_images))
             img_start = time.perf_counter()
             try:
                 data = invoice.extract(img_path)
@@ -144,6 +146,7 @@ def run(
         log.warning("=" * 60)
 
     log.success(f"처리 {processed}장 / 검증통과 {len(verified)} / 실패 {len(failures)} → {out_dir}")
+    emit(progress_cb, done("case08", f"완료 — {processed}장 / 검증 {len(verified)}"))
 
     return {
         "case_id": "case08",

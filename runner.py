@@ -26,6 +26,7 @@ from rich.table import Table
 
 from core.common import config, safe_mode
 from core.common.demo_logger import demo_logger
+from core.progress import rich_progress_adapter
 
 console = Console()
 
@@ -314,10 +315,14 @@ def run_case(case_id: str, safe: bool) -> int:
     # 시나리오 시작 시점을 기록 — 자동 열기 시 "이번 실행"이 만든 파일만 대상
     start_mtime = time.time()
     # T38: scenario.run() 은 ScenarioResult 를 반환하는 keyword-only 시그니처.
-    # input_dir/output_dir/backends/progress_cb/config 는 각 scenario 의 default
-    # (절대 경로 + safe_backends/default_backends 자동 분기) 에 위임.
-    with safe_mode.intercept(case_id, apis=apis):
-        result = mod.run()
+    # input_dir/output_dir/backends/config 는 각 scenario 의 default 에 위임.
+    # T40: rich_progress_adapter 를 default progress_cb 로 wire — case 가 step
+    # 발행 안 하면 no-op, 발행하면 자동 진행바 표시. context manager 가 자원
+    # 정리(progress.stop) 보장.
+    description = f"{case_id}: {meta.get('title', '')}"
+    with rich_progress_adapter(description) as progress_cb:
+        with safe_mode.intercept(case_id, apis=apis):
+            result = mod.run(progress_cb=progress_cb)
 
     # 결과 표시 — ScenarioResult 의 summary_text + output_files
     if isinstance(result, dict) and "summary_text" in result and "output_files" in result:

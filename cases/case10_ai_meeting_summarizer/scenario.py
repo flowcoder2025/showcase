@@ -14,7 +14,7 @@ from core.backends.factory import default_backends, safe_backends
 from core.common import timer
 from core.common.demo_logger import demo_logger
 from core.common.safe_mode_v2 import is_safe
-from core.progress import ProgressEvent
+from core.progress import ProgressEvent, done, emit, step
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data/meeting_transcripts"
@@ -111,8 +111,10 @@ def run(
     output_files: list[Path] = []
     summaries_extra: list[dict[str, Any]] = []
 
-    with timer.measure(log, f"회의록 요약 ({len(transcript_paths)}건)", before_minutes=30):
-        for tx_path in transcript_paths:
+    total_files = len(transcript_paths)
+    with timer.measure(log, f"회의록 요약 ({total_files}건)", before_minutes=30):
+        for idx, tx_path in enumerate(transcript_paths, start=1):
+            emit(progress_cb, step("case10", tx_path.name, idx, total_files))
             attendees = meta_map.get(tx_path.name)
             if not attendees:
                 log.warning(f"[{tx_path.name}] attendees 미정의 ({DEFAULT_META_FILENAME}) — skip")
@@ -150,6 +152,7 @@ def run(
                 errors += 1
 
     log.success(f"처리 {processed}건 / 실패 {errors}건")
+    emit(progress_cb, done("case10", f"요약 {processed}건"))
     return {
         "case_id": "case10",
         "summary_text": f"회의록 {processed}건 요약 / 실패 {errors}건",

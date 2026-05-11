@@ -32,7 +32,7 @@ from core.common.safe_mode_v2 import is_safe
 from core.docgen import pdf as pdf_mod
 from core.docgen import template as tmpl_mod
 from core.messaging import email as email_mod
-from core.progress import ProgressEvent
+from core.progress import ProgressEvent, done, emit, step
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data"
@@ -133,10 +133,12 @@ def run(
             "extras": {"transports": transports, "rows": rows_list},
         }
 
+    total_rows = int(len(df))
     with timer.measure(log, "견적 메일 일괄 발송", before_minutes=60):
-        for _, row in df.iterrows():
+        for idx, (_, row) in enumerate(df.iterrows(), start=1):
             quote_no = str(row[cm["quote_no"]])
             vendor = str(row[cm["vendor"]]).strip()
+            emit(progress_cb, step("case03", f"{quote_no} → {vendor}", idx, total_rows))
             contact = str(row[cm["contact"]])
             to_addr = str(row[cm["to"]])
             amount_raw = row[cm["amount"]]
@@ -215,6 +217,7 @@ def run(
                 errors += 1
 
     log.success(f"빌드 {built}건 / 발송 {sent_count}건 / PDF 실패 {pdf_failed}건 / 에러 {errors}건")
+    emit(progress_cb, done("case03", f"발송 {sent_count}건 / 빌드 {built}건"))
     return {
         "case_id": "case03",
         "summary_text": f"발송 {sent_count}건 / 빌드 {built}건 / 에러 {errors}건",
