@@ -3,10 +3,9 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from flowcoder_office_tools.messaging import discord as discord_mod
+from flowcoder_office_tools.messaging.discord import OverdueLevelLiteral
 from rich.console import Console
-
-from core.messaging import discord as discord_mod
-from core.messaging.discord import OverdueLevelLiteral
 
 SECRET_WEBHOOK = "https://discord.com/api/webhooks/123456789/abcdefSECRETTOKEN"
 
@@ -253,7 +252,7 @@ def test_send_warning_does_not_leak_webhook_url(monkeypatch: pytest.MonkeyPatch)
 
     class CapturingLogger:
         def __init__(self, case_id: str) -> None:
-            from core.common.demo_logger import DemoLogger
+            from flowcoder_office_tools.common.demo_logger import DemoLogger
 
             self._inner = DemoLogger(case_id)
             self._inner.console = Console(file=buf, force_terminal=False, no_color=True)

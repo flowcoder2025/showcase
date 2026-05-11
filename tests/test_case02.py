@@ -64,8 +64,9 @@ def test_case02_run_detects_outliers_and_calls_discord(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case02_excel_invoice_validation import scenario
-    from core.messaging import discord
 
     sent: list[tuple[str, dict[str, Any]]] = []
 

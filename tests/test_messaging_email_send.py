@@ -14,9 +14,8 @@ from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from core.common import safe_mode
-from core.messaging import email as email_mod
+from flowcoder_office_tools.common import safe_mode
+from flowcoder_office_tools.messaging import email as email_mod
 
 # --- Helpers ---------------------------------------------------------------
 
@@ -285,7 +284,10 @@ def test_safe_mode_intercept_can_patch_send(monkeypatch: pytest.MonkeyPatch) -> 
     stub으로 우회되는지 검증한다.
     """
     # 1) Registration check
-    assert safe_mode.INTERCEPT_TARGETS["gmail"] == ("core.messaging.email", "send")
+    assert safe_mode.INTERCEPT_TARGETS["gmail"] == (
+        "flowcoder_office_tools.messaging.email",
+        "send",
+    )
 
     # 2) Patch through intercept and verify modular reference is stubbed
     monkeypatch.setenv("DEMO_SAFE", "1")
@@ -294,4 +296,4 @@ def test_safe_mode_intercept_can_patch_send(monkeypatch: pytest.MonkeyPatch) -> 
     # Stub returns {"_safe": True, ...}, NOT the real SendResult.
     assert isinstance(result, dict)
     assert result.get("_safe") is True
-    assert result.get("qualname") == "core.messaging.email.send"
+    assert result.get("qualname") == "flowcoder_office_tools.messaging.email.send"

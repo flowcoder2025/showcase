@@ -1,7 +1,7 @@
 """세금계산서 OCR — Gemma 4 E4B + 회계 CSV export.
 
 NOTE: 외부 호출은 모듈 참조로 호출:
-    from core.ocr import invoice
+    from flowcoder_office_tools.ocr import invoice
     invoice.extract(...)
 
 invoice 자체는 외부 호출이 아님 — ``gemma.extract``를 호출하는 wrapper.
@@ -26,7 +26,7 @@ import csv
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
-from core.ocr import gemma
+from flowcoder_office_tools.ocr import gemma
 
 
 class InvoiceData(TypedDict):

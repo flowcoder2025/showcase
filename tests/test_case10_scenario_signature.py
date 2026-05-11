@@ -6,14 +6,14 @@ import json
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case10_ai_meeting_summarizer import scenario
 
 
 def test_case10_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.ai import tasks
-    from core.ai.tasks import ActionItem, MeetingSummary
+    from flowcoder_office_tools.ai import tasks
+    from flowcoder_office_tools.ai.tasks import ActionItem, MeetingSummary
 
     monkeypatch.setattr(
         tasks,

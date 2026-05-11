@@ -8,8 +8,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any, cast
 
-from core.ai import client
-from core.common.demo_logger import demo_logger
+from flowcoder_office_tools.ai import client
+from flowcoder_office_tools.common.demo_logger import demo_logger
 
 
 class OpenRouterAIBackend:

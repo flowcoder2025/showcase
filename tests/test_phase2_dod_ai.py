@@ -19,12 +19,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from flowcoder_office_tools.ai import client as ai_client
+from flowcoder_office_tools.ai import tasks
+from flowcoder_office_tools.ai.tasks import ActionItem, MeetingSummary
 
 from cases.case09_ai_email_drafter import scenario as case09_scenario
 from cases.case10_ai_meeting_summarizer import scenario as case10_scenario
-from core.ai import client as ai_client
-from core.ai import tasks
-from core.ai.tasks import ActionItem, MeetingSummary
 
 DEFAULT_ATTENDEES = ["김사장", "이대리", "박과장"]
 
@@ -141,7 +141,7 @@ def test_case10_owner_hallucinate_protection(monkeypatch: pytest.MonkeyPatch) ->
     """
     # safe-mode short-circuit 우회 (deterministic dummy 가 아닌 검증 로직 통과)
     monkeypatch.delenv("DEMO_SAFE", raising=False)
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     monkeypatch.setattr(safe_mode, "is_safe", lambda: False)
 
@@ -172,7 +172,7 @@ def test_case10_owner_hallucinate_protection(monkeypatch: pytest.MonkeyPatch) ->
 def test_case10_action_items_typed_dict_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """DoD: ``MeetingSummary`` 반환 타입의 shape — summary/action_items/decisions."""
     monkeypatch.delenv("DEMO_SAFE", raising=False)
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     monkeypatch.setattr(safe_mode, "is_safe", lambda: False)
 

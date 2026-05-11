@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from core.excel import reader
+from flowcoder_office_tools.excel import reader
 
 REQUIRED_KEYS = ("vendor", "date", "amount")
 

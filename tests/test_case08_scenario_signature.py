@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 from PIL import Image
 
-from cases._protocols import ScenarioResult
 from cases.case08_ocr_invoice_to_csv import scenario
 
 
 def test_case08_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.ocr import invoice
-    from core.ocr.invoice import InvoiceData
+    from flowcoder_office_tools.ocr import invoice
+    from flowcoder_office_tools.ocr.invoice import InvoiceData
 
     monkeypatch.setattr(
         invoice,

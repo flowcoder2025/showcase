@@ -72,8 +72,9 @@ def test_case05_generates_docx_and_pdf(
     md_to_pdf 는 npx tsx 외부 호출이라 stub 으로 대체 (PDF magic 보존). docx는
     실제 ``python-docx`` 로 생성 — 외부 binary 의존 없음.
     """
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
@@ -100,8 +101,9 @@ def test_case05_docx_is_valid_zip(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """DoD: 생성된 docx 중 최소 1건이 valid ZIP 컨테이너 (docx == zip)."""
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
@@ -124,8 +126,9 @@ def test_case05_pdf_starts_with_pdf_magic(
     stub 이 ``b"%PDF-1.4..."`` 로 작성하므로 첫 4바이트가 ``b"%PDF"`` 여야 한다.
     실제 npx 사용 시에도 동일 magic 이 보장된다 (PDF 1.x 표준).
     """
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
@@ -150,8 +153,9 @@ def test_case05_processes_all_quote_requests(
     seed 가 10 견적 × 4.2 평균 품목 ≈ 42 행. 시나리오는 견적번호로 group →
     requests 리스트 항목 수 = 10. 갯수가 줄어들면 즉시 DoD 위반.
     """
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf_ok)
 
@@ -185,8 +189,9 @@ def test_case06_fills_grant_application(
 
     fixture 가 없으면 skip. 외부 API 미사용이라 safe_mode 무관.
     """
+    from flowcoder_office_tools.docgen import hwpx as hwpx_mod
+
     from cases.case06_hwpx_govt_form_filler import scenario
-    from core.docgen import hwpx as hwpx_mod
     from personas.sample_data.grant_data import AX_TRADING_GRANT
 
     result = scenario.run(output_dir=tmp_path, config={"template_path": hwpx_template})
@@ -219,7 +224,7 @@ def test_case06_render_preview_remains_unimplemented(tmp_path: Path) -> None:
     Plan v2 Deviation 2 (T16 PoC 실패) 잠금. 메시지에 결정 문서 위치와
     Phase 3 기재가 남아있어야 운영자가 즉시 진단 가능하다.
     """
-    from core.docgen import hwp_preview
+    from flowcoder_office_tools.docgen import hwp_preview
 
     placeholder = tmp_path / "any.hwpx"
     placeholder.write_bytes(b"")  # 호출 도달 전에 NotImplementedError 가 떠야 한다.
@@ -304,7 +309,7 @@ def test_template_strict_undefined_raises_on_missing_var() -> None:
     누락 변수를 즉시 노출해야 한다. (silent empty-string 채움 방지 — case03
     메일 본문에서 placeholder 가 누락되면 발송 전에 실패해야 한다.)
     """
-    from core.docgen import template
+    from flowcoder_office_tools.docgen import template
 
     with pytest.raises(jinja2.UndefinedError):
         template.render_html_string("{{ unknown }}", {})
@@ -316,7 +321,7 @@ def test_template_strict_undefined_raises_on_missing_var() -> None:
 
 def test_template_renders_with_full_context() -> None:
     """DoD: 컨텍스트가 충분하면 정상 렌더 — StrictUndefined 가 정상 입력은 차단하지 않음."""
-    from core.docgen import template
+    from flowcoder_office_tools.docgen import template
 
     rendered_text = template.render_string(
         "Hello {{ name }}, total {{ amount }}원",

@@ -120,8 +120,9 @@ def test_all_external_api_cases_safe_mode_caches(
 
 def _check_case09_deterministic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> bool:
     """case09 safe mode + faked AI → 2회 결과 byte-identical (T38: config["incoming_message"])."""
+    from flowcoder_office_tools.ai import client as ai_client
+
     from cases.case09_ai_email_drafter import scenario
-    from core.ai import client as ai_client
 
     fake = json.dumps([{"option": 1, "subject": "S", "body": "B"}], ensure_ascii=False)
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake)
@@ -243,13 +244,23 @@ def test_ruff_format_check_clean() -> None:
 
 
 def test_mypy_strict_no_errors_on_locked_files(capsys: pytest.CaptureFixture[str]) -> None:
-    """DoD: mypy --strict on the cumulative production lock (core/ + runner.py + cases/).
+    """DoD: mypy --strict on the cumulative production lock.
 
+    T43 이주 후 lock 영역: ``packages/flowcoder-office-tools/src/`` + ``runner.py`` +
+    ``cases/``. ``core/`` 는 lazy shim 만 남았고 lock scope 외 (T46 제거 예정).
     Tests directories are not part of the production lock — separate cumulative
     debt. This test prints the file count for T26 README sync.
     """
     result = subprocess.run(
-        ["uv", "run", "mypy", "--strict", "core", "runner.py", "cases"],
+        [
+            "uv",
+            "run",
+            "mypy",
+            "--strict",
+            "packages/flowcoder-office-tools/src/",
+            "runner.py",
+            "cases",
+        ],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
@@ -302,7 +313,7 @@ def test_discord_webhook_url_masked_when_logged() -> None:
 
     R2 방어선 — webhook URL 전체가 로그/예외에 leak 되면 안 됨.
     """
-    from core.common import secrets_mask
+    from flowcoder_office_tools.common import secrets_mask
 
     raw = "https://discord.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz"
     masked = secrets_mask.mask(raw)
@@ -325,7 +336,7 @@ def test_email_build_message_returns_email_message() -> None:
     import os
 
     os.environ["GMAIL_SENDER"] = "ax-sales@example.com"
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     msg = email_mod.build_message(
         to="recipient@example.com",

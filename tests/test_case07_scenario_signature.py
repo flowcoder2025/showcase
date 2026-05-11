@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 from PIL import Image
 
-from cases._protocols import ScenarioResult
 from cases.case07_ocr_receipt_to_excel import scenario
 
 
 def test_case07_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.ocr import receipt
-    from core.ocr.receipt import ReceiptData
+    from flowcoder_office_tools.ocr import receipt
+    from flowcoder_office_tools.ocr.receipt import ReceiptData
 
     monkeypatch.setattr(
         receipt,

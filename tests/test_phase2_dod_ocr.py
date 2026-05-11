@@ -24,13 +24,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from flowcoder_office_tools.ocr import gemma, invoice, receipt
+from flowcoder_office_tools.ocr.invoice import InvoiceData
+from flowcoder_office_tools.ocr.receipt import ReceiptData
 from PIL import Image
 
 from cases.case07_ocr_receipt_to_excel import scenario as case07_scenario
 from cases.case08_ocr_invoice_to_csv import scenario as case08_scenario
-from core.ocr import gemma, invoice, receipt
-from core.ocr.invoice import InvoiceData
-from core.ocr.receipt import ReceiptData
 
 # 알고리즘으로 사전 검증된 공개 사업자번호 (test_ocr_invoice.py와 동일).
 _VALID_SUPPLIER_BIZNUM = "220-81-62517"  # 삼성전자

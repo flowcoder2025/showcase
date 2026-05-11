@@ -14,7 +14,7 @@ def test_case09_safe_mode_returns_deterministic_result(
 
     # client.chat을 deterministic fake로 교체.
     fake_drafts = '[{"option": 1, "subject": "테스트 답신", "body": "본문"}]'
-    from core.ai import client as ai_client
+    from flowcoder_office_tools.ai import client as ai_client
 
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
 

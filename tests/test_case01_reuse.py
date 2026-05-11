@@ -1,8 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
-
-from core.excel import merger
+from flowcoder_office_tools.excel import merger
 
 
 def test_merger_reuses_with_english_columns(tmp_path: Path) -> None:

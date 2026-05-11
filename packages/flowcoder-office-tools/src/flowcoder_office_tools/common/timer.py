@@ -4,7 +4,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from core.common.demo_logger import Logger
+from flowcoder_office_tools.common.demo_logger import Logger
 
 # Cap for ratio (above this is not credible on a projector).
 # Floor is defensive depth — _RATIO_CAP is the binding guard for all realistic

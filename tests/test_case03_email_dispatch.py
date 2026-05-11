@@ -97,8 +97,8 @@ def _patch_externals(
     send_fn: Any = _safe_send,
 ) -> list[EmailMessage]:
     """pdf.md_to_pdf + email.send를 mock; 실제 호출된 EmailMessage 캡처."""
-    from core.docgen import pdf as pdf_mod
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     captured: list[EmailMessage] = []
 
@@ -208,8 +208,9 @@ def test_run_attaches_pdf_when_generated(tmp_path: Path, monkeypatch: pytest.Mon
 
 def test_run_continues_when_pdf_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """일부 md_to_pdf 호출이 MdToPdfError → 첨부 없이 발송, built 여전히 증가."""
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case03_email_quote_dispatch import scenario
-    from core.docgen import pdf as pdf_mod
 
     counter = {"n": 0}
 
@@ -411,8 +412,9 @@ def test_run_summary_includes_pdf_failed_counter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """T8.5 — metrics에 별도 ``pdf_failed`` 카운터 (시연 시 PDF 실패 가시)."""
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case03_email_quote_dispatch import scenario
-    from core.docgen import pdf as pdf_mod
 
     counter = {"n": 0}
 

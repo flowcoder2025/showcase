@@ -23,7 +23,7 @@ from unittest.mock import patch
 
 from rich.console import Console
 
-from core.common import safe_mode_v2
+from flowcoder_office_tools.common import safe_mode_v2
 
 _console = Console()
 
@@ -58,10 +58,10 @@ def force_safe(reason: str) -> Token[bool | None]:
 
 
 INTERCEPT_TARGETS: dict[str, tuple[str, str]] = {
-    "openrouter": ("core.ai.client", "chat"),
-    "ollama_gemma": ("core.ocr.gemma", "extract"),
-    "discord_webhook": ("core.messaging.discord", "send"),
-    "gmail": ("core.messaging.email", "send"),
+    "openrouter": ("flowcoder_office_tools.ai.client", "chat"),
+    "ollama_gemma": ("flowcoder_office_tools.ocr.gemma", "extract"),
+    "discord_webhook": ("flowcoder_office_tools.messaging.discord", "send"),
+    "gmail": ("flowcoder_office_tools.messaging.email", "send"),
 }
 
 

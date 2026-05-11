@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from cases._protocols import AIBackend, Backends, MessagingBackend, OCRBackend
-from core.backends.discord import DiscordWebhookBackend
-from core.backends.factory import (
+from flowcoder_office_tools.backends.discord import DiscordWebhookBackend
+from flowcoder_office_tools.backends.factory import (
     _DefaultMessagingBackend,
     default_backends,
     safe_backends,
 )
-from core.backends.gmail import GmailBackend
+from flowcoder_office_tools.backends.gmail import GmailBackend
+from flowcoder_office_tools.protocols import AIBackend, Backends, MessagingBackend, OCRBackend
 
 
 def test_default_backends_returns_backends_dataclass() -> None:

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import hashlib
 
-from core.common.demo_logger import demo_logger
-from core.messaging import discord
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.messaging import discord
 
 
 class DiscordWebhookBackend:

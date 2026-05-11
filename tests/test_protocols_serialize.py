@@ -1,4 +1,4 @@
-"""T35 — `cases._protocols.serialize_result` sentinel leak coverage.
+"""T35 — `flowcoder_office_tools.protocols.serialize_result` sentinel leak coverage.
 
 Covers all secrets_mask patterns + structural cases (R1-L3 dataclass, R1-L4 depth,
 R3-M3 output_files paths, bytes/tuple/Decimal preservation).
@@ -11,7 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from cases._protocols import ScenarioResult, serialize_result
+from flowcoder_office_tools.protocols import ScenarioResult, serialize_result
 
 
 def _empty_result(case_id: str = "x") -> ScenarioResult:

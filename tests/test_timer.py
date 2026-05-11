@@ -1,6 +1,6 @@
 import time
 
-from core.common import demo_logger, timer
+from flowcoder_office_tools.common import demo_logger, timer
 
 
 def test_measure_prints_before_after_with_ratio(capsys):

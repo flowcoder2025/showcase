@@ -6,10 +6,10 @@ T7b: send — 실제 발송 + safe_mode short-circuit + Gmail API/SMTP 폴백
 
 NOTE: 외부 호출은 모듈 참조로 호출 (safe_mode patch 격리)::
 
-    from core.messaging import email
+    from flowcoder_office_tools.messaging import email
     email.send(...)
 
-INTERCEPT_TARGETS["gmail"] = (core.messaging.email, send) — 단일 patch point.
+INTERCEPT_TARGETS["gmail"] = (flowcoder_office_tools.messaging.email, send) — 단일 patch point.
 ``_send_gmail_api`` / ``_send_smtp`` 는 internal helper로, ``send`` 만 patch
 되어도 모든 외부 호출이 격리된다.
 """
@@ -24,7 +24,7 @@ from email.utils import formatdate, getaddresses, parseaddr
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
-from core.common import safe_mode
+from flowcoder_office_tools.common import safe_mode
 
 GMAIL_ATTACHMENT_LIMIT = 100 * 1024 * 1024  # 100MB
 GMAIL_SCOPES: list[str] = ["https://www.googleapis.com/auth/gmail.send"]
@@ -118,7 +118,7 @@ def build_html_body(template_str: str, context: dict[str, Any]) -> str:
         ... )
         >>> # vendor의 <script>는 &lt;script&gt;로 escape됨
     """
-    from core.docgen import template
+    from flowcoder_office_tools.docgen import template
 
     return template.render_html_string(template_str, context)
 
@@ -182,7 +182,7 @@ def build_message(
                 f"attachment {path.name} size {size} exceeds Gmail limit {GMAIL_ATTACHMENT_LIMIT}"
             )
         if size == 0:
-            from core.common import demo_logger as _dl
+            from flowcoder_office_tools.common import demo_logger as _dl
 
             _dl.demo_logger("messaging.email").warning(
                 f"attachment {path.name} is 0 bytes — Gmail may reject"

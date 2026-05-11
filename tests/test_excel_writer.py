@@ -1,8 +1,7 @@
 import pandas as pd
 import pytest
+from flowcoder_office_tools.excel import writer
 from openpyxl import load_workbook
-
-from core.excel import writer
 
 
 def test_write_styled_report_creates_file(tmp_path):

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import inspect
 
-from cases._protocols import AIBackend, OCRBackend
-from core.backends.discord import DiscordWebhookBackend
-from core.backends.gmail import GmailBackend
-from core.backends.mlx import MLXOCRBackend
-from core.backends.openrouter import OpenRouterAIBackend
+from flowcoder_office_tools.backends.discord import DiscordWebhookBackend
+from flowcoder_office_tools.backends.gmail import GmailBackend
+from flowcoder_office_tools.backends.mlx import MLXOCRBackend
+from flowcoder_office_tools.backends.openrouter import OpenRouterAIBackend
+from flowcoder_office_tools.protocols import AIBackend, OCRBackend
 
 
 def test_mlx_satisfies_ocr_protocol() -> None:

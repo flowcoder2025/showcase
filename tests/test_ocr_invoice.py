@@ -14,8 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from core.ocr import gemma, invoice
+from flowcoder_office_tools.ocr import gemma, invoice
 
 # 알고리즘 검증된 known-valid 공개 사업자번호.
 _VALID_SUPPLIER = "220-81-62517"  # 삼성전자

@@ -1,4 +1,4 @@
-from core.common import config
+from flowcoder_office_tools.common import config
 
 
 def test_load_env_returns_dict_with_known_keys(tmp_path, monkeypatch):

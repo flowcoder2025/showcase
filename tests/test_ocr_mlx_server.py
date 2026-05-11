@@ -8,8 +8,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
-from core.ocr import _mlx_server
+from flowcoder_office_tools.ocr import _mlx_server
 
 
 @pytest.fixture(autouse=True)

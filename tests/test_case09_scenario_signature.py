@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case09_ai_email_drafter import scenario
 
 
 def test_case09_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.ai import client as ai_client
+    from flowcoder_office_tools.ai import client as ai_client
 
     fake_drafts = '[{"option": 1, "subject": "테스트", "body": "본문"}]'
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)

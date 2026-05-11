@@ -1,8 +1,7 @@
 from pathlib import Path
 
 import pytest
-
-from core.common import safe_mode
+from flowcoder_office_tools.common import safe_mode
 
 
 def test_intercept_isolates_between_two_cases(
@@ -13,7 +12,7 @@ def test_intercept_isolates_between_two_cases(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEMO_SAFE", "1")
 
-    from core.messaging import discord as discord_mod
+    from flowcoder_office_tools.messaging import discord as discord_mod
 
     original_send = discord_mod.send
 

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from core.backends.cached import (
+from flowcoder_office_tools.backends.cached import (
     CachedAIBackend,
     CachedMessagingBackend,
     CachedOCRBackend,

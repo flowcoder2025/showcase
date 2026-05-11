@@ -1,7 +1,8 @@
 """case03 — 견적 메일 일괄 발송 (개인화 + PDF 첨부) — T38 ScenarioResult signature.
 
 Architecture (T38 시그니처 정식화 후에도 보존):
-- thin wrapper: scenario.py가 ``core.messaging.email`` + ``core.docgen.{pdf, template}`` 만 호출.
+- thin wrapper: scenario.py가 ``flowcoder_office_tools.messaging.email`` +
+  ``flowcoder_office_tools.docgen.{pdf, template}`` 만 호출.
 - 단일 patch point: ``email.send`` (T7b 결정 — INTERCEPT_TARGETS["gmail"]).
 - per-request error isolation: PDF 실패 시 첨부 없이 발송, send 실패 / build 실패 시 errors+1.
 - column_map 강제: 다른 입력 컬럼 스키마에서도 동일 시나리오 재호출 가능.
@@ -9,8 +10,8 @@ Architecture (T38 시그니처 정식화 후에도 보존):
 
 NOTE: 외부 호출은 모듈 참조로 호출(safe_mode patch 격리)::
 
-    from core.docgen import pdf, template
-    from core.messaging import email
+    from flowcoder_office_tools.docgen import pdf, template
+    from flowcoder_office_tools.messaging import email
     email.send(...)
     pdf.md_to_pdf(...)
 """
@@ -23,16 +24,15 @@ from typing import Any
 
 import pandas as pd
 import rich.markup
-
-from cases._protocols import Backends, ScenarioResult
-from core.backends.factory import default_backends, safe_backends
-from core.common import timer
-from core.common.demo_logger import demo_logger
-from core.common.safe_mode_v2 import is_safe
-from core.docgen import pdf as pdf_mod
-from core.docgen import template as tmpl_mod
-from core.messaging import email as email_mod
-from core.progress import ProgressEvent, done, emit, step
+from flowcoder_office_tools.backends.factory import default_backends, safe_backends
+from flowcoder_office_tools.common import timer
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.common.safe_mode_v2 import is_safe
+from flowcoder_office_tools.docgen import pdf as pdf_mod
+from flowcoder_office_tools.docgen import template as tmpl_mod
+from flowcoder_office_tools.messaging import email as email_mod
+from flowcoder_office_tools.progress import ProgressEvent, done, emit, step
+from flowcoder_office_tools.protocols import Backends, ScenarioResult
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_IN = _REPO_ROOT / "personas/sample_data"

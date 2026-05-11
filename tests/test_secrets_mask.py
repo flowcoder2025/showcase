@@ -1,4 +1,4 @@
-from core.common import secrets_mask
+from flowcoder_office_tools.common import secrets_mask
 
 
 def test_masks_discord_webhook_url():

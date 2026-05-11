@@ -7,13 +7,13 @@ from typing import Any
 
 import pandas as pd
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case02_excel_invoice_validation import scenario
 
 
 def test_case02_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.messaging import discord
+    from flowcoder_office_tools.messaging import discord
 
     monkeypatch.setattr(discord, "send", lambda *a, **k: {"status": 204})
 

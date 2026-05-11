@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from core.ocr import gemma, receipt
+from flowcoder_office_tools.ocr import gemma, receipt
 
 # -- extract: contract via gemma.extract mock -------------------------------
 
@@ -330,7 +329,7 @@ class _RecordingLogger:
 
 def _patch_demo_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
     """receipt 모듈이 사용하는 demo_logger.demo_logger를 RecordingLogger로 교체."""
-    from core.common import demo_logger as dl_module
+    from flowcoder_office_tools.common import demo_logger as dl_module
 
     rec = _RecordingLogger()
     monkeypatch.setattr(dl_module, "demo_logger", lambda _case_id: rec)

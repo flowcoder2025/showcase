@@ -28,10 +28,10 @@ def test_critical_imports_smoke() -> None:
         "lxml.etree",
     ):
         importlib.import_module(mod)
-    from core.ai import client, prompts, tasks
-    from core.common import config, demo_logger, safe_mode, secrets_mask, timer
-    from core.excel import merger, pivot, reader, validator, writer
-    from core.messaging import discord
+    from flowcoder_office_tools.ai import client, prompts, tasks
+    from flowcoder_office_tools.common import config, demo_logger, safe_mode, secrets_mask, timer
+    from flowcoder_office_tools.excel import merger, pivot, reader, validator, writer
+    from flowcoder_office_tools.messaging import discord
 
     # core.ai
     assert hasattr(client, "chat")
@@ -99,7 +99,7 @@ def test_case09_safe_mode_deterministic(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setenv("DEMO_SAFE", "1")
 
     fake_drafts = '[{"option": 1, "subject": "fixed", "body": "fixed-body"}]'
-    from core.ai import client as ai_client
+    from flowcoder_office_tools.ai import client as ai_client
 
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
 
@@ -122,7 +122,7 @@ def test_openrouter_fallback_chain(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """primary 차단 → fallback 자동 → 마지막 실패 시 force_safe."""
-    from core.ai import client
+    from flowcoder_office_tools.ai import client
 
     def always_429(model: str, messages: list[dict[str, Any]], **k: Any) -> str:
         raise client.RateLimitError("429")
@@ -136,7 +136,7 @@ def test_openrouter_fallback_chain(
 
 
 def test_secrets_masking_in_logs(capsys: pytest.CaptureFixture[str]) -> None:
-    from core.common.demo_logger import demo_logger
+    from flowcoder_office_tools.common.demo_logger import demo_logger
 
     log = demo_logger("dod")
     log.info("posting to https://discord.com/api/webhooks/123/secret")
@@ -150,8 +150,8 @@ def test_safe_mode_patch_isolation_across_cases(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEMO_SAFE", "1")
-    from core.common import safe_mode
-    from core.messaging import discord as d
+    from flowcoder_office_tools.common import safe_mode
+    from flowcoder_office_tools.messaging import discord as d
 
     original = d.send
     with safe_mode.intercept("A", apis=["discord_webhook"]):
@@ -165,8 +165,7 @@ def test_safe_mode_patch_isolation_across_cases(
 def test_column_map_reuse_with_different_schema(tmp_path: Path) -> None:
     """다음 컨설팅 프로젝트 시나리오 — 영어 컬럼."""
     import pandas as pd
-
-    from core.excel import merger
+    from flowcoder_office_tools.excel import merger
 
     df = pd.DataFrame(
         [

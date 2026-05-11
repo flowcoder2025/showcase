@@ -11,11 +11,11 @@ from typing import Any
 
 import openpyxl
 import pytest
+from flowcoder_office_tools.ocr import receipt
+from flowcoder_office_tools.ocr.receipt import ReceiptData
 from PIL import Image
 
 from cases.case07_ocr_receipt_to_excel import scenario
-from core.ocr import receipt
-from core.ocr.receipt import ReceiptData
 
 
 def _make_blank_png(path: Path) -> None:

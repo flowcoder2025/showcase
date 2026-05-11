@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 import yaml
+from flowcoder_office_tools.docgen import hwpx
 
 from cases.case06_hwpx_govt_form_filler import scenario
-from core.docgen import hwpx
 from personas.sample_data.grant_data import AX_TRADING_GRANT, GrantApplication
 
 FIXTURE = (

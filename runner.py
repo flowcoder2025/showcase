@@ -21,12 +21,11 @@ from pathlib import Path
 from typing import Any, cast
 
 import yaml
+from flowcoder_office_tools.common import config, safe_mode
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.progress import rich_progress_adapter
 from rich.console import Console
 from rich.table import Table
-
-from core.common import config, safe_mode
-from core.common.demo_logger import demo_logger
-from core.progress import rich_progress_adapter
 
 console = Console()
 
@@ -74,12 +73,11 @@ def warm_up_gemma_async() -> None:
     OCR 모듈에 hard depend 하지 않는다.
     """
     try:
-        from core.ocr import gemma
-
-        gemma.warmup("gemma4:e2b")
-        gemma.warmup("gemma4:e4b")
+        import flowcoder_office_tools.ocr.gemma as _gemma
     except ImportError:
-        pass
+        return
+    _gemma.warmup("gemma4:e2b")
+    _gemma.warmup("gemma4:e4b")
 
 
 def cmd_check(strict: bool = False) -> int:
@@ -210,7 +208,7 @@ def _check_mlx_gemma(log: Any) -> bool:
     spawn은 runner main에서 백그라운드로 처리 → strict check가 30~60s 모델
     로딩을 기다리면 사용성 저하).
     """
-    from core.ocr import _mlx_server
+    from flowcoder_office_tools.ocr import _mlx_server
 
     bin_path = os.environ.get("AX_MLX_BIN") or "/Users/jerome/mlx-env/bin/mlx_vlm.server"
     if not Path(bin_path).is_file():

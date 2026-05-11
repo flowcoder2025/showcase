@@ -8,15 +8,15 @@ from typing import Any
 
 import pandas as pd
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case03_email_quote_dispatch import scenario
 
 
 def test_case03_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GMAIL_SENDER", "x@example.com")
-    from core.docgen import pdf as pdf_mod
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     monkeypatch.setattr(
         pdf_mod, "md_to_pdf", lambda md, out, **_: Path(out).write_bytes(b"%PDF-1.4 stub")

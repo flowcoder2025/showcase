@@ -8,11 +8,11 @@ from typing import Any
 
 import pytest
 import yaml
+from flowcoder_office_tools.ocr import invoice
+from flowcoder_office_tools.ocr.invoice import InvoiceData
 from PIL import Image
 
 from cases.case08_ocr_invoice_to_csv import scenario
-from core.ocr import invoice
-from core.ocr.invoice import InvoiceData
 
 _VALID_SUPPLIER = "220-81-62517"  # 삼성전자
 _VALID_BUYER = "120-81-47521"  # 카카오

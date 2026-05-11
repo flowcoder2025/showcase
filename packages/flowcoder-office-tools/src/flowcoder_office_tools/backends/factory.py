@@ -18,12 +18,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from cases._protocols import Backends
-from core.backends.discord import DiscordWebhookBackend
-from core.backends.gmail import GmailBackend
-from core.backends.mlx import MLXOCRBackend
-from core.backends.openrouter import OpenRouterAIBackend
-from core.backends.safe import SafeAIBackend, SafeMessagingBackend, SafeOCRBackend
+from flowcoder_office_tools.backends.discord import DiscordWebhookBackend
+from flowcoder_office_tools.backends.gmail import GmailBackend
+from flowcoder_office_tools.backends.mlx import MLXOCRBackend
+from flowcoder_office_tools.backends.openrouter import OpenRouterAIBackend
+from flowcoder_office_tools.backends.safe import SafeAIBackend, SafeMessagingBackend, SafeOCRBackend
+from flowcoder_office_tools.protocols import Backends
 
 
 class _DefaultMessagingBackend:

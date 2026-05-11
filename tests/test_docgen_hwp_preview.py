@@ -6,8 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from core.docgen import hwp_preview
+from flowcoder_office_tools.docgen import hwp_preview
 
 # hwpx-editor 스킬의 sample HWPX (Skeleton.hwpx) — import smoke에서 사용
 HWPX_EDITOR_SCRIPTS = "/Users/jerome/.claude/skills/hwpx-editor/scripts"

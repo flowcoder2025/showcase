@@ -6,8 +6,8 @@ import re
 from datetime import datetime
 from typing import Any, TypedDict, cast
 
-from core.ai import client, prompts
-from core.common.demo_logger import Logger, demo_logger
+from flowcoder_office_tools.ai import client, prompts
+from flowcoder_office_tools.common.demo_logger import Logger, demo_logger
 
 _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -123,7 +123,7 @@ def summarize_meeting(
 
     # safe-mode short-circuit (chat()도 동일하게 short-circuit하지만
     # owner 검증/json 처리 비용을 아끼고 deterministic 출력을 보장).
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     if safe_mode.is_safe():
         return _safe_summary(transcript, attendees)

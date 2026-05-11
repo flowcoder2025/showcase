@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case06_hwpx_govt_form_filler import scenario
 
 _TEMPLATE = (

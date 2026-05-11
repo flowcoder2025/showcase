@@ -1,6 +1,5 @@
 import pandas as pd
-
-from core.excel import pivot
+from flowcoder_office_tools.excel import pivot
 
 
 def test_vendor_month_pivot():

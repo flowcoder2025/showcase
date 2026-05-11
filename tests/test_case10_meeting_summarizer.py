@@ -12,10 +12,10 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from flowcoder_office_tools.ai import tasks
+from flowcoder_office_tools.ai.tasks import ActionItem, MeetingSummary
 
 from cases.case10_ai_meeting_summarizer import scenario
-from core.ai import tasks
-from core.ai.tasks import ActionItem, MeetingSummary
 
 # ---------------------------------------------------------------------------
 # helpers

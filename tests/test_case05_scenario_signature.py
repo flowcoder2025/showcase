@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case05_doc_quote_generator import scenario
 
 
 def test_case05_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(
         pdf_mod, "md_to_pdf", lambda md, out, **_: Path(out).write_bytes(b"%PDF-1.4 stub")

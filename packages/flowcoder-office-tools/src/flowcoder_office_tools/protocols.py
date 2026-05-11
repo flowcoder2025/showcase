@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
-from core.common.secrets_mask import mask_text
+from flowcoder_office_tools.common.secrets_mask import mask_text
 
 _MAX_DEPTH = 50
 

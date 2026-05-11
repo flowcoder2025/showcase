@@ -1,10 +1,11 @@
 """MLX Gemma 4 wrapper — 영수증/세금계산서 OCR.
 
 NOTE: 외부 호출은 모듈 참조로 호출 (safe_mode patch 격리):
-    from core.ocr import gemma
+    from flowcoder_office_tools.ocr import gemma
     gemma.extract(...)
 
-INTERCEPT_TARGETS["ollama_gemma"] = ("core.ocr.gemma", "extract") — 단일 patch point.
+INTERCEPT_TARGETS["ollama_gemma"] = ("flowcoder_office_tools.ocr.gemma", "extract")
+— 단일 patch point.
 INTERCEPT_TARGETS 키 이름은 외부 계약(meta.yaml ``external_apis``)이라 그대로 유지.
 내부 백엔드는 ollama → mlx_vlm.server (OpenAI 호환) 로 교체됐다.
 
@@ -41,9 +42,9 @@ from openai import (
     RateLimitError,
 )
 
-from core.common import safe_mode
-from core.common.demo_logger import demo_logger
-from core.ocr import _mlx_server
+from flowcoder_office_tools.common import safe_mode
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.ocr import _mlx_server
 
 ModelLiteral = Literal["gemma4:e2b", "gemma4:e4b"]
 _TIMEOUTS_SEC: dict[str, int] = {"gemma4:e2b": 30, "gemma4:e4b": 60}
@@ -319,7 +320,7 @@ def _safe_dummy(image_path: Path) -> dict[str, Any]:
     h = hashlib.sha1(str(image_path).encode()).hexdigest()[:8]
     return {
         "_safe": True,
-        "qualname": "core.ocr.gemma.extract",
+        "qualname": "flowcoder_office_tools.ocr.gemma.extract",
         "image_hash": h,
         "image_path": str(image_path),
     }

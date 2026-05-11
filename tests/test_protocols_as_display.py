@@ -1,4 +1,4 @@
-"""T35 — `cases._protocols.as_display` Streamlit 화면 sanitize 보장 (R1-C1).
+"""T35 — `flowcoder_office_tools.protocols.as_display` Streamlit 화면 sanitize 보장 (R1-C1).
 
 `as_display`는 `serialize_result`와 동일한 sanitize를 적용하는 단일 진입점.
 raw `result`를 st.* 위젯에 직접 넘기는 패턴을 차단하기 위한 함수.
@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from cases._protocols import ScenarioResult, as_display
+from flowcoder_office_tools.protocols import ScenarioResult, as_display
 
 
 def _empty_result(case_id: str = "x") -> ScenarioResult:

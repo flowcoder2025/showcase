@@ -5,8 +5,8 @@ from __future__ import annotations
 from email.message import EmailMessage
 from pathlib import Path
 
-from cases._protocols import AIBackend, MessagingBackend, OCRBackend
-from core.backends.safe import SafeAIBackend, SafeMessagingBackend, SafeOCRBackend
+from flowcoder_office_tools.backends.safe import SafeAIBackend, SafeMessagingBackend, SafeOCRBackend
+from flowcoder_office_tools.protocols import AIBackend, MessagingBackend, OCRBackend
 
 
 def test_safe_ocr_satisfies_protocol() -> None:

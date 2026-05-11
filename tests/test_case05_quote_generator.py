@@ -66,8 +66,9 @@ def quote_input_dir(tmp_path: Path) -> Path:
 def test_run_creates_docx_and_pdf_per_request(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
@@ -84,8 +85,9 @@ def test_run_creates_docx_and_pdf_per_request(
 def test_run_pdf_failure_does_not_block_other_requests(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     counter = {"n": 0}
 
@@ -108,8 +110,9 @@ def test_run_pdf_failure_does_not_block_other_requests(
 def test_run_uses_column_map_for_alternate_schema(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -150,8 +153,9 @@ def test_run_uses_column_map_for_alternate_schema(
 
 
 def test_run_with_zero_requests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -172,8 +176,9 @@ def test_run_with_zero_requests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 def test_run_summary_structure(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
@@ -197,8 +202,9 @@ def test_run_summary_structure(
 def test_run_creates_output_dir_if_missing(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -216,9 +222,9 @@ def test_run_docx_contains_vendor_and_items(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from docx import Document
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
 
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
     out = tmp_path / "out"
@@ -241,9 +247,10 @@ def test_run_docx_contains_vendor_and_items(
 
 
 def test_run_continues_after_word_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.docgen import word as word_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
-    from core.docgen import word as word_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -271,8 +278,9 @@ def test_run_continues_after_word_failure(tmp_path: Path, monkeypatch: pytest.Mo
 def test_run_logs_per_request_progress(
     quote_input_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -294,8 +302,9 @@ def test_run_logs_per_request_progress(
 def test_run_progress_log_escapes_markup_in_vendor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -329,8 +338,9 @@ def test_run_progress_log_escapes_markup_in_vendor(
 def test_run_skips_empty_vendor_with_warning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -374,8 +384,9 @@ def test_run_skips_empty_vendor_with_warning(
 
 
 def test_run_skips_whitespace_vendor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 
@@ -416,9 +427,10 @@ def test_run_skips_whitespace_vendor(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 
 def test_run_error_log_contains_request_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.docgen import word as word_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
-    from core.docgen import word as word_mod
 
     monkeypatch.setattr(pdf_mod, "md_to_pdf", _stub_pdf)
 

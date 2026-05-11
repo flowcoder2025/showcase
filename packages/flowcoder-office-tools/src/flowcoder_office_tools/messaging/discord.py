@@ -1,7 +1,7 @@
 """Discord webhook 발송 — 단계별 톤(level) 분기 지원.
 
 NOTE: 외부 호출은 반드시 모듈 참조로 호출 (safe_mode patch 격리):
-    from core.messaging import discord
+    from flowcoder_office_tools.messaging import discord
     discord.send(...)
 """
 
@@ -10,7 +10,7 @@ from typing import Literal, TypedDict
 
 from discord_webhook import DiscordEmbed, DiscordWebhook
 
-from core.common.demo_logger import demo_logger
+from flowcoder_office_tools.common.demo_logger import demo_logger
 
 LEVEL_COLORS = {
     "info": "3498db",  # blue

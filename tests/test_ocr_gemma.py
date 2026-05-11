@@ -1,4 +1,4 @@
-"""core.ocr.gemma — MLX (mlx_vlm.server OpenAI-compat) wrapper 강한 검증.
+"""flowcoder_office_tools.ocr.gemma — MLX (mlx_vlm.server OpenAI-compat) wrapper 강한 검증.
 
 전부 mock 기반. 실제 mlx_vlm.server 호출 없음.
 INTERCEPT_TARGETS["ollama_gemma"] 키 이름은 외부 계약이라 그대로 유지.
@@ -17,15 +17,14 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from flowcoder_office_tools.common import safe_mode
+from flowcoder_office_tools.ocr import _mlx_server, gemma
 from openai import (
     APIConnectionError,
     APIStatusError,
     APITimeoutError,
     RateLimitError,
 )
-
-from core.common import safe_mode
-from core.ocr import _mlx_server, gemma
 
 
 @pytest.fixture(autouse=True)
@@ -66,7 +65,7 @@ def test_safe_dummy_deterministic_for_same_path() -> None:
     b = gemma._safe_dummy(Path("/tmp/x.png"))
     assert a == b
     assert a["_safe"] is True
-    assert a["qualname"] == "core.ocr.gemma.extract"
+    assert a["qualname"] == "flowcoder_office_tools.ocr.gemma.extract"
     assert len(a["image_hash"]) == 8
 
 
@@ -227,12 +226,12 @@ def test_extract_connection_error_triggers_force_safe(
     monkeypatch.setattr(gemma, "_client", lambda _alias: fake_client)
 
     result = gemma.extract(img, model="gemma4:e2b")
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     # T37 (R1-H3): force_safe는 env 변경 없이 ContextVar로만 표시.
     assert safe_mode.is_safe() is True
     assert result["_safe"] is True
-    assert result["qualname"] == "core.ocr.gemma.extract"
+    assert result["qualname"] == "flowcoder_office_tools.ocr.gemma.extract"
 
 
 def test_extract_timeout_error_handled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -292,7 +291,7 @@ def test_extract_ensure_running_failure_force_safe(
 
     monkeypatch.setattr(_mlx_server, "ensure_running", raise_not_found)
     result = gemma.extract(img, model="gemma4:e2b")
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     # T37 (R1-H3): force_safe는 env 변경 없이 ContextVar로만 표시.
     assert safe_mode.is_safe() is True
@@ -368,7 +367,7 @@ def test_warmup_failure_silent_resets_done(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_safe_mode_intercept_targets_points_to_extract() -> None:
     target = safe_mode.INTERCEPT_TARGETS["ollama_gemma"]
-    assert target == ("core.ocr.gemma", "extract")
+    assert target == ("flowcoder_office_tools.ocr.gemma", "extract")
 
 
 def test_safe_mode_intercept_can_patch_extract(
@@ -378,12 +377,12 @@ def test_safe_mode_intercept_can_patch_extract(
     monkeypatch.chdir(tmp_path)
 
     with safe_mode.intercept("case_test", apis=["ollama_gemma"]):
-        from core.ocr import gemma as g
+        from flowcoder_office_tools.ocr import gemma as g
 
         result = g.extract("/tmp/x.png")
         assert isinstance(result, dict)
         assert result.get("_safe") is True
-        assert result.get("qualname") == "core.ocr.gemma.extract"
+        assert result.get("qualname") == "flowcoder_office_tools.ocr.gemma.extract"
 
 
 # -- schema validation + 1-shot retry --------------------------------------

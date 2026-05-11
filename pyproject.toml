@@ -38,6 +38,7 @@ dev = [
     "types-PyYAML>=6.0",
     "mypy>=1.13",
     "types-jsonschema>=4.20",
+    "libcst>=1.8.6",
 ]
 
 [tool.uv]

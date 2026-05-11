@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from cases._protocols import AIBackend, MessagingBackend, OCRBackend
+from flowcoder_office_tools.protocols import AIBackend, MessagingBackend, OCRBackend
 
 
 def _key(case_id: str, identity: str, args_repr: str) -> str:

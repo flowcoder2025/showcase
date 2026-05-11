@@ -20,9 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 from PIL import Image
-
-from cases._protocols import ScenarioResult
 
 
 @pytest.fixture
@@ -57,8 +56,9 @@ def test_case01_runs_from_arbitrary_cwd(
 def test_case02_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case02_excel_invoice_validation import scenario
-    from core.messaging import discord
 
     monkeypatch.setattr(discord, "send", lambda *a, **k: {"status": 204})
 
@@ -90,9 +90,10 @@ def test_case03_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
     monkeypatch.setenv("GMAIL_SENDER", "x@example.com")
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.messaging import email as email_mod
+
     from cases.case03_email_quote_dispatch import scenario
-    from core.docgen import pdf as pdf_mod
-    from core.messaging import email as email_mod
 
     monkeypatch.setattr(
         pdf_mod, "md_to_pdf", lambda md, out, **_: Path(out).write_bytes(b"%PDF-1.4 stub")
@@ -133,8 +134,9 @@ def test_case03_runs_from_arbitrary_cwd(
 def test_case04_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     monkeypatch.setattr(discord, "send_with_level", lambda **_: {"status": 204})
 
@@ -160,8 +162,9 @@ def test_case04_runs_from_arbitrary_cwd(
 def test_case05_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+
     from cases.case05_doc_quote_generator import scenario
-    from core.docgen import pdf as pdf_mod
 
     monkeypatch.setattr(
         pdf_mod, "md_to_pdf", lambda md, out, **_: Path(out).write_bytes(b"%PDF-1.4 stub")
@@ -216,9 +219,10 @@ def test_case06_runs_from_arbitrary_cwd(
 def test_case07_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.ocr import receipt
+    from flowcoder_office_tools.ocr.receipt import ReceiptData
+
     from cases.case07_ocr_receipt_to_excel import scenario
-    from core.ocr import receipt
-    from core.ocr.receipt import ReceiptData
 
     monkeypatch.setattr(
         receipt,
@@ -243,9 +247,10 @@ def test_case07_runs_from_arbitrary_cwd(
 def test_case08_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.ocr import invoice
+    from flowcoder_office_tools.ocr.invoice import InvoiceData
+
     from cases.case08_ocr_invoice_to_csv import scenario
-    from core.ocr import invoice
-    from core.ocr.invoice import InvoiceData
 
     monkeypatch.setattr(
         invoice,
@@ -275,8 +280,9 @@ def test_case08_runs_from_arbitrary_cwd(
 def test_case09_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.ai import client as ai_client
+
     from cases.case09_ai_email_drafter import scenario
-    from core.ai import client as ai_client
 
     fake_drafts = '[{"option": 1, "subject": "테스트", "body": "본문"}]'
     monkeypatch.setattr(ai_client, "chat", lambda messages, **k: fake_drafts)
@@ -291,9 +297,10 @@ def test_case09_runs_from_arbitrary_cwd(
 def test_case10_runs_from_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_cwd: Path
 ) -> None:
+    from flowcoder_office_tools.ai import tasks
+    from flowcoder_office_tools.ai.tasks import ActionItem, MeetingSummary
+
     from cases.case10_ai_meeting_summarizer import scenario
-    from core.ai import tasks
-    from core.ai.tasks import ActionItem, MeetingSummary
 
     monkeypatch.setattr(
         tasks,
@@ -319,7 +326,7 @@ def test_case10_runs_from_arbitrary_cwd(
 
 def test_safe_mode_cache_path_is_absolute() -> None:
     """T39 (G5) — ``safe_mode.cache_path`` 도 cwd 에 의존하지 않는다."""
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     p = safe_mode.cache_path("case_x", "key")
     assert p.is_absolute(), f"cache_path returned relative path: {p}"
@@ -327,7 +334,7 @@ def test_safe_mode_cache_path_is_absolute() -> None:
 
 def test_safe_mode_cache_path_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """``AX_CACHE_DIR`` env override 검증."""
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     monkeypatch.setenv("AX_CACHE_DIR", str(tmp_path / "cases"))
     p = safe_mode.cache_path("case_x", "key")

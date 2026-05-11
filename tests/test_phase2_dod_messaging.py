@@ -91,9 +91,10 @@ def test_case03_dispatches_50_emails_safe_mode(
     확인 — DoD의 "50건 dispatch" 절대 기준.
     """
     monkeypatch.setenv("DEMO_SAFE", "1")
+    from flowcoder_office_tools.docgen import pdf as pdf_mod
+    from flowcoder_office_tools.messaging import email as email_mod
+
     from cases.case03_email_quote_dispatch import scenario
-    from core.docgen import pdf as pdf_mod
-    from core.messaging import email as email_mod
 
     captured: list[EmailMessage] = []
 
@@ -119,7 +120,7 @@ def test_case03_dispatches_50_emails_safe_mode(
 
 def test_case03_pdf_attachment_present_in_messages(tmp_path: Path) -> None:
     """DoD: build_message 결과 EmailMessage에 application/pdf 첨부가 포함."""
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     pdf_path = tmp_path / "quote.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n%dod-attach-test")
@@ -160,7 +161,7 @@ def test_case03_safe_mode_uses_fallback_path_without_credentials(
     ):
         monkeypatch.delenv(key, raising=False)
 
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     msg = email_mod.build_message(
         to="recipient@example.com",
@@ -184,8 +185,9 @@ def test_case04_runs_all_four_levels(
 ) -> None:
     """DoD: 4단계(friendly/neutral/strict/final) 모두 최소 1회 이상 트리거."""
     monkeypatch.setenv("DEMO_SAFE", "1")
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     captured_levels: list[str] = []
 
@@ -233,7 +235,7 @@ def test_discord_webhook_url_masked_in_logs() -> None:
 
     ``DISCORD_WEBHOOK_RE`` 패턴이 prefix만 보존하고 path 토큰은 ``***`` 로 치환.
     """
-    from core.common import secrets_mask
+    from flowcoder_office_tools.common import secrets_mask
 
     sentinel_token = "secret_token_test_XYZ"
     full_url = "https://discord.com/api/webhooks/123456789012345/" + sentinel_token
@@ -263,8 +265,9 @@ def test_discord_send_logs_do_not_leak_url(
     monkeypatch.setenv("DISCORD_WEBHOOK_URL", sentinel_url)
     monkeypatch.setenv("DEMO_SAFE", "1")
 
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     # send_with_level stub — 실제 네트워크 호출 차단. 시나리오 코드 자체의
     # demo_logger 경로 (timer.measure success/info 라인 등)를 검사 대상으로 본다.
@@ -291,7 +294,7 @@ def test_email_send_safe_mode_returns_dummy(monkeypatch: pytest.MonkeyPatch) -> 
     """
     monkeypatch.setenv("DEMO_SAFE", "1")
     # 네트워크 호출이 발생하면 즉시 실패하도록 transport helper를 오염시킨다.
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     def _explode_gmail(*_a: Any, **_kw: Any) -> Any:
         raise AssertionError("DoD gap: _send_gmail_api invoked under DEMO_SAFE=1")
@@ -326,7 +329,7 @@ def test_email_send_fallback_chain_documented() -> None:
     또한 ``send`` 의 transport literal에 ``"gmail_api"`` 와 ``"smtp"`` 가 모두
     선택지로 들어있어야 한다.
     """
-    from core.messaging import email as email_mod
+    from flowcoder_office_tools.messaging import email as email_mod
 
     assert hasattr(email_mod, "_send_gmail_api"), "DoD gap: Gmail API path missing"
     assert hasattr(email_mod, "_send_smtp"), "DoD gap: SMTP fallback path missing"

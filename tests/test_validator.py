@@ -1,6 +1,5 @@
 import pandas as pd
-
-from core.excel import validator
+from flowcoder_office_tools.excel import validator
 
 
 def test_detect_unit_price_outliers_flags_3std() -> None:

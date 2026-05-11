@@ -12,11 +12,10 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-
-from core.backends.discord import DiscordWebhookBackend
-from core.backends.gmail import GmailBackend
-from core.backends.mlx import MLXOCRBackend
-from core.backends.openrouter import OpenRouterAIBackend
+from flowcoder_office_tools.backends.discord import DiscordWebhookBackend
+from flowcoder_office_tools.backends.gmail import GmailBackend
+from flowcoder_office_tools.backends.mlx import MLXOCRBackend
+from flowcoder_office_tools.backends.openrouter import OpenRouterAIBackend
 
 _OPENROUTER_SENTINEL = "sk-or-v1-FAKE-OR-AUDIT-LEAK-SENTINEL"
 _DISCORD_SENTINEL_TOKEN = "DISCORD-WEBHOOK-AUDIT-LEAK-SENTINEL-FAKE"

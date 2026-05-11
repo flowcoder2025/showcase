@@ -10,8 +10,7 @@ import os
 import threading
 
 import pytest
-
-from core.common.safe_mode_v2 import (
+from flowcoder_office_tools.common.safe_mode_v2 import (
     _SAFE_VAR,
     force_safe,
     is_safe,
@@ -156,7 +155,7 @@ def test_intercept_boundary_isolates_force_safe_between_cases(
     이후: ``safe_mode.intercept`` 가 entry-time 값을 ``safe_mode_scope`` 로 lock
     → context exit 시 자동 복원.
     """
-    from core.common import safe_mode
+    from flowcoder_office_tools.common import safe_mode
 
     monkeypatch.delenv("DEMO_SAFE", raising=False)
     monkeypatch.setenv("AX_CACHE_DIR", "/tmp/ax_test_cache_force_safe_isolation")

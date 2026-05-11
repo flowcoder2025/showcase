@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 from docx import Document
 from docx.oxml.ns import qn
-
-from core.docgen import word
+from flowcoder_office_tools.docgen import word
 
 
 def _read_full_text(path: Path) -> str:

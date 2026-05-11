@@ -13,8 +13,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
-from core.docgen import hwpx
+from flowcoder_office_tools.docgen import hwpx
 
 FIXTURE = Path(__file__).parent.parent / "personas" / "sample_data" / "forms" / "test_template.hwpx"
 FIXTURE_TABLE_ID = "999000001"

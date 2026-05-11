@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case01_excel_vendor_report import scenario
 
 

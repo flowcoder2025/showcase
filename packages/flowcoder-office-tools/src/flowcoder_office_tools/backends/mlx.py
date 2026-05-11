@@ -9,9 +9,9 @@ import hashlib
 from pathlib import Path
 from typing import Any, cast
 
-from core.common.demo_logger import demo_logger
-from core.ocr import gemma
-from core.ocr.gemma import ModelLiteral
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.ocr import gemma
+from flowcoder_office_tools.ocr.gemma import ModelLiteral
 
 
 class MLXOCRBackend:

@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from flowcoder_office_tools.protocols import ScenarioResult
 
-from cases._protocols import ScenarioResult
 from cases.case04_discord_overdue_alert import scenario
 
 
 def test_case04_returns_scenario_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.messaging import discord
+    from flowcoder_office_tools.messaging import discord
 
     monkeypatch.setattr(discord, "send_with_level", lambda **_: {"status": 204})
 

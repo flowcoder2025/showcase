@@ -9,8 +9,7 @@ from pathlib import Path
 
 import jinja2
 import pytest
-
-from core.docgen import template
+from flowcoder_office_tools.docgen import template
 
 
 def test_render_string_substitutes_basic_vars() -> None:

@@ -2,8 +2,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
-from core.ai import client
+from flowcoder_office_tools.ai import client
 
 
 def test_chat_returns_text_on_first_model_success(

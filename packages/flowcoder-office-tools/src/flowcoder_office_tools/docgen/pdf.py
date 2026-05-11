@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
-from core.common.demo_logger import demo_logger
+from flowcoder_office_tools.common.demo_logger import demo_logger
 
 DEFAULT_MD_TO_PDF_DIR = "/Users/jerome/.claude/skills/md-to-pdf"
 DEFAULT_MD_TO_PDF_SCRIPT = "scripts/md-to-pdf.ts"

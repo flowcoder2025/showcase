@@ -2,8 +2,7 @@ import json
 from typing import Any
 
 import pytest
-
-from core.ai import client, prompts, tasks
+from flowcoder_office_tools.ai import client, prompts, tasks
 
 
 def test_draft_email_returns_three_options(monkeypatch: Any) -> None:

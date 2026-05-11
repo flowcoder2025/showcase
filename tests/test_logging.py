@@ -1,4 +1,4 @@
-from core.common import demo_logger
+from flowcoder_office_tools.common import demo_logger
 
 
 def test_demo_logger_returns_object_with_methods():
@@ -38,7 +38,7 @@ def test_warning_and_error_emit_to_console(capsys):
 
 def test_logger_protocol_exists_and_is_public():
     """Logger Protocol is exposed as part of demo_logger module's public API."""
-    from core.common.demo_logger import Logger
+    from flowcoder_office_tools.common.demo_logger import Logger
 
     # Sanity: DemoLogger structurally satisfies the Protocol
     log = demo_logger.demo_logger("c")

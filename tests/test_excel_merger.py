@@ -1,7 +1,6 @@
 import pandas as pd
 import pytest
-
-from core.excel import merger
+from flowcoder_office_tools.excel import merger
 
 
 @pytest.fixture

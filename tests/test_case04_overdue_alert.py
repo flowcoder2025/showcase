@@ -72,8 +72,9 @@ def test_run_dispatches_per_row_in_safe_mode(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     sent: list[dict[str, Any]] = []
 
@@ -94,8 +95,9 @@ def test_run_summary_by_level_counts_correct(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     monkeypatch.setattr(discord, "send_with_level", lambda **k: {"status": 204})
 
@@ -115,9 +117,9 @@ def test_run_uses_escape_for_vendor_name(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import rich.markup
+    from flowcoder_office_tools.messaging import discord
 
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     rows = [
         {
@@ -152,8 +154,9 @@ def test_run_handles_zero_rows(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     df = pd.DataFrame(columns=["거래처명", "거래번호", "금액", "납기일", "연체일", "담당자"])
     in_dir = _write_input(tmp_path / "in", df)
@@ -178,8 +181,9 @@ def test_run_continues_after_per_row_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     counter = {"n": 0}
 
@@ -203,8 +207,9 @@ def test_case04_column_map_partial_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """R2-C1 regression: ``config["column_map"]`` 부분 override 시 default 키 보존."""
+    from flowcoder_office_tools.messaging import discord
+
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     rows = [
         {

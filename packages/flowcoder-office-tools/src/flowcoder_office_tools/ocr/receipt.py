@@ -1,7 +1,7 @@
 """영수증 OCR — Gemma 4 E2B 기반.
 
 NOTE: 외부 호출은 모듈 참조로 호출:
-    from core.ocr import receipt
+    from flowcoder_office_tools.ocr import receipt
     receipt.extract(...)
 
 receipt 자체는 외부 호출이 아님 — ``gemma.extract``를 호출하는 wrapper.
@@ -25,8 +25,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
-from core.common import demo_logger as _dl
-from core.ocr import gemma
+from flowcoder_office_tools.common import demo_logger as _dl
+from flowcoder_office_tools.ocr import gemma
 
 
 class ReceiptData(TypedDict):

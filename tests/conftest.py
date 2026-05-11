@@ -10,8 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-
-from core.common.safe_mode_v2 import _SAFE_VAR
+from flowcoder_office_tools.common.safe_mode_v2 import _SAFE_VAR
 
 
 @pytest.fixture(autouse=True)

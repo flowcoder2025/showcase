@@ -9,7 +9,7 @@ from typing import Protocol
 from rich.console import Console
 from rich.markup import escape
 
-from core.common import secrets_mask
+from flowcoder_office_tools.common import secrets_mask
 
 
 class Logger(Protocol):

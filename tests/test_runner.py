@@ -191,7 +191,7 @@ def test_warm_up_gemma_async_delegates_to_gemma_module(
     """
     captured: list[str] = []
 
-    from core.ocr import gemma as gemma_mod
+    from flowcoder_office_tools.ocr import gemma as gemma_mod
 
     def fake_warmup(model: str = "gemma4:e2b") -> None:
         captured.append(model)
@@ -204,13 +204,13 @@ def test_warm_up_gemma_async_delegates_to_gemma_module(
 def test_warm_up_gemma_async_silent_on_import_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """core.ocr 미빌드 시뮬: ImportError 발생해도 runner는 silent."""
+    """flowcoder_office_tools.ocr 미빌드 시뮬: ImportError 발생해도 runner는 silent."""
     import builtins
 
     real_import = builtins.__import__
 
     def blocked_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name == "core.ocr" or name.startswith("core.ocr"):
+        if name == "flowcoder_office_tools.ocr" or name.startswith("flowcoder_office_tools.ocr"):
             raise ImportError(f"simulated missing {name}")
         return real_import(name, *args, **kwargs)
 

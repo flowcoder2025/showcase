@@ -1,7 +1,7 @@
 """OpenRouter 단일 진입점 + 모델 우선순위 폴백.
 
 모든 외부 호출은 모듈 참조로 호출해야 한다 (safe_mode patch 격리):
-    from core.ai import client
+    from flowcoder_office_tools.ai import client
     client.chat(...)
 """
 
@@ -11,7 +11,7 @@ from typing import Any, cast
 from openai import APIStatusError, OpenAI
 from openai import RateLimitError as OpenAIRateLimitError
 
-from core.common import safe_mode
+from flowcoder_office_tools.common import safe_mode
 
 MODEL_PRIORITY: tuple[str, ...] = (
     "google/gemini-2.5-flash",  # primary
@@ -86,7 +86,7 @@ def chat(
                 # messages는 list[dict]라 stable hash 위해 str화
                 safe_mode.save_cache(
                     case_id,
-                    "core.ai.client.chat",
+                    "flowcoder_office_tools.ai.client.chat",
                     (),
                     {"messages_repr": repr(messages)},
                     result,

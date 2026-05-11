@@ -10,8 +10,8 @@ import hashlib
 from email.message import EmailMessage
 from typing import Any, cast
 
-from core.common.demo_logger import demo_logger
-from core.messaging import email
+from flowcoder_office_tools.common.demo_logger import demo_logger
+from flowcoder_office_tools.messaging import email
 
 
 class GmailBackend:

@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from core.docgen import pdf
+from flowcoder_office_tools.docgen import pdf
 
 
 @pytest.fixture
@@ -48,7 +47,7 @@ class _RunSpy:
 @pytest.fixture
 def run_spy(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunSpy, None, None]:
     spy = _RunSpy()
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
     yield spy
 
 
@@ -98,7 +97,7 @@ def test_md_to_pdf_env_override_dir(
     monkeypatch.setenv("AX_MD_TO_PDF_DIR", str(sk))
 
     spy = _RunSpy()
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)
@@ -113,7 +112,7 @@ def test_md_to_pdf_env_override_script(
 ) -> None:
     monkeypatch.setenv("AX_MD_TO_PDF_SCRIPT", "custom/path.ts")
     spy = _RunSpy()
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)
@@ -128,7 +127,7 @@ def test_md_to_pdf_env_override_timeout(
 ) -> None:
     monkeypatch.setenv("AX_MD_TO_PDF_TIMEOUT", "120")
     spy = _RunSpy()
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)
@@ -143,7 +142,7 @@ def test_md_to_pdf_explicit_timeout_overrides_env(
 ) -> None:
     monkeypatch.setenv("AX_MD_TO_PDF_TIMEOUT", "120")
     spy = _RunSpy()
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out, timeout=30)
@@ -184,7 +183,7 @@ def test_md_to_pdf_subprocess_failure_raises_mdtopdferror(
             returncode=1, cmd=cmd, output="some out", stderr="boom-stderr"
         )
 
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", boom)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", boom)
 
     out = tmp_path / "out.pdf"
     with pytest.raises(pdf.MdToPdfError, match="md-to-pdf failed") as exc:
@@ -202,7 +201,7 @@ def test_md_to_pdf_timeout_raises_mdtopdferror(
     def slow(cmd: list[str], **kwargs: Any) -> Any:
         raise subprocess.TimeoutExpired(cmd=cmd, timeout=60)
 
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", slow)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", slow)
 
     out = tmp_path / "out.pdf"
     with pytest.raises(pdf.MdToPdfError, match="timeout"):
@@ -218,7 +217,7 @@ def test_md_to_pdf_npx_not_found_raises_mdtopdferror(
     def missing(cmd: list[str], **kwargs: Any) -> Any:
         raise FileNotFoundError("npx not in PATH")
 
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", missing)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", missing)
 
     out = tmp_path / "out.pdf"
     with pytest.raises(pdf.MdToPdfError, match="npx/tsx not found"):
@@ -232,7 +231,7 @@ def test_md_to_pdf_zero_exit_but_no_output_raises(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spy = _RunSpy(write_output=False)
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", spy)
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", spy)
 
     out = tmp_path / "out.pdf"
     with pytest.raises(pdf.MdToPdfError, match="output file missing"):
@@ -288,7 +287,8 @@ def test_md_to_pdf_logs_stderr_warning_on_success(
 ) -> None:
     """exit 0 + stderr non-empty → demo_logger.warning 호출."""
     monkeypatch.setattr(
-        "core.docgen.pdf.subprocess.run", _StderrSpy(stderr="chromium download warning")
+        "flowcoder_office_tools.docgen.pdf.subprocess.run",
+        _StderrSpy(stderr="chromium download warning"),
     )
     warnings: list[str] = []
 
@@ -305,7 +305,9 @@ def test_md_to_pdf_logs_stderr_warning_on_success(
         def error(self, msg: str) -> None:
             pass
 
-    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+    monkeypatch.setattr(
+        "flowcoder_office_tools.docgen.pdf.demo_logger", lambda _name: _StubLogger()
+    )
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)
@@ -322,7 +324,9 @@ def test_md_to_pdf_no_log_when_stderr_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """exit 0 + stderr 비어있음 → warning 미호출."""
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", _StderrSpy(stderr="   "))
+    monkeypatch.setattr(
+        "flowcoder_office_tools.docgen.pdf.subprocess.run", _StderrSpy(stderr="   ")
+    )
     warnings: list[str] = []
 
     class _StubLogger:
@@ -338,7 +342,9 @@ def test_md_to_pdf_no_log_when_stderr_empty(
         def error(self, msg: str) -> None:
             pass
 
-    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+    monkeypatch.setattr(
+        "flowcoder_office_tools.docgen.pdf.demo_logger", lambda _name: _StubLogger()
+    )
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)
@@ -354,7 +360,7 @@ def test_md_to_pdf_stderr_truncated_to_500_chars(
 ) -> None:
     """긴 stderr는 500자로 컷."""
     long = "x" * 1000
-    monkeypatch.setattr("core.docgen.pdf.subprocess.run", _StderrSpy(stderr=long))
+    monkeypatch.setattr("flowcoder_office_tools.docgen.pdf.subprocess.run", _StderrSpy(stderr=long))
     warnings: list[str] = []
 
     class _StubLogger:
@@ -370,7 +376,9 @@ def test_md_to_pdf_stderr_truncated_to_500_chars(
         def error(self, msg: str) -> None:
             pass
 
-    monkeypatch.setattr("core.docgen.pdf.demo_logger", lambda _name: _StubLogger())
+    monkeypatch.setattr(
+        "flowcoder_office_tools.docgen.pdf.demo_logger", lambda _name: _StubLogger()
+    )
 
     out = tmp_path / "out.pdf"
     pdf.md_to_pdf(md_input, out)

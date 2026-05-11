@@ -13,8 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
-from core.progress import (
+from flowcoder_office_tools.progress import (
     ProgressEvent,
     done,
     emit,
@@ -125,11 +124,11 @@ def test_rich_progress_adapter_ignores_event_without_total() -> None:
 
 def test_case07_emits_progress_per_image(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """case07 scenario 가 OCR 루프마다 progress_cb 발행."""
+    from flowcoder_office_tools.ocr import receipt
+    from flowcoder_office_tools.ocr.receipt import ReceiptData
     from PIL import Image
 
     from cases.case07_ocr_receipt_to_excel import scenario
-    from core.ocr import receipt
-    from core.ocr.receipt import ReceiptData
 
     monkeypatch.setattr(
         receipt,
@@ -166,9 +165,9 @@ def test_case07_emits_progress_per_image(tmp_path: Any, monkeypatch: pytest.Monk
 def test_case04_emits_progress_per_row(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """case04 scenario 가 Discord 알림 루프마다 progress_cb 발행."""
     import pandas as pd
+    from flowcoder_office_tools.messaging import discord
 
     from cases.case04_discord_overdue_alert import scenario
-    from core.messaging import discord
 
     monkeypatch.setattr(discord, "send_with_level", lambda **_: {"status": 204})
 

@@ -10,8 +10,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import pytest
-
-from core.messaging import email as email_mod
+from flowcoder_office_tools.messaging import email as email_mod
 
 # --- Helpers ---------------------------------------------------------------
 
@@ -348,7 +347,7 @@ def test_build_message_zero_byte_attachment_warns(
 
         def error(self, msg: str) -> None: ...
 
-    from core.common import demo_logger as dl
+    from flowcoder_office_tools.common import demo_logger as dl
 
     monkeypatch.setattr(dl, "demo_logger", lambda _case_id: _StubLogger())
 
