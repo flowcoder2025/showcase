@@ -13,6 +13,7 @@ T37 (Phase 3-A): ``is_safe()`` / ``force_safe()`` 모두 :mod:`core.common.safe_
 import hashlib
 import importlib
 import json
+import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import Token
@@ -25,6 +26,8 @@ from rich.console import Console
 from core.common import safe_mode_v2
 
 _console = Console()
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def is_safe() -> bool:
@@ -55,8 +58,20 @@ INTERCEPT_TARGETS: dict[str, tuple[str, str]] = {
 }
 
 
+def _cache_root() -> Path:
+    """Cache 디렉터리 base — ``AX_CACHE_DIR`` env override → ``<repo>/cases`` default.
+
+    T39 (G5): cwd-independence — 임의 cwd에서 호출돼도 캐시 위치가 흔들리지
+    않도록 절대 경로 anchor. 테스트가 cwd-isolated 캐시를 원하면
+    ``monkeypatch.setenv("AX_CACHE_DIR", str(tmp_path / "cases"))`` 사용.
+    Resolution은 호출 시점이라 fixture/monkeypatch 호환.
+    """
+    override = os.environ.get("AX_CACHE_DIR")
+    return Path(override) if override else _REPO_ROOT / "cases"
+
+
 def cache_path(case_id: str, key: str) -> Path:
-    return Path("cases") / case_id / "output" / "_cached" / f"{key}.json"
+    return _cache_root() / case_id / "output" / "_cached" / f"{key}.json"
 
 
 def _key(qualname: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:

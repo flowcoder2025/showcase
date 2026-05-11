@@ -86,6 +86,8 @@ def test_intercept_patches_only_listed_apis(tmp_path, monkeypatch, register_targ
 def test_intercept_returns_cached_when_present(tmp_path, monkeypatch, register_target):
     monkeypatch.setenv("DEMO_SAFE", "1")
     monkeypatch.chdir(tmp_path)
+    # T39 (G5): cache_path는 절대 경로 anchor — env override로 cwd-isolation 유지
+    monkeypatch.setenv("AX_CACHE_DIR", str(tmp_path / "cases"))
 
     # 가짜 모듈 등록
     import sys

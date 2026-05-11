@@ -29,15 +29,19 @@ from core.common.demo_logger import demo_logger
 
 console = Console()
 
+_REPO_ROOT = Path(__file__).resolve().parent
+
 
 def discover_cases() -> list[dict[str, Any]]:
     """cases/ 디렉토리 스캔 → meta.yaml 목록 반환.
 
     개별 meta.yaml 파싱 실패 시 warning + skip — 한 케이스의 손상이
-    전체 런처를 막지 않도록 한다.
+    전체 런처를 막지 않도록 한다. T39 (G5): cwd-independent — 절대 경로 anchor.
+    ``AX_CASES_DIR`` env override 로 테스트/sandbox 디렉터리 지정 가능.
     """
     log = demo_logger("discover")
-    cases_dir = Path("cases")
+    override = os.environ.get("AX_CASES_DIR")
+    cases_dir = Path(override) if override else _REPO_ROOT / "cases"
     out: list[dict[str, Any]] = []
     if not cases_dir.exists():
         return out
@@ -127,8 +131,8 @@ def cmd_check(strict: bool = False) -> int:
         "messaging 케이스는 --safe로만 실행 가능",
     )
 
-    # 샘플 데이터
-    if not Path("personas/sample_data/vendors.xlsx").exists():
+    # 샘플 데이터 (T39 G5: 절대 경로)
+    if not (_REPO_ROOT / "personas/sample_data/vendors.xlsx").exists():
         msg = "sample_data 미생성 — `uv run python personas/sample_data/generate.py`"
         if strict:
             log.error(f"[STRICT] {msg}")

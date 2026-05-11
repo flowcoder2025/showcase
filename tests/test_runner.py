@@ -53,11 +53,14 @@ def test_runner_lists_cases_with_meta_yaml(tmp_path: Path, monkeypatch: pytest.M
     (case_dir / "scenario.py").write_text("def run():\n    print('demo ran')\n")
 
     monkeypatch.chdir(tmp_path)
+    # T39 (G5): cases_dir 는 절대 경로 anchor — env override 로 sandbox 격리
+    env = {**__import__("os").environ, "AX_CASES_DIR": str(cases_dir)}
     result = subprocess.run(
         [sys.executable, str(runner_py), "--list"],
         capture_output=True,
         text=True,
         cwd=tmp_path,
+        env=env,
     )
     assert "case99_demo" in result.stdout
 
