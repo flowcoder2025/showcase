@@ -104,3 +104,42 @@ def test_nested_scopes(monkeypatch: pytest.MonkeyPatch) -> None:
             assert is_safe() is False
         assert is_safe() is True
     assert is_safe() is False
+
+
+def test_force_safe_persists_until_explicit_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    """force_safe 후 token reset 전까지 후속 is_safe() 호출 모두 True 유지.
+
+    호출자(gemma/client/email)가 token을 discard하는 현재 패턴에서도
+    context 수명 동안은 안전하게 유지되는지 확인 (T37 design intent).
+    """
+    monkeypatch.delenv("DEMO_SAFE", raising=False)
+    assert is_safe() is False
+    token = force_safe()
+    try:
+        # 여러 번 호출해도 일관되게 True
+        for _ in range(5):
+            assert is_safe() is True
+    finally:
+        _SAFE_VAR.reset(token)
+    assert is_safe() is False
+
+
+def test_force_safe_idempotent_within_same_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    """force_safe를 두 번 호출해도 안전 — 두 번째 token도 reset 가능.
+
+    실 호출자(gemma/client/email)에서 backend별 force_safe 누적 호출 시나리오.
+    """
+    monkeypatch.delenv("DEMO_SAFE", raising=False)
+    token1 = force_safe()
+    try:
+        assert is_safe() is True
+        token2 = force_safe()
+        try:
+            assert is_safe() is True
+        finally:
+            _SAFE_VAR.reset(token2)
+        # token2 reset 후에도 token1 효과 유지
+        assert is_safe() is True
+    finally:
+        _SAFE_VAR.reset(token1)
+    assert is_safe() is False
