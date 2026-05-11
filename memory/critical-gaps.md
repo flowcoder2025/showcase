@@ -11,11 +11,11 @@ type: project
 
 T35~T38 완료, T39~T41 완료, T41.5 부채 정합 완료. 다음은 Phase 3-Pkg 진입 결정.
 
-### 1. safe_mode_v2 force_safe Token 미reset 호출자 3곳 (T37 인정, 후속 미수행)
-- `core/ocr/gemma.py`, `core/ai/client.py`, `core/messaging/email.py`가 `force_safe(reason)` 호출 후 token discard
-- T37 plan: "T38 scenario 시그니처 변경 시 caller-controlled scope로 정합화"
-- T38 종료 — scenario 시그니처는 변경됐지만 force_safe 호출자 정합은 미실시
-- T41.5 까지 미해결 — Phase 3-Pkg 또는 별도 chore commit 후속
+### ~~1. safe_mode_v2 force_safe Token 미reset 호출자 3곳~~ ✅ 해결 (2026-05-11, post-T41.5)
+- ~~gemma/client/email 의 force_safe 호출 후 token discard → cross-case leak~~
+- 정합 방향: caller (각 호출자) 가 reset 하는 대신 **`safe_mode.intercept` boundary** 가 entry-time 값을 `safe_mode_scope` 로 lock. case 종료 시 자동 복원.
+- 회귀 차단: `tests/test_safe_mode_v2.py::test_intercept_boundary_isolates_force_safe_between_cases`
+- Token return contract 는 보존 (명시적 scope 필요한 caller 용 — 현 호출자는 sticky failover 의도로 discard).
 
 ### 2. dogfood fixture CI 미활성화
 - design v2.1 §5.1: dogfood = 추가 검증 트랙 (외부 사용 약속의 대체 아님)

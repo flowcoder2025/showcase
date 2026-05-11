@@ -41,9 +41,16 @@ def force_safe(reason: str) -> Token[bool | None]:
     T37 변경:
         - ``os.environ["DEMO_SAFE"]`` 변경 0 (R1-H3) — ContextVar 기반.
         - Token 반환 (R2-M3) — 호출자가 caller-controlled scope에서 reset 가능.
+
+    T41.5 정합:
         - 기존 호출자 (``core/ocr/gemma.py``, ``core/ai/client.py``,
-          ``core/messaging/email.py``) 는 token을 discard — context 수명 동안
-          override 유지. T38 에서 scenario 시그니처 변경 시 scope 정합화.
+          ``core/messaging/email.py``) 는 token을 discard 한다 — case 안에서
+          force_safe 가 누적되어도 후속 백엔드 호출이 safe-mode 로 동작하도록
+          (intentional sticky failover).
+        - Cross-case leak 차단은 :func:`intercept` 가 entry-time 값을
+          ``safe_mode_scope`` 로 lock 해서 처리. case 종료 시 자동 복원.
+        - 따라서 호출자가 token 을 받아 직접 reset 할 필요 없음 (return Token 은
+          contract 보존을 위해 유지 — 명시적 scope 가 필요한 caller 가 사용).
     """
     token = safe_mode_v2.force_safe()
     _console.print(f"[bold yellow][AUTO-SAFE] {reason}[/bold yellow]")
@@ -103,50 +110,57 @@ def intercept(case_id: str, apis: list[str]) -> Iterator[None]:
     import 실패 시 명시적 warning을 출력하고 patch 없이 진행한다 — 그 경우
     실제 외부 호출이 발생할 수 있으므로 호출자(runner.py)는 missing 모듈을
     --check에서 사전 감지해야 한다.
+
+    T41.5+: case 진입 시 ``safe_mode_v2`` 의 ContextVar 값을 lock 한다 — 시나리오
+    안에서 :func:`force_safe` 가 호출돼도 컨텍스트 종료 시 entry-time 상태로
+    복원된다. 이전 동작은 force_safe 가 다음 시나리오까지 leak 됐다 (caller-
+    controlled scope 미적용 — critical-gaps §1). 이제 boundary = case 단위.
     """
-    if not is_safe():
-        yield
-        return
+    initial_safe = is_safe()
+    with safe_mode_v2.safe_mode_scope(initial_safe):
+        if not initial_safe:
+            yield
+            return
 
-    patches = []
-    skipped = []
-    for api in apis:
-        if api not in INTERCEPT_TARGETS:
-            _console.print(f"[red][SAFE] unknown API: {api}[/red]")
-            continue
-        mod, fn = INTERCEPT_TARGETS[api]
-        try:
-            importlib.import_module(mod)
-        except ImportError:
-            skipped.append((api, mod))
-            _console.print(
-                f"[bold yellow][SAFE] WARNING: cannot import {mod} for "
-                f"api={api} — patch SKIPPED, real call may proceed[/bold yellow]"
-            )
-            continue
-        p = patch(f"{mod}.{fn}", _make_stub(case_id, mod, fn))
-        try:
-            p.start()
-        except Exception as e:
-            _console.print(f"[red][SAFE] failed to patch {api}: {e}[/red]")
-            continue
-        patches.append(p)
-
-    if skipped and not patches:
-        _console.print(
-            "[bold red][SAFE] all targets skipped — intercept is no-op for this case[/bold red]"
-        )
-
-    try:
-        yield
-    finally:
-        for p in patches:
+        patches = []
+        skipped = []
+        for api in apis:
+            if api not in INTERCEPT_TARGETS:
+                _console.print(f"[red][SAFE] unknown API: {api}[/red]")
+                continue
+            mod, fn = INTERCEPT_TARGETS[api]
             try:
-                p.stop()
-            except RuntimeError:
-                # patcher wasn't started (or already stopped) — ignore so
-                # remaining patches still get cleaned up.
-                pass
+                importlib.import_module(mod)
+            except ImportError:
+                skipped.append((api, mod))
+                _console.print(
+                    f"[bold yellow][SAFE] WARNING: cannot import {mod} for "
+                    f"api={api} — patch SKIPPED, real call may proceed[/bold yellow]"
+                )
+                continue
+            p = patch(f"{mod}.{fn}", _make_stub(case_id, mod, fn))
+            try:
+                p.start()
+            except Exception as e:
+                _console.print(f"[red][SAFE] failed to patch {api}: {e}[/red]")
+                continue
+            patches.append(p)
+
+        if skipped and not patches:
+            _console.print(
+                "[bold red][SAFE] all targets skipped — intercept is no-op for this case[/bold red]"
+            )
+
+        try:
+            yield
+        finally:
+            for p in patches:
+                try:
+                    p.stop()
+                except RuntimeError:
+                    # patcher wasn't started (or already stopped) — ignore so
+                    # remaining patches still get cleaned up.
+                    pass
 
 
 def save_cache(

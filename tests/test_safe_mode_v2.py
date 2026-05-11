@@ -143,3 +143,33 @@ def test_force_safe_idempotent_within_same_scope(monkeypatch: pytest.MonkeyPatch
     finally:
         _SAFE_VAR.reset(token1)
     assert is_safe() is False
+
+
+def test_intercept_boundary_isolates_force_safe_between_cases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T41.5 critical-gaps §1 회귀 차단 — case A 안의 force_safe 가 case B 로
+    leak 되지 않는다.
+
+    이전: gemma/client/email 의 ``force_safe`` 호출 후 token discard →
+    runner.cmd_menu 에서 case A 종료 후 case B 진입 시 ``is_safe()=True`` leak.
+    이후: ``safe_mode.intercept`` 가 entry-time 값을 ``safe_mode_scope`` 로 lock
+    → context exit 시 자동 복원.
+    """
+    from core.common import safe_mode
+
+    monkeypatch.delenv("DEMO_SAFE", raising=False)
+    monkeypatch.setenv("AX_CACHE_DIR", "/tmp/ax_test_cache_force_safe_isolation")
+    assert is_safe() is False
+
+    # case A — 라이브 모드 진입, 안에서 force_safe 호출 (백엔드 실패 시뮬레이션)
+    with safe_mode.intercept("caseA", apis=[]):
+        assert is_safe() is False  # entry: live mode
+        force_safe()  # token discard (실 호출자 패턴)
+        assert is_safe() is True  # case A 안에서는 safe-mode 유지 (failover)
+    # case A 종료 — boundary lock으로 entry 상태 복원
+    assert is_safe() is False, "force_safe leak 회귀 — case boundary lock 동작 안 함"
+
+    # case B — 깨끗한 상태로 진입 (이전: True 였음)
+    with safe_mode.intercept("caseB", apis=[]):
+        assert is_safe() is False, "case B 가 case A 의 force_safe 를 inherit 했음"
