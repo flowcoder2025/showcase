@@ -300,7 +300,7 @@ def test_case10_runs_from_arbitrary_cwd(
         "summarize_meeting",
         lambda transcript, *, attendees, **k: MeetingSummary(
             summary="요약",
-            action_items=[ActionItem(owner="김사장", task="x", due=None)],
+            action_items=[ActionItem(owner="김사장", task="x", due="")],
             decisions=[],
         ),
     )

@@ -38,8 +38,8 @@ def test_safe_ai_returns_dummy_string() -> None:
 
 def test_safe_messaging_send_discord_no_op() -> None:
     """부수효과 없음 — return None, raise 없음."""
-    result = SafeMessagingBackend().send_discord("test", level="info")
-    assert result is None
+    # Protocol declares -> None; just verify no exception escapes.
+    SafeMessagingBackend().send_discord("test", level="info")
 
 
 def test_safe_messaging_send_email_no_op() -> None:
@@ -47,8 +47,7 @@ def test_safe_messaging_send_email_no_op() -> None:
     msg["From"] = "a@b.com"
     msg["To"] = "c@d.com"
     msg["Subject"] = "test"
-    result = SafeMessagingBackend().send_email(msg)
-    assert result is None
+    SafeMessagingBackend().send_email(msg)
 
 
 def test_safe_ocr_cache_identity_deterministic() -> None:

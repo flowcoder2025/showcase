@@ -44,13 +44,59 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Phase 2** (2~3주): 나머지 7개 케이스 (case03~08, case10) — 진행 순서 04→03→05→07→10→08→06
 - **Phase 3** (선택): 회귀 테스트 자동화 + webapp(Streamlit/FastAPI 그때 결정) + `core/` 사내 패키지(`flowcoder-office-tools`) 분리
 
+## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ 종료 (T35~T41 + T41.5 정합)**
+
+- **HEAD**: T41.5 commit pending — T41 `bdd1489` 직후 부채 ceiling 정합 추가 commit 예정
+- **테스트**: **667 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A 신규 128, 회귀 0)
+- **Production lock (mypy --strict)**: `core/ + runner.py + cases/` **65 source files clean** (53 → 65, +12)
+- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 시점 ceiling 잠금 (`tests/test_test_tree_strict_debt_does_not_grow.py`). Phase 2 close 65/8 → T41 직전 107/16 (+42/+8 무방어 누적), T41.5 신규 4 errors fix → 103/13 lock
+- **ruff**: clean (`ruff check .` + `ruff format --check .`)
+- **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드)
+
+### Phase 3-A T35~T41 완료 (2026-05-10 → 05-11, 8 commits)
+
+| Task | Commit | Source | Tests | mypy strict | 비고 |
+|------|--------|--------|-------|-------------|------|
+| T34.5 docs(gate) | `a91d351` | promise.md gate 정직 정정 (마감 도과 인정) | — | — | docs |
+| T35 protocols | `22e921a` | `cases/_protocols.py` (ScenarioResult + 3 Protocol + serialize_result + as_display) | +37 | 53→54 | |
+| T36 backends | `4b2f2ae` | `core/backends/` 9 파일 (MLX/OpenRouter/Discord/Gmail/Safe/Cached×3/Factory) | +46 | 54→63 | |
+| T37 safe_mode_v2 | `3420436` | `core/common/safe_mode_v2.py` (ContextVar sentinel + force_safe Token) + shim | +8 | 63→64 | |
+| T38 scenarios | `dffe360` | 10 scenario.run keyword-only ScenarioResult + runner + 16 test codemod + 10 smoke | +10 | 64→65 | |
+| T39 cwd-coupling | `61f4a31` | safe_mode.cache_path 절대화 + AX_CACHE_DIR/AX_CASES_DIR env override | +12 | 65 | G5 검증 |
+| T40 progress | `3b11c75` | step/done/emit + rich_progress_adapter context manager + 5 case 발행 + runner.py wire | +12 | 65 | R2-H3 |
+| T41 통합 검증 | `bdd1489` | safe_mode_v2 8→10 보강 + 통합 verification | +2 | 65 | R3-H1 |
+
+**Phase 3-A 핵심 설계 결정 (구현 완료)**:
+- ScenarioResult TypedDict 6 필드 (`case_id`/`summary_text`/`output_files`/`metrics`/`failures`/`extras`)
+- Backend Protocol DI (OCR/AI/Messaging) + `Backends` frozen dataclass + factory.py
+- safe_mode v2 ContextVar 기반 (env mutation 0, R1-H3) — sentinel pattern으로 env-fallback 호환
+- 10 scenario `run(*, input_dir, output_dir, backends, progress_cb, config) -> ScenarioResult`
+- 절대 경로 default + env override (`AX_CACHE_DIR`, `AX_CASES_DIR`) — G5 cwd-independence
+- case06 `template_path`, case09 `incoming_message`은 `config[...]`로 전달
+- ProgressEvent (TypedDict) + step/done/emit + rich_progress_adapter (context manager)
+
+### T41.5 — 부채 정합 + ceiling lock (2026-05-11 추가)
+
+전체 완성도 체크에서 발견된 stale fact 3건 정정:
+- mypy strict 신규 부채 4 errors fix (test_backends_safe / test_case10_signature / test_g5)
+- ceiling lock test 재구현 (`tests/test_test_tree_strict_debt_does_not_grow.py`) — 103 errors / 13 files lock
+- MEMORY.md / critical-gaps.md 갱신 (T39~T41 완료 반영, 본 commit)
+
+### 외부 사용 게이트 (T34.5 정직 정정 후)
+
+- **하드 마감 2026-05-09 도과**. 0/1 미충족 인정 — 약속은 보존.
+- production-ready 라벨 retracted (T32). Phase 3 진입 결정 = 옵션 (a) — 사내 데모 + dogfood만 게이트로 운용.
+- 향후 외부 시연 시 `specs/phase2-external-usage-promise.md` 추적표에 row append → `partially-fulfilled (1+/?)` 갱신.
+
+---
+
 ## 진행 상태 (2026-05-02 시점) — **Phase 2 ✅ 완료 (T0~T26, Group A~H 종료)**
 
 - **Phase 2: T0~T26 전체 완료, 8개 Group 종료** ✅
 - 테스트: **507 passed, 3 skipped** (Phase 1 baseline 83 + Phase 2 신규 424, 회귀 0)
 - Lint/format: ruff clean (check + format)
 - Production lock (mypy --strict): `core/ + runner.py + cases/` **52 source files clean**
-- tests/ 부채 (mypy --strict): **65 errors / 8 files** (Phase 1 legacy, ceiling locked by `test_test_tree_strict_debt_does_not_grow`)
+- tests/ 부채 (mypy --strict): **65 errors / 8 files** (Phase 1 legacy, ceiling 명시적 lock 부재 — T41.5에서 103/13 으로 갱신 + lock test 재구현)
 - **HEAD (Phase 2 audit cleanup)**: `b4e4628` (T25). T26은 docs-only close commit (README/CLAUDE/MEMORY 갱신).
 - **시연 가능**: case01~case10 **10/10**
 - 진행 순서 (Plan v2 Deviation 1 swap 반영): **04 → 05 → 03 → 07 → 10 → 08 → 06** (case03이 case05 PDF 모듈에 의존)
@@ -74,109 +120,13 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 외부 사용 (1)은 보존 + dogfood (2)는 추가 검증 (대체 아님). 둘 다 v2.1 §2.2 게이트.
   - 충족 시 promise 파일 추적표에 일자/청중/시연 케이스/관찰 row append.
 
-### Phase 2 핵심 commits (T0~T13, 2026-05-01~05-02)
+### Phase 2 commits / deviations / lessons (요약)
 
-**T0 prep** (`653c386`): lxml/Gmail-SMTP env vars, runner `_check_email_transport`, anonymization_policy.md
-
-**Group A — case04 (Discord 단계별 미수금)**
-- T1 (`3b5e6cd`) / T1.5 (`5e7f655`): `discord.send_with_level` 단일 patch point + 마스킹/429/empty body
-- T2 (`307ed4f`): case04 시나리오 + vendors 시드 재사용 (60건 24/18/12/6 분포)
-
-**Group B — case05 (docgen Word/PDF)**
-- T3 (`640549e`) / T3.5 (`d63e69d`): `docgen/template.py` Jinja2 + `render_html_string` (XSS 방어)
-- T4 (`d6f3b76`) / T4.5 (`f73bbb5`): `docgen/word.py build_quote` + 한글 폰트 명시
-- T5 (`c791400`) / T5.5 (`4ba3223`): `docgen/pdf.py md_to_pdf` (npx tsx) + `MdToPdfError`
-- T6 (`f7c175a`) / T6.5 (`f219f8e`): case05 시나리오 (10 requests, 42 rows)
-
-**Group C — case03 (이메일 일괄 + PDF 첨부)**
-- T7a (`d6608a6`) / T7a.5 (`11dcccf`): `email.build_message` multipart + 첨부 + XSS escape helper
-- T7b (`2ef84ed`) / T7b.5 (`d3c470b`): `email.send` Gmail API + SMTP 폴백, secrets_mask Gmail/SMTP 패턴
-- T8 (`54499bd`) / T8.5 (`b984917`): case03 시나리오 50건 + pdf_failed counter
-
-**Group D — case07 (영수증 OCR Gemma 4 E2B)**
-- T9 (`656d0a1`) / T9.5 (`f415a41`): `ocr/gemma.py` client-side timeout + jsonschema validation/retry
-- T10 (`51749d5`) / T10.5 (`a7de79e`): `ocr/receipt.py` ReceiptData TypedDict + 날짜/금액 정규화
-- T11 (`487748e`) / T11.5 (`94935bd`): case07 시나리오 + 100장 영수증 시드 (3.1MB 노이즈 적용) + payment 추출
-
-**Group E — case10 (회의록 AI)**
-- T12 (`c7d6748`) / T12.5 (`7ceded1`): `ai/tasks.summarize_meeting` + ActionItem/MeetingSummary TypedDict + owner hallucinate 방지
-- T13 (`87b5cde`): case10 시나리오 + 5 회의록 시드 + whisper deferral 결정 문서
-
-**Group F — case08 (세금계산서 OCR Gemma 4 E4B)**
-- T14 (`8be229e`) / T14.5 (`7f2f532`): `core/ocr/invoice.py` 사업자번호 modulus 검증 + 회계 CSV export (BOM option + biznum format diversity)
-- T15 (`fc681ab`) / T15.5 (`89b372f`): case08 시나리오 + 30 세금계산서 시드 (validation threshold + column override)
-
-**Group G — case06 (HWPX 정부지원사업)**
-- T16 (`7f156f8`): `core/docgen/hwp_preview.py` placeholder + `specs/rhwp-poc-decision.md` (5옵션 평가 후 Phase 3 deferred) + hwpx-editor python import smoke
-- T17 (`5764005`): `core/docgen/hwpx.py` Python `HwpxEditor` wrapper (sys.path.insert pattern)
-- T18 (`ecf70a6`): case06 HWPX 정부지원사업 양식 시나리오 + 한글 GUI 수동 시각 확인 경로
-
-**Group H — DoD + audit + close**
-- T19 (`5cbee7c`): 60분 강의 노트 (10 케이스 통합 1시간 강의 대본)
-- T20 (`471c503`): DoD messaging (case03/04 verification)
-- T21 (`f476a7c`): DoD docgen (case05/06 verification)
-- T22 (`690142d`): DoD ocr (case07/08 verification + N6 hold-out partially-passed marker, `specs/dod-n6-decision.md`)
-- T23 (`4e75d6e`): DoD ai + integration verification + `specs/phase2-external-usage-promise.md`
-- T24: 3-reviewer 병렬 audit (R1/R2/R3 findings)
-- T25 (`b4e4628`): Phase 2 audit findings cleanup (critical + high)
-- T26 (this commit): README + CLAUDE + MEMORY Phase 3 gate finalize (docs-only)
-
-### Plan v2 + 3-reviewer audit (2026-05-01)
-
-`specs/2026-05-01-phase2-plan.md` (2075줄) — 3-reviewer audit 5건 critical 정정:
-- R3-C1 md-to-pdf 경로 hallucination → `npx tsx scripts/md-to-pdf.ts` 정정 (실측)
-- R3-C2 client.chat 시그니처 → `-> str` + `json.loads` 정정
-- R3-C3 hwpx-editor 호출 → Python `HwpxEditor` `sys.path.insert` 정정
-- R1-C1 discord intercept 단일 patch point
-- R3-H1 모든 task verification에 `ruff format --check` 명시 + N.5 reviewer 체크리스트
-
-### Spec deviation 5건
-1. **case03 ↔ case05 swap** (PDF 의존성 정렬)
-2. **rhwp PoC fallback** (실패 시 Quick Look)
-3. **case10 whisper deferral** → Phase 3 (`specs/case10-whisper-decision.md`)
-4. **DoD §13 N6 hold-out** → 실 영수증 10장 미확보 시 partially passed 라벨 (T22)
-5. **weasyprint 보류** (T0 발견) → Pango/Cairo 의존성 OSError, T5에서 폴백 없이 raise
-
-### 핵심 commits (T9~T18, 2026-05-01 후속 세션)
-- T9: `dbd6687` (prompts + tasks) → T9.5: `f91da39` (lint/type)
-- T10: `2232dd5` (discord webhook) → T10.5: `3ebe460` (TypedDict + override)
-- T11: `1b678f4` (personas + Faker) → T11.5: `171a189` (relativedelta — 30-day drift 버그 수정)
-- T12: `3aa67f9` (runner.py) → T12.5: `59a71f7` (types-PyYAML + annotations)
-- T13: `cb61e93` (case01 vendor report) → T13.5: `1714c7a` (annotations + ws guard)
-- T14: `5cca8fb` (case02 invoice + discord) → T14.5: `f2312ba` (thin-wrapper 복원 + LOO docstring + types)
-- T15: `43fca91` (case09 AI mail) → T15.5: `0c18f1e` (chat() safe-mode short-circuit — 자체 보호)
-- T16: `c436ec7` (시연 대본 1/3/5분 × 3 케이스 + rehearsal_log)
-- T17: `d6841ec` (DoD test 8건) + `17aa69e` (README Phase 1 close) → T17.5: `43bc053` (test annotations)
-- **T18 cleanup (3-reviewer audit 후속)**:
-  - `fa56294`: C1-C4 + S1 — assert→ValueError, openai 타입 예외, yaml try/except, test_case09 강화 (deterministic 실증), writer "vendor" 하드코딩 제거
-  - `bc39344`: S2-S9 — merger 컬럼 strict, datetime errors=raise, tasks.draft_email warning log, runner --check --strict (Ollama+Discord ping), config.load 통합 (load_dotenv 단일경로), UTF-8 명시, auto-open mtime 필터, test_critical_imports_smoke hasattr 강화
-  - `95fea4f`: ruff format . 일괄 적용 (35 파일 reformat)
-
-### 발견된 spec 버그 / 아키텍처 정정
-- **T11.5**: `timedelta(days=30 * offset)` → `relativedelta(months=offset)` (12개월 12파일 보장)
-- **T14**: `validator.detect_unit_price_outliers` 그룹 z-score → leave-one-out z-score (verbatim 알고리즘은 outlier가 std inflate해 boundary miss)
-- **T14.5**: scenario 자체 `safe_mode.intercept` wrap 제거 → "thin wrapper" 아키텍처 복원 (runner.py가 sole intercept boundary)
-- **T15.5**: `core/ai/client.py::chat`이 `safe_mode.is_safe()` 미체크 → DEMO_SAFE=1 + no API key 시 401 → chat() 시작부에 short-circuit 추가
-- **T12/T13/T14/T15/T17 공통**: spec의 `from core.common.logging import demo_logger` → `from core.common.demo_logger import demo_logger` (T4 rename 결과)
-
-### Phase 1 검증 인프라 교훈 (이번 세션 추가)
-- subagent들이 `which mypy` (homebrew)와 `uv run which mypy` (`.venv/bin`)을 혼동해 보고 → 실제 검증은 `uv run`을 통하면 정상이지만 리포트 경로 표기는 sloppy
-- 이전 교훈 유효: `uv pip list | grep mypy` + `uv run which mypy`로 `.venv/bin/` 항상 확인
+전체 Phase 2 commit history는 `git log` (T0~T26, 2026-05-01~05-02). 핵심 deviation 5건 + lessons은 `lessons.md` 참조.
 
 ### Cumulative project lock 추적
-- T8 종료: 10 files (core/ 일부)
-- T17.5 종료: 40 files (`core/` 21 + `runner.py` + `cases/` 3개 + `tests/` 12개 신규)
-- T18 종료: **40 files 유지 + ruff format 전체 적용 + 추가 robustness** (test 강화로 사실상 quality는 향상되나 file count는 동일)
-- 정책: 각 task 신규 파일은 mypy --strict 통과해야 다음 진입. 기존 test 파일들의 누적 부채(73 errors in 9 files)는 scope 외 — Phase 2 별도 정리 가능.
 
-### T18에서 발견·정정된 이슈 (3-reviewer audit)
-- **C1**: `writer.py` `assert nlevels==1` → `raise ValueError` (`-O` strip 안전성)
-- **C2**: `client._call` 문자열 매칭 → `openai.RateLimitError`/`APIStatusError` 타입 분류
-- **C3**: `runner.discover_cases` `yaml.safe_load` 예외 처리
-- **C4**: `test_case09_safe_mode_returns_deterministic_result` 약한 검증 → 실제 deterministic 실증 (text1 == text2 + content)
-- **C5**: `ruff format` 35 파일 미정렬 baseline → 일괄 정렬
-- **S1-S9**: writer "vendor" 하드코딩, merger 컬럼 strict, datetime errors=raise, tasks 워닝 로그, runner --check --strict (Ollama+Discord), config.load 통합, UTF-8 명시, auto-open mtime, hasattr 강화
-- **새로 발견**: `config.load()`가 이전엔 `load_dotenv` 호출 안 했음 → 통합하면서 test_config 1건 환경변수 격리 추가 필요했음
+각 task 신규 파일은 mypy --strict 통과해야 다음 진입. **현재 (T38 종료)**: **65 source files clean** (core/ + runner.py + cases/). tests/ 누적 부채는 scope 외.
 
 ### T18 deviation (정직성 기록)
 - S5 Discord webhook ping: spec은 HEAD 요청이지만 Discord webhook이 405 반환 → GET으로 변경 (200/204 검증 기준은 동일)
@@ -205,35 +155,25 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
 - **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
-## 다음 세션 진입 (Phase 3-A 또는 외부 사용)
+## 다음 세션 진입 (Phase 3-A T39 진입)
 
 ```bash
 cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -5                      # HEAD cf76f50 (T28) 확인
-uv run pytest -q                          # 539 passed, 4 skipped
-uv run python runner.py --check --strict  # 시연 환경 점검 (MLX 두 모델)
-cat specs/2026-05-08-phase3-plan.md       # task map + 다음 명령 ★
+git log --oneline -6                       # HEAD dffe360 (T38) 확인
+uv run pytest -q                           # 640 passed, 4 skipped
+uv run mypy --strict core/ runner.py cases/   # 65 source files clean
+grep -n "^### T39" specs/2026-05-08-phase3-plan-v2.md  # T39 스펙 (line 970)
 ```
 
-### 진입 경로 분기
+**즉시 진입 가능**: T39 (G5 cwd-coupling 잔여 검증). plan v2.1.1 line 970부터. 광역 grep + 절대 경로 default 정합화 검증 + 잔여 정정.
 
-1. **외부 사용 (게이트 (1) — 약속 보존, R3-C1 정정 후)**
-   - 실제 미팅·강의에서 시연 → `specs/phase2-external-usage-promise.md` 추적표에 row append (일자/청중/케이스/관찰)
-   - 1회 이상 충족 + reviewer feedback 수집 → 게이트 (1) 충족
-   - 하드 마감 2026-05-09 도래 — production-ready 라벨 T32 retracted (약속 자체는 보존, dogfood는 대체 아님).
+### Phase 3-A 진행 순서 (남은 task)
 
-2. **다음 컨설팅 프로젝트에서 core/ 라이브러리 import**
-   - `core/{common,excel,messaging,docgen,ocr,ai}` 모두 재사용 가능
-   - 모듈 참조 호출 컨벤션 유지 (`from core.ai import client; client.chat()`)
-   - safe_mode 단일 경계 (`runner.py`만 intercept) 유지
-
-3. **Phase 3 backlog (외부 사용 충족 후)**
-   - T-PHASE3-RHWP-1/2/3 (rhwp v2 prebuilt / HOP CLI / LibreOffice 24+)
-   - T-PHASE3-OCR-1 (실 영수증·세금계산서 10장 hold-out)
-   - T-PHASE3-WHISPER-1 (whisper 통합 옵션 평가)
-   - T-PHASE3-DEBT-1..5 (safe_mode dummy 통일, excel reader 헬퍼, tests/ mypy 부채, weasyprint/reportlab 평가, common util 추출)
-   - 자세한 backlog: `README.md` Phase 3 섹션
+- T39: G5 cwd-coupling 잔여 검증 (~0.5d)
+- T40: progress_cb 표준화 (~0.75d)
+- T41: Phase 3-A 통합 검증 + 정직 카운트 (~0.5d)
+- 그 후 Phase 3-Pkg (T42~T46): packages/flowcoder-office-tools/ 추출 + dogfood CI
 
 ## 시연 추천 조합
 
