@@ -22,6 +22,8 @@ dependencies = [
     # T5 (case05 docgen) 진입 시 폴백 결정 재검토 (weasyprint vs reportlab vs subprocess+md-to-pdf).
     # Plan deviation 5 disclosed.
     "jsonschema>=4.20",
+    # T42 (Phase 3-Pkg): 재사용 라이브러리 추출 scaffold. T43 에서 core/ → packages/.../src 이주.
+    "flowcoder-office-tools",
 ]
 
 [dependency-groups]
@@ -40,6 +42,12 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.workspace]
+members = ["packages/flowcoder-office-tools"]
+
+[tool.uv.sources]
+flowcoder-office-tools = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

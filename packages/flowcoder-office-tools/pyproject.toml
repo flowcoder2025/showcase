@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flowcoder-office-tools"
+version = "0.1.0a1"
+description = "사무자동화 재사용 라이브러리 (excel/messaging/docgen/ocr/ai)"
+authors = [{name = "FlowCoder", email = "hyunil8702@gmail.com"}]
+# T42 deviation: plan 의 ">=3.11,<3.14" 대신 ">=3.11" — 현재 dev env Python
+# 3.14.4 차단 회피 + root pyproject (>=3.11) 와 정합. 상한이 필요하면 추후 일괄 갱신.
+requires-python = ">=3.11"
+readme = "README.md"
+# license: SPDX 표준 외 라벨. 본 패키지는 FlowCoder 내부 컨설팅 재사용 목적
+# (Proprietary). PEP 639 LicenseRef 도입 시 명시. 현재는 미선언.
+dependencies = [
+  "pandas>=2.0",
+  "openpyxl>=3.1",
+  "openai>=1.0",
+  "discord-webhook>=1.0",
+  "rich>=13.0",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+ocr = ["jsonschema>=4.0", "Pillow>=10.0"]
+messaging = ["google-auth>=2.0", "google-auth-oauthlib>=1.0", "google-api-python-client>=2.0"]
+docgen = ["python-docx>=1.0", "Jinja2>=3.0"]
+ai = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flowcoder_office_tools"]
