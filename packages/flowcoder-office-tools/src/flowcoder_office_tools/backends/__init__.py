@@ -1,5 +1,37 @@
-"""Backend layer — Protocol implementations for OCR / AI / Messaging.
+"""Protocol implementation surface — concrete OCR/AI/Messaging backends + DI.
 
-T43에서 packages/flowcoder-office-tools/src/flowcoder_office_tools/backends/로
-이주 예정. 현 위치는 import 경로 안정화를 위한 잠정 위치.
+Public sub-modules:
+    - ``cached``     : :class:`CachedOCRBackend`, :class:`CachedAIBackend`,
+      :class:`CachedMessagingBackend`
+    - ``discord``    : :class:`DiscordWebhookBackend`
+    - ``factory``    : :func:`default_backends`, :func:`safe_backends`
+    - ``gmail``      : :class:`GmailBackend`
+    - ``mlx``        : :class:`MLXOCRBackend`
+    - ``openrouter`` : :class:`OpenRouterAIBackend`
+    - ``protocols``  : re-export of top-level :class:`OCRBackend`,
+      :class:`AIBackend`, :class:`MessagingBackend`, :class:`Backends`
+    - ``safe``       : :class:`SafeOCRBackend`, :class:`SafeAIBackend`,
+      :class:`SafeMessagingBackend`
 """
+
+from flowcoder_office_tools.backends import (
+    cached,
+    discord,
+    factory,
+    gmail,
+    mlx,
+    openrouter,
+    protocols,
+    safe,
+)
+
+__all__ = [
+    "cached",
+    "discord",
+    "factory",
+    "gmail",
+    "mlx",
+    "openrouter",
+    "protocols",
+    "safe",
+]

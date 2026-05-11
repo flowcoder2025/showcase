@@ -1,0 +1,57 @@
+{
+  "flowcoder_office_tools.ai": {
+    "client": "module(flowcoder_office_tools.ai.client)",
+    "prompts": "module(flowcoder_office_tools.ai.prompts)",
+    "tasks": "module(flowcoder_office_tools.ai.tasks)"
+  },
+  "flowcoder_office_tools.backends": {
+    "cached": "module(flowcoder_office_tools.backends.cached)",
+    "discord": "module(flowcoder_office_tools.backends.discord)",
+    "factory": "module(flowcoder_office_tools.backends.factory)",
+    "gmail": "module(flowcoder_office_tools.backends.gmail)",
+    "mlx": "module(flowcoder_office_tools.backends.mlx)",
+    "openrouter": "module(flowcoder_office_tools.backends.openrouter)",
+    "protocols": "module(flowcoder_office_tools.backends.protocols)",
+    "safe": "module(flowcoder_office_tools.backends.safe)"
+  },
+  "flowcoder_office_tools.common": {
+    "config": "module(flowcoder_office_tools.common.config)",
+    "demo_logger": "module(flowcoder_office_tools.common.demo_logger)",
+    "safe_mode": "module(flowcoder_office_tools.common.safe_mode)",
+    "safe_mode_v2": "module(flowcoder_office_tools.common.safe_mode_v2)",
+    "secrets_mask": "module(flowcoder_office_tools.common.secrets_mask)",
+    "timer": "module(flowcoder_office_tools.common.timer)"
+  },
+  "flowcoder_office_tools.docgen": {
+    "hwp_preview": "module(flowcoder_office_tools.docgen.hwp_preview)",
+    "hwpx": "module(flowcoder_office_tools.docgen.hwpx)",
+    "pdf": "module(flowcoder_office_tools.docgen.pdf)",
+    "template": "module(flowcoder_office_tools.docgen.template)",
+    "word": "module(flowcoder_office_tools.docgen.word)"
+  },
+  "flowcoder_office_tools.excel": {
+    "merger": "module(flowcoder_office_tools.excel.merger)",
+    "pivot": "module(flowcoder_office_tools.excel.pivot)",
+    "reader": "module(flowcoder_office_tools.excel.reader)",
+    "validator": "module(flowcoder_office_tools.excel.validator)",
+    "writer": "module(flowcoder_office_tools.excel.writer)"
+  },
+  "flowcoder_office_tools.messaging": {
+    "discord": "module(flowcoder_office_tools.messaging.discord)",
+    "email": "module(flowcoder_office_tools.messaging.email)"
+  },
+  "flowcoder_office_tools.ocr": {
+    "gemma": "module(flowcoder_office_tools.ocr.gemma)",
+    "invoice": "module(flowcoder_office_tools.ocr.invoice)",
+    "receipt": "module(flowcoder_office_tools.ocr.receipt)"
+  },
+  "flowcoder_office_tools.protocols": {
+    "AIBackend": "sig:(*args, **kwargs)",
+    "Backends": "sig:(ocr: 'OCRBackend', ai: 'AIBackend', msg: 'MessagingBackend') -> None",
+    "MessagingBackend": "sig:(*args, **kwargs)",
+    "OCRBackend": "sig:(*args, **kwargs)",
+    "ScenarioResult": "TypedDict(['case_id', 'extras', 'failures', 'metrics', 'output_files', 'summary_text'])",
+    "as_display": "sig:(r: 'ScenarioResult') -> 'dict[str, Any]'",
+    "serialize_result": "sig:(r: 'ScenarioResult') -> 'dict[str, Any]'"
+  }
+}

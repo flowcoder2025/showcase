@@ -16,14 +16,21 @@ Surface:
 
 from __future__ import annotations
 
-import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
-from flowcoder_office_tools.common.secrets_mask import mask_text
+from flowcoder_office_tools._internal.sanitize import _mask_recursive
 
-_MAX_DEPTH = 50
+__all__ = [
+    "AIBackend",
+    "Backends",
+    "MessagingBackend",
+    "OCRBackend",
+    "ScenarioResult",
+    "as_display",
+    "serialize_result",
+]
 
 
 class ScenarioResult(TypedDict):
@@ -63,24 +70,6 @@ class Backends:
     ocr: OCRBackend
     ai: AIBackend
     msg: MessagingBackend
-
-
-def _mask_recursive(value: Any, depth: int = 0) -> Any:
-    if depth > _MAX_DEPTH:
-        return "<TRUNCATED:depth>"
-    if isinstance(value, str):
-        return mask_text(value)
-    if isinstance(value, bytes):
-        return f"<bytes:{len(value)}>"
-    if isinstance(value, dict):
-        return {k: _mask_recursive(v, depth + 1) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_mask_recursive(v, depth + 1) for v in value]
-    if isinstance(value, Path):
-        return mask_text(str(value))
-    if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        return _mask_recursive(dataclasses.asdict(value), depth + 1)
-    return value
 
 
 def serialize_result(r: ScenarioResult) -> dict[str, Any]:
