@@ -7,9 +7,9 @@ type: project
 
 미해결 이슈·결정 대기 사항. 해소 시 제거.
 
-## Phase 3-A ✅ 종료 (2026-05-11, T35~T41 + T41.5 정합)
+## Phase 3-A ✅ 종료 (2026-05-11, T35~T41 + T41.5 정합) + Phase 3-Pkg T42~T45 ✅
 
-T35~T38 완료, T39~T41 완료, T41.5 부채 정합 완료. 다음은 Phase 3-Pkg 진입 결정.
+T35~T38 완료, T39~T41 완료, T41.5 부채 정합 완료. Phase 3-Pkg T42~T45 진행 중 — 다음은 T46 (shim 제거 + dogfood fixture + CI matrix).
 
 ### ~~1. safe_mode_v2 force_safe Token 미reset 호출자 3곳~~ ✅ 해결 (2026-05-11, post-T41.5)
 - ~~gemma/client/email 의 force_safe 호출 후 token discard → cross-case leak~~
@@ -19,8 +19,8 @@ T35~T38 완료, T39~T41 완료, T41.5 부채 정합 완료. 다음은 Phase 3-Pk
 
 ### 2. dogfood fixture CI 미활성화
 - design v2.1 §5.1: dogfood = 추가 검증 트랙 (외부 사용 약속의 대체 아님)
-- T45에서 영구 PR merge 차단 조건으로 활성화 예정
-- 현재 0% 진행 — Phase 3-Pkg (T42~T46) 단계에서 구축
+- **T46에서 영구 PR merge 차단 조건으로 활성화 예정** (T45 surface lock 완료 → T46 shim 제거와 같이 진행)
+- 현재 0% 진행 — Phase 3-Pkg T46 단계에서 구축
 
 ### 3. tests/ mypy strict 부채 ceiling 잠금 (T41.5 새로 명문화)
 - 현 ceiling: **103 errors / 13 files** (`tests/test_test_tree_strict_debt_does_not_grow.py`)
