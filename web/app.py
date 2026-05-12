@@ -52,7 +52,11 @@ def main() -> None:
     for idx, (case_id, title) in enumerate(CASES):
         col = cols[idx % 2]
         clicked = col.button(
-            f"**{title}**\n`{case_id}`",
+            # Markdown hard line break (trailing 2-space + \n) — Streamlit
+            # button label 의 multi-line wrap 이 viewport width 에 따라 갈리는
+            # 불일치를 차단해 모든 카드가 "타이틀(상단) / case_id(하단)" 2줄로
+            # 일관 표시.
+            f"**{title}**  \n`{case_id}`",
             use_container_width=True,
             key=f"case_btn_{case_id}",
         )
