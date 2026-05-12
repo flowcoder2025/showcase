@@ -41,11 +41,12 @@ _E4B_PORT: Final[int] = 11438
 _HEALTH_TIMEOUT_DEFAULT: Final[float] = 90.0
 _SHUTDOWN_GRACE_SEC: Final[float] = 5.0
 
-# Module-level state. Re-entry guarded so double calls are no-ops and cleanup
-# runs at most once. ``_PROCS`` keys are the model alias.
+# Module-level state. ``_PROCS`` keys are the model alias. ``shutdown_all`` is
+# idempotent via ``_PROCS`` emptiness — no separate "done" flag, so manual
+# shutdowns from the UI can be followed by a fresh ``ensure_running`` without
+# leaking subsequent atexit / signal cleanups (memory-runaway guard, T48.x).
 _PROCS: dict[str, subprocess.Popen[bytes]] = {}
 _CLEANUP_REGISTERED: bool = False
-_CLEANUP_DONE: bool = False
 # 시그널 핸들러 슬롯 — typeshed 상 ``Callable[[int, FrameType|None], Any] | int |
 # Handlers | None`` 가 가능해 union이 복잡하므로 Any로 단순화한다 (라이브러리 경계).
 _PRIOR_HANDLERS: dict[int, Any] = {}
@@ -138,12 +139,31 @@ def ensure_running(
     _wait_health(port, timeout=wait_health, proc=proc)
 
 
+def list_running() -> dict[str, dict[str, int]]:
+    """Snapshot of live spawn'd servers — ``{alias: {"port": ..., "pid": ...}}``.
+
+    UI surface for manually shutting down idle servers without leaving a 7GB+
+    GPU-resident Gemma weight sitting around. ``ensure_running`` keeps weights
+    warm between OCR cases, but a long-running Streamlit session can accumulate
+    both E2B and E4B if every OCR card has been touched once.
+    """
+    out: dict[str, dict[str, int]] = {}
+    for alias, proc in _PROCS.items():
+        if proc.poll() is None:
+            port = _E2B_PORT if alias == "gemma4:e2b" else _E4B_PORT
+            out[alias] = {"port": port, "pid": proc.pid}
+    return out
+
+
 def shutdown_all(timeout: float = _SHUTDOWN_GRACE_SEC) -> None:
-    """모든 spawn된 서버를 process group 단위로 종료. idempotent."""
-    global _CLEANUP_DONE
-    if _CLEANUP_DONE:
+    """모든 spawn된 서버를 process group 단위로 종료. idempotent + re-invocable.
+
+    ``_PROCS`` 가 비어있으면 즉시 no-op — 추가 spawn 이 일어나면 그 또한 정상
+    cleanup 대상이 된다 (T48.x — Streamlit UI 의 manual shutdown 후 재spawn
+    시나리오 지원).
+    """
+    if not _PROCS:
         return
-    _CLEANUP_DONE = True
 
     for alias, proc in list(_PROCS.items()):
         try:
@@ -181,6 +201,10 @@ def shutdown_all(timeout: float = _SHUTDOWN_GRACE_SEC) -> None:
             pass
         except OSError:
             pass
+
+    # Re-invocable: ``_PROCS`` 를 비워 다음 ``ensure_running`` 호출이 fresh
+    # spawn 으로 동작하도록 한다 (T48.x — manual shutdown 후 재시연 지원).
+    _PROCS.clear()
 
 
 # -- internal helpers -------------------------------------------------------

@@ -33,6 +33,7 @@ from flowcoder_office_tools.backends.factory import (  # noqa: E402
     safe_backends,
 )
 from flowcoder_office_tools.common.safe_mode_v2 import safe_mode_scope  # noqa: E402
+from flowcoder_office_tools.ocr import _mlx_server  # noqa: E402
 from flowcoder_office_tools.protocols import (  # noqa: E402
     ScenarioResult,
     as_display,
@@ -145,6 +146,24 @@ def main() -> None:
             help="외부 API 호출 없이 캐시·더미 응답으로 실행. 실행 중에는 변경 불가.",
         )
         st.session_state["safe_mode"] = safe_mode
+
+        with st.expander("MLX OCR 서버 (메모리 관리)", expanded=False):
+            mlx_running = _mlx_server.list_running()
+            if mlx_running:
+                for alias, info in mlx_running.items():
+                    st.text(f"{alias}: port={info['port']}, pid={info['pid']}")
+                if st.button(
+                    "MLX 서버 종료",
+                    key="mlx_shutdown",
+                    disabled=running,
+                    help="case07/08 OCR 후 weight 가 GPU 에 상주합니다. 다음 OCR "
+                    "이 없으면 종료해 메모리 회수 (다음 OCR 시 자동 재spawn).",
+                ):
+                    _mlx_server.shutdown_all()
+                    st.success("MLX 서버 종료됨")
+                    st.rerun()
+            else:
+                st.caption("실행 중인 MLX 서버 없음")
 
     st.subheader("케이스 선택")
     cols = st.columns(2)

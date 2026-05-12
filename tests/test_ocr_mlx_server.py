@@ -23,12 +23,10 @@ def _reset_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     ):
         monkeypatch.delenv(k, raising=False)
     _mlx_server._PROCS.clear()
-    _mlx_server._CLEANUP_DONE = False
     _mlx_server._CLEANUP_REGISTERED = False
     _mlx_server._PRIOR_HANDLERS.clear()
     yield
     _mlx_server._PROCS.clear()
-    _mlx_server._CLEANUP_DONE = False
 
 
 # -- base_url / model_path / is_external -----------------------------------
