@@ -1,8 +1,17 @@
-"""OpenRouter 단일 진입점 + 모델 우선순위 폴백.
+"""OpenRouter (primary) + OpenAI (fallback) 단일 진입점 + 모델 폴백.
 
 모든 외부 호출은 모듈 참조로 호출해야 한다 (safe_mode patch 격리):
     from flowcoder_office_tools.ai import client
     client.chat(...)
+
+Provider resolution:
+    1. ``OPENROUTER_API_KEY`` 존재 → OpenRouter (``MODEL_PRIORITY`` 3-chain)
+    2. ``OPENAI_API_KEY`` 존재 → OpenAI 직접 (``OPENAI_MODEL_PRIORITY``)
+    3. 둘 다 부재 → ``force_safe`` → ``"[SAFE-FALLBACK]"``
+
+``MODEL_PRIORITY`` 이름은 backward compat 유지 (Phase 2 DoD test + 외부
+caller 다수). OpenRouter chain 의 의미 보존. OpenAI 직접 호출 시 chain 은
+``OPENAI_MODEL_PRIORITY`` 가 사용된다.
 """
 
 import os
@@ -19,6 +28,11 @@ MODEL_PRIORITY: tuple[str, ...] = (
     "openai/gpt-4o-mini",  # fallback 2
 )
 
+OPENAI_MODEL_PRIORITY: tuple[str, ...] = (
+    "gpt-4o-mini",  # cost-effective default
+    "gpt-4.1-mini",  # secondary fallback
+)
+
 
 class RateLimitError(Exception):
     pass
@@ -28,11 +42,28 @@ class ServerError(Exception):
     pass
 
 
+def _resolve_provider() -> tuple[str, str | None, str, tuple[str, ...]]:
+    """Return (provider, base_url, api_key, priority).
+
+    OpenRouter 키 우선, 없으면 OpenAI 키, 둘 다 없으면 ``("none", ...)``.
+    ``provider == "none"`` 일 때 caller(:func:`chat`) 가 ``force_safe`` 분기로
+    빠진다.
+    """
+    or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if or_key:
+        return ("openrouter", "https://openrouter.ai/api/v1", or_key, MODEL_PRIORITY)
+    oa_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if oa_key:
+        return ("openai", None, oa_key, OPENAI_MODEL_PRIORITY)
+    return ("none", None, "", ())
+
+
 def _make_client() -> OpenAI:
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY", ""),
-    )
+    _, base_url, api_key, _ = _resolve_provider()
+    if base_url is None:
+        # OpenAI default base_url + api.openai.com — OpenAI SDK 기본 동작.
+        return OpenAI(api_key=api_key)
+    return OpenAI(base_url=base_url, api_key=api_key)
 
 
 def _call(model: str, messages: list[dict[str, Any]], **kwargs: Any) -> str:
@@ -63,7 +94,7 @@ def chat(
     case_id: str | None = None,
     **kwargs: Any,
 ) -> str:
-    """우선순위 모델 폴백 + 전부 실패 시 force_safe 후 더미 응답.
+    """Provider 우선순위 + 모델 폴백 + 전부 실패 시 force_safe 후 더미 응답.
 
     case_id가 주어지고 DEMO_SAFE=0(라이브)이면 결과를 시연 캐시에 저장.
 
@@ -73,11 +104,17 @@ def chat(
 
     Note: 401/AuthenticationError, 모델 미존재 등 분류되지 않은 에러는
     그대로 propagate한다 (fail-loud). 폴백+더미 응답은 429/5xx에만 적용.
+    Provider 가 ``"none"`` (두 키 모두 부재) 이면 즉시 ``force_safe`` 분기.
     """
     if safe_mode.is_safe():
         return "[SAFE-FALLBACK]"
 
-    candidates = [model] if model else list(MODEL_PRIORITY)
+    provider, _, _, default_priority = _resolve_provider()
+    if provider == "none" and model is None:
+        safe_mode.force_safe("no API key configured — set OPENROUTER_API_KEY or OPENAI_API_KEY")
+        return "[SAFE-FALLBACK]"
+
+    candidates = [model] if model else list(default_priority)
     last_err: Exception | None = None
     for m in candidates:
         try:
@@ -95,5 +132,5 @@ def chat(
         except (RateLimitError, ServerError) as e:
             last_err = e
             continue
-    safe_mode.force_safe(f"all openrouter models failed: {last_err}")
+    safe_mode.force_safe(f"all {provider} models failed: {last_err}")
     return "[SAFE-FALLBACK]"

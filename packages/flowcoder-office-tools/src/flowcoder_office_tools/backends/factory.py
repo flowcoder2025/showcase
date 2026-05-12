@@ -48,12 +48,26 @@ class _DefaultMessagingBackend:
         self._gmail.send_email(message)
 
 
+def _ai_api_key() -> str:
+    """Pick the AI key with the same priority as ``ai.client._resolve_provider``.
+
+    ``OpenRouterAIBackend.api_key`` is fingerprint-only (real auth happens
+    inside ``client.chat`` via env lookup). Mirroring the priority here keeps
+    ``cache_identity`` stable across whichever provider is actually used —
+    swapping keys in ``.env`` cannot collide caches from a previous provider.
+    """
+    or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if or_key:
+        return or_key
+    return os.getenv("OPENAI_API_KEY", "").strip()
+
+
 def default_backends() -> Backends:
     return Backends(
         ocr=MLXOCRBackend(
             base_url=os.getenv("AX_OCR_BASE_URL_E2B", "http://localhost:11437"),
         ),
-        ai=OpenRouterAIBackend(api_key=os.getenv("OPENROUTER_API_KEY", "")),
+        ai=OpenRouterAIBackend(api_key=_ai_api_key()),
         msg=_DefaultMessagingBackend(
             discord=DiscordWebhookBackend(
                 webhook_url=os.getenv("DISCORD_WEBHOOK_URL", ""),

@@ -121,8 +121,13 @@ def cmd_check(strict: bool = False) -> int:
             else:
                 log.warning(f"{name} missing — {strict_msg}")
 
+    # AI 키는 OPENROUTER_API_KEY 또는 OPENAI_API_KEY 둘 중 하나만 있으면 충족
+    # (ai.client._resolve_provider 와 동일 우선순위).
+    _ai_key_present = bool(os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY"))
     _check_required(
-        "OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY"), "AI 케이스는 --safe로만 실행 가능"
+        "OPENROUTER_API_KEY|OPENAI_API_KEY",
+        "ok" if _ai_key_present else None,
+        "AI 케이스는 --safe로만 실행 가능",
     )
     _check_required(
         "DISCORD_WEBHOOK_URL",
