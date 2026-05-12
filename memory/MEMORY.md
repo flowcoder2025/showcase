@@ -44,16 +44,18 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Phase 2** (2~3주): 나머지 7개 케이스 (case03~08, case10) — 진행 순서 04→03→05→07→10→08→06
 - **Phase 3** (선택): 회귀 테스트 자동화 + webapp(Streamlit/FastAPI 그때 결정) + `core/` 사내 패키지(`flowcoder-office-tools`) 분리
 
-## 진행 상태 (2026-05-12 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T46 ✅ (이주 + shim + surface lock + dogfood + CI)**
+## 진행 상태 (2026-05-12 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T46 ✅ + Phase 3-Web T47~T48 ✅**
 
-- **HEAD**: `c327ab9` (T46 — shim 제거 + tests/dogfood/ FakeBackend smoke + CI matrix env -i)
-- **테스트**: **671 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg 신규 132, T45 676 → T46 -5 shim tests 정리, 회귀 0)
-- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/` **67 source files clean** (불변)
-- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 정확 유지. T46 `[tool.mypy] exclude = ["tests/dogfood/"]` 추가 (dogfood 는 별도 build package + 외부 consumer 시뮬레이션, ceiling scope 외)
+- **HEAD**: `70327dd` (T48.3 — mlx manual shutdown 재invocable + Streamlit sidebar 메모리 컨트롤)
+- **테스트**: **678 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg·Web 신규 139, 회귀 0)
+- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/ + web/` **71 source files clean** (T46 67 → +2 _internal, +2 web/{__init__,app}.py, +2 web/{_runs,_inputs}.py — 정정: T46 67 → T47 +2 = 69 → T48 +2 = 71)
+- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 정확 유지. T46 `[tool.mypy] exclude = ["tests/dogfood/"]` 추가. T48 신규 `test_runs_dir.py` 7 test mypy strict 통과 (부채 0 추가).
 - **ruff**: clean (`ruff check .` + `ruff format --check .`)
-- **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드)
-- **CI matrix**: `.github/workflows/ci.yml` (macos-latest × Python 3.11/3.12/3.13). 3.11 full pytest + ruff + mypy. 모든 매트릭스에서 `env -i` isolated dogfood smoke 영구 게이트.
-- **dogfood smoke**: `tests/dogfood/` (외부 consumer 시뮬레이션, fresh venv + `[ocr,messaging,docgen,ai]` extras + `env -i PATH=$PATH PYTHONPATH=""` wrapping). SECRET_ENV_NAMES 13건 leak guard (R2-H6). local 통과 — `dogfood smoke OK`.
+- **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드 + T48.3 메모리 통제)
+- **CI matrix**: `.github/workflows/ci.yml` (macos-latest × Python 3.11/3.12/3.13). 3.11 full pytest + ruff + mypy strict (web/ 포함). 모든 매트릭스에서 `env -i` isolated dogfood smoke 영구 게이트.
+- **dogfood smoke**: `tests/dogfood/` (외부 consumer 시뮬레이션). SECRET_ENV_NAMES 14건 leak guard (T48.2 OPENAI_API_KEY 추가).
+- **Streamlit MVP**: `web/app.py` + `.streamlit/config.toml` 127.0.0.1 강제. 10 case 카드 + safe-mode toggle + case별 input form 분기 + run_id 격리 + streaming write + path traversal 방어 + MLX 서버 manual shutdown UI.
+- **AI provider**: dual 지원. `OPENROUTER_API_KEY` 우선, 부재 시 `OPENAI_API_KEY` 폴백 (T48.2). MODEL_PRIORITY (OpenRouter 3-chain) backward compat 유지 + OPENAI_MODEL_PRIORITY (gpt-4o-mini, gpt-4.1-mini) 추가.
 
 ### Phase 3-A T35~T41 완료 (2026-05-10 → 05-11, 8 commits)
 
@@ -114,6 +116,25 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Plan note 2건 틀림 발견**: (1) "Python ModuleType `__getattr__` 가 import 시점에 자동 해결" — `__getattr__` 는 attribute access hook 이라 sub-sub deep import 에 트리거 안 됨. (2) `sys.meta_path.append(...)` — 기본 `PathFinder` 가 앞에 있어서 sub-sub 가 path-based 별도 module 로 import (alias 깨짐). `insert(0, ...)` 필요
 - 기타 deviation: plan example `read_excel` → 실 export `read_dir` (test 갱신), `# type: ignore[import-not-found]` 3건 (shim 경유 import 의 mypy 보고 mute, ceiling 변동 0)
 - 검증: 673 passed (+5), mypy 65 clean, tests/ 103/13 ceiling 유지, ruff clean
+
+**T47~T48.3** Phase 3-Web (2026-05-12, 7 commits — Streamlit MVP + 보안 minimum + AI dual + MLX 메모리 통제):
+
+| Task | Commit | 변경 | 비고 |
+|------|--------|------|------|
+| T47 | `77464a5` | `.streamlit/config.toml` (127.0.0.1 + XSRF + 50MB) + `web/__init__.py` + `web/app.py` (assert + 10 case 카드 + safe-mode toggle) + `pyproject.toml` streamlit 1.57.0 + CI yml `web/` 복원 | 시각 확인 사용자 통과 |
+| T47.1 | `3b187e9` | button label markdown hard line break (`  \n`) — 카드 viewport-width 무관 2줄 일관 정렬 | 사용자 시각 검증 |
+| T48 | `fee9c97` | `web/_runs.py` 4 primitive (run_id `secrets.token_urlsafe(16)` + `is_relative_to` traversal + streaming cap + lock TTL) + `web/_inputs.py` (4 schema 분기) + `web/app.py` execute_case TypedDict + `tests/test_runs_dir.py` 7 TDD test | spec deviation 1: scenario.run cast |
+| T48.1 | `1c8d5c4` | `streamlit run web/app.py` 호환 — repo root sys.path 보강 + E402 noqa | streamlit sys.path[0] = web/ 만 |
+| T48.2 | `730ace4` | OpenAI 폴백 — `client._resolve_provider()` env 우선순위 + `OPENAI_MODEL_PRIORITY` 2-chain + `factory._ai_api_key()` + runner preflight dual + dogfood SECRET_ENV_NAMES + .env.example | 사용자 요청 (Dual 지원), MODEL_PRIORITY backward compat 유지 |
+| T48.3 | `70327dd` | mlx hotfix — `_CLEANUP_DONE` 영구 flag 제거 + `_PROCS.clear()` + `list_running()` + Streamlit sidebar MLX expander (활성 server / 종료 버튼) | 90GB 메모리 사용자 강제 종료 후 재발 방지 |
+
+**T48.3 사건 배경**: 사용자가 활동 모니터에서 90GB+ LLM 메모리 점유 포착 → 맥북 freeze 위험으로 강제 종료. ps 확인 결과 mlx_vlm.server PID 42294 (gemma-4-e4b-mlx, port 11438, 10:02 AM부터) 살아있어 SIGTERM. 본 세션 직접 LLM 띄움 0건이지만 `_mlx_server.ensure_running` 이 case07/08 OCR 실행 시 자동 spawn하는 weight-warm 정책이 long-running Streamlit 세션에서 누적 위험. T48.3 으로 UI 통제 + shutdown 재invocability 양립.
+
+**T48 deviation (정직 disclose)**:
+1. spec `dogfood_smoke.py` import 4건 실 export 와 어긋남 (T45 surface lock 발견) → sub-module export 패턴으로 재작성.
+2. spec scenario.run dynamic import → `cast(Callable[..., ScenarioResult], ...)` mypy strict 보강.
+3. dogfood `requires-python ">=3.11,<3.14"` 대신 `">=3.11"` (T42 정정 패턴).
+4. CI yml `[ocr] 3.11 only` 제거 (jsonschema/Pillow pure Python).
 
 **T46** `c327ab9` — shim 제거 + tests/dogfood/ FakeBackend smoke + CI matrix env -i:
 - `core/` + `core/__init__.py` 삭제 (T44 meta path finder shim 완전 제거). T45 step 6 grep + 본 commit 직전 grep 모두 0건 검증.
@@ -222,35 +243,42 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
 - **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
-## 다음 세션 진입 (Phase 3-Web T47 진입)
+## 다음 세션 진입 (Phase 3-Web T49 진입)
 
 ```bash
 cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -10                          # HEAD c327ab9 (T46) 확인
-uv run pytest -q                               # 671 passed, 4 skipped
-uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/   # 67 clean
-grep -n "^### T47" specs/2026-05-08-phase3-plan-v2.md  # T47 spec (line 1970~)
+git log --oneline -10                          # HEAD 70327dd (T48.3) 확인
+uv run pytest -q                               # 678 passed, 4 skipped
+uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/ web/  # 71 clean
+grep -n "^### T49" specs/2026-05-08-phase3-plan-v2.md  # T49 spec (line 2394~)
 ```
 
-**T47 핵심 (plan v2.1.1 line 1970~)**: `web/app.py` 골격 + `.streamlit/config.toml` + 127.0.0.1 default (보안 minimum).
-- web/ 디렉토리 신규 + Streamlit MVP entry point
-- 127.0.0.1 binding (LAN 노출 차단)
-- design v2.1 §5.2 보안 minimum: ScenarioResult sanitizer 의존 (T45 `serialize_result`/`as_display` 이미 구축)
-- 본 commit 진입 시 CI yml `mypy --strict ... web/` 명령 복원 예정 (T46 deviation 4 정합)
+**T49 핵심 (plan v2.1.1 line 2394~)**: progress adapter + **`as_display()` 강제** 결과 카드 + TTL hook.
+- Streamlit progress 어댑터 — `rich_progress_adapter` 패턴 (T40) 의 Streamlit 버전. scenario.run 의 `progress_cb=ProgressEvent` 콜백을 Streamlit `st.progress` / `st.status` 로 변환.
+- 결과 카드 — 현 `st.json(as_display(result))` 단순 dump 를 case별 풍부한 UI 로 (output_files 다운로드 링크, metrics 카드, failures expander, summary_text markdown).
+- TTL hook — `cleanup_expired_runs(ttl_hours=24)` 를 Streamlit 진입 hook 으로 결합 (page reload 마다 또는 별도 cron 패턴).
+- AC: `as_display` 외 raw `result` 가 `st.*` 위젯에 전달되면 fail (R1-C1 single sanitizer 강제).
 
 ### Phase 3-Pkg ✅ 완전 종료 (T42~T46)
 
 - **T42** ✅ `7d55a58` — scaffold (uv workspace)
 - **T43** ✅ `6b6b32b` — `core/` → packages 이주 + libcst codemod
 - **T43.5** ✅ `ed68a4f` — `py.typed` marker (PEP 561) + 부채 회귀 0
-- **T44** ✅ `d5ac2e9` — shim 안정화 + meta path finder (plan note 정정)
+- **T44** ✅ `d5ac2e9` — shim 안정화 + meta path finder
 - **T45** ✅ `83d36ef` — `__all__` + signature snapshot baseline + protocols underscore 격리
-- **T46** ✅ `c327ab9` — shim 제거 + dogfood + CI matrix (Phase 3-Pkg 종료)
+- **T46** ✅ `c327ab9` — shim 제거 + dogfood + CI matrix
 
-### Phase 3-Web 진입 예정 (T47~T50)
+### Phase 3-Web 진행 상태
 
-design v2.1 §5.2 — 사내 단일 user Streamlit MVP. cases.scenario.run() 직접 호출 + minimum 보안 요건.
+- **T47** ✅ `77464a5` — Streamlit MVP 골격 (127.0.0.1 + 10 case 카드 + safe-mode toggle)
+- **T47.1** ✅ `3b187e9` — button label 2줄 정렬 fix
+- **T48** ✅ `fee9c97` — case별 input form + run_id 격리 + streaming + lock TTL + 7 TDD test
+- **T48.1** ✅ `1c8d5c4` — streamlit run 호환 (repo root sys.path 보강)
+- **T48.2** ✅ `730ace4` — OPENAI_API_KEY dual provider 폴백
+- **T48.3** ✅ `70327dd` — mlx manual shutdown 재invocable + Streamlit sidebar 메모리 컨트롤
+- **T49** ⏸ 다음 세션 시작 — progress adapter + 결과 카드 + TTL hook
+- **T50** ⏸ Phase 3-Web 통합 검증 + Streamlit smoke
 
 ## 시연 추천 조합
 
