@@ -1,21 +1,44 @@
-"""Phase 3-Web T47 — Streamlit MVP entry point.
+"""Phase 3-Web T47/T48 — Streamlit MVP entry point.
 
 Local-only demo surface for the in-house consulting flow. Bound to 127.0.0.1
 via ``.streamlit/config.toml`` + the assertion at module load — both layers
 must succeed for external exposure to be possible.
 
-T48 will wire per-case input forms; this module only renders the case grid
-and the safe-mode toggle.
+T48 wires per-case input forms (``web/_inputs.py``) and the upload-isolated
+execution flow (``web/_runs.py``). T49 will replace the post-run JSON dump
+with the rich result-card UI and progress adapter.
 """
 
 from __future__ import annotations
 
+import importlib
+import json
 import os
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, TypedDict, cast
 
 import streamlit as st
+from flowcoder_office_tools.backends.factory import default_backends, safe_backends
+from flowcoder_office_tools.common.safe_mode_v2 import safe_mode_scope
+from flowcoder_office_tools.protocols import ScenarioResult, as_display, serialize_result
+
+from web._inputs import render_input_form
+from web._runs import (
+    create_run_dir,
+    mark_active,
+    mark_done,
+    stream_save,
+    validate_upload_path,
+)
 
 _ADDR = os.environ.get("STREAMLIT_SERVER_ADDRESS", "127.0.0.1")
 assert _ADDR in {"127.0.0.1", "localhost"}, f"외부 노출 금지: STREAMLIT_SERVER_ADDRESS={_ADDR!r}"
+
+
+RUNS_ROOT = Path("runs")
+_PER_FILE_MB = 50
+_TOTAL_UPLOAD_CAP_BYTES = 200 * 1024 * 1024
 
 
 CASES: list[tuple[str, str]] = [
@@ -30,6 +53,66 @@ CASES: list[tuple[str, str]] = [
     ("case09_ai_email_drafter", "AI 메일 초안 (3안)"),
     ("case10_ai_meeting_summarizer", "회의록 요약 + 액션아이템"),
 ]
+
+
+class ExecuteResult(TypedDict):
+    run_id: str
+    result: ScenarioResult
+    run_dir: Path
+
+
+def execute_case(
+    case_id: str,
+    form_result: dict[str, Any],
+    *,
+    safe_mode: bool,
+) -> ExecuteResult:
+    """Persist uploads under a fresh run_dir and invoke the scenario.
+
+    Streaming write enforces ``_PER_FILE_MB`` per upload (R1-H1/H2). Total
+    upload size is capped at ``_TOTAL_UPLOAD_CAP_BYTES`` to bound disk usage
+    across multi-file cases. ``mark_active`` / ``mark_done`` protect the run
+    directory from TTL reclamation while the scenario is executing (R1-H4).
+    The result is serialized through :func:`serialize_result` so ``run.json``
+    cannot leak secrets even if the scenario forgets to mask them (R1-C1).
+    """
+    run_dir = create_run_dir(RUNS_ROOT)
+    in_dir = run_dir / "input"
+    out_dir = run_dir / "output"
+    mark_active(run_dir)
+    try:
+        total_bytes = 0
+        for uf in form_result.get("uploaded_files", []):
+            target = in_dir / uf.name
+            validate_upload_path(RUNS_ROOT, target)
+            written = stream_save(uf, target, per_file_mb=_PER_FILE_MB)
+            total_bytes += written
+            if total_bytes > _TOTAL_UPLOAD_CAP_BYTES:
+                raise ValueError(
+                    f"total upload exceeds {_TOTAL_UPLOAD_CAP_BYTES // (1024 * 1024)}MB cap"
+                )
+
+        scenario_mod = importlib.import_module(f"cases.{case_id}.scenario")
+        run_fn = cast(Callable[..., ScenarioResult], scenario_mod.run)
+        backs = safe_backends() if safe_mode else default_backends()
+        config: dict[str, Any] = dict(form_result.get("config", {}))
+
+        with safe_mode_scope(safe_mode):
+            result = run_fn(
+                input_dir=in_dir if any(in_dir.iterdir()) else None,
+                output_dir=out_dir,
+                backends=backs,
+                config=config or None,
+            )
+
+        run_json = run_dir / "run.json"
+        run_json.write_text(
+            json.dumps(serialize_result(result), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return ExecuteResult(run_id=run_dir.name, result=result, run_dir=run_dir)
+    finally:
+        mark_done(run_dir)
 
 
 def main() -> None:
@@ -64,10 +147,33 @@ def main() -> None:
             st.session_state["selected_case"] = case_id
 
     selected = st.session_state.get("selected_case")
-    if selected:
-        st.divider()
-        st.subheader(f"실행: {selected}")
-        st.caption("입력 form + 실행 wiring 은 T48 에서 구현됩니다.")
+    if not selected:
+        return
+
+    st.divider()
+    st.subheader(f"실행: {selected}")
+    form_result = render_input_form(selected)
+
+    run_clicked = st.button("실행", type="primary", key=f"run_{selected}")
+    if not run_clicked:
+        return
+
+    st.session_state["running"] = True
+    try:
+        with st.spinner("실행 중..."):
+            execute_result = execute_case(
+                selected,
+                form_result,
+                safe_mode=bool(st.session_state.get("safe_mode", False)),
+            )
+    except Exception as exc:
+        st.error(f"실행 실패: {exc}")
+        return
+    finally:
+        st.session_state["running"] = False
+
+    st.success(f"실행 완료 — run_id={execute_result['run_id']}")
+    st.json(as_display(execute_result["result"]))
 
 
 if __name__ == "__main__":
