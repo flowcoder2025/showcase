@@ -16,22 +16,32 @@ cd /Volumes/포터블/AX/showcase && claude
 
 ```
 showcase/
-├── core/                # 재사용 라이브러리 (CLI 무관)
-│   ├── common/          # config, logging, timer, safe_mode, secrets_mask
-│   ├── excel/           # reader, merger, pivot, writer, validator
-│   ├── ai/              # client (OpenRouter + 폴백), prompts, tasks
-│   └── messaging/       # discord webhook
-├── cases/               # 얇은 시나리오 wrapper (case01~case10, 10/10 시연 가능)
-├── personas/            # AX상사 가상 회사·인물·시드 데이터
-├── docs/                # 시연 대본 (1/3/5분 × 8) + 60분 강의 노트
-├── tests/               # 507 passed, 3 skipped (Phase 1 + 2)
-├── specs/               # 설계 + Phase plan + deviation 결정 문서
-├── memory/              # 프로젝트 상태·세션 로그 (mem-resume 진입점)
-│   ├── MEMORY.md        # 본체 메모리 (프로젝트 상태)
-│   ├── lessons.md       # 교훈
-│   ├── critical-gaps.md # 미해결 갭
-│   └── logs/            # 일별 세션 로그
-└── runner.py            # 메뉴 / --check / --check --strict / --safe
+├── packages/flowcoder-office-tools/  # 재사용 라이브러리 패키지 (uv workspace)
+│   └── src/flowcoder_office_tools/
+│       ├── common/            # config, demo_logger, timer, secrets_mask, safe_mode (v1+v2)
+│       ├── excel/             # reader, merger, pivot, writer, validator
+│       ├── messaging/         # discord, email (Gmail API + SMTP)
+│       ├── docgen/            # template, word, pdf (npx tsx), hwpx, hwp_preview
+│       ├── ocr/               # gemma (MLX), receipt, invoice, _mlx_server
+│       ├── ai/                # client (OpenRouter + OpenAI dual), prompts, tasks
+│       ├── backends/          # Protocol DI facade (MLX/OR/Discord/Gmail/Safe/Cached×3)
+│       ├── _internal/         # _mask_recursive (외부 noexport, R1-C3)
+│       ├── protocols.py       # ScenarioResult + Backends + serialize_result/as_display
+│       └── progress.py        # ProgressEvent + rich_progress_adapter
+├── cases/                # 얇은 시나리오 wrapper (case01~case10, 10/10 시연 가능)
+├── web/                  # Streamlit MVP (127.0.0.1 + path traversal + size cap + TTL)
+├── personas/             # AX상사 가상 회사·인물·시드 데이터
+├── docs/                 # 시연 대본 (1/3/5분 × 8) + 60분 강의 노트
+├── tests/                # 684 passed, 4 skipped (Phase 1 + 2 + 3 + dogfood/)
+├── specs/                # 설계 + Phase plan + deviation/audit 결정 문서
+├── memory/               # 프로젝트 상태·세션 로그 (mem-resume 진입점)
+│   ├── MEMORY.md         # 본체 메모리 (프로젝트 상태)
+│   ├── lessons.md        # 교훈
+│   ├── critical-gaps.md  # 미해결 갭
+│   └── logs/             # 일별 세션 로그
+├── runs/                 # Streamlit run_id 격리 (gitignore — .gitkeep + 내부 ignore)
+├── runner.py             # CLI 메뉴 / --check / --check --strict / --safe
+└── .github/workflows/ci.yml  # macos × 3.11/3.12/3.13 + env -i dogfood smoke
 ```
 
 `~/.claude/projects/-Volumes-----AX-showcase/memory` → `./memory` symlink로 글로벌 mem 스킬과 호환.
@@ -45,50 +55,55 @@ showcase/
 
 ## 핵심 규칙 (잊지 말 것)
 
-1. **모듈 참조 호출**: `from core.ai import client; client.chat()` (✓), `from core.ai.client import chat` (✗) — safe_mode patch 인터셉트 위해
-2. **단일 safe_mode 경계**: `runner.py`만 `safe_mode.intercept()` 호출. 시나리오/케이스는 thin wrapper, 자체 wrap 금지
-3. **OpenRouter 폴백 체인**: Gemini 2.5 Flash → Claude Haiku 4.5 → GPT-4o-mini → `force_safe()`
+1. **모듈 참조 호출 (legacy CLI 트랙)**: `from flowcoder_office_tools.ai import client; client.chat()` — `safe_mode.intercept(patch)` 인터셉트 호환 위해. **신규 Streamlit/외부 consumer 트랙**: `safe_mode_v2.safe_mode_scope(True)` ContextVar 직접 사용 (env mutation 0).
+2. **단일 safe_mode 경계 (CLI 한정)**: `runner.py` 만 `safe_mode.intercept()` 호출. Streamlit (`web/app.py:118`) 은 `safe_mode_scope` ContextVar 트랙. **두 트랙은 boundary 가 분리** — caller-controlled scope 가 아니라 boundary 가 책임.
+3. **AI provider dual (T48.2)**: `OPENROUTER_API_KEY` 우선 → `OPENAI_API_KEY` 폴백 → `force_safe()`. MODEL_PRIORITY (OpenRouter 3-chain backward compat) + OPENAI_MODEL_PRIORITY (gpt-4o-mini, gpt-4.1-mini).
 4. **column_map 강제**: 엑셀 모듈은 column_map 인자 필수, 하드코딩 금지
-5. **시연 직전 검증**: `uv run python runner.py --check --strict` (Ollama + Discord webhook ping 포함)
-6. **TDD + cumulative lock**: 각 task 신규 파일은 mypy --strict 통과해야 다음 진입
-7. **subagent-driven workflow**: implementer + N.5 fixer per task. Phase 종료 시 3-reviewer 병렬 audit
-8. **익명화**: 실고객 데이터 매핑은 1Password/age 외부 보관, 레포에는 `.no_real_data` sentinel만
+5. **시연 직전 검증**: `uv run python runner.py --check --strict` (MLX E2B/E4B + Discord webhook ping). MLX 메모리 해제는 Streamlit sidebar "MLX OCR 서버 (메모리 관리)" expander (T48.3).
+6. **TDD + cumulative lock**: 각 task 신규 파일은 mypy --strict 통과해야 다음 진입. tests/ 부채 ceiling 은 `test_test_tree_strict_debt_does_not_grow` 가 잠금 (103 errors / 13 files, T41.5+).
+7. **단일 sanitizer 진입점 (R1-C1)**: Streamlit 결과 위젯은 `web/_render.py::render_result()` 만 통과 — 내부 `as_display()` 거친 dict 만 `st.*` 에 전달. raw `ScenarioResult` 직접 렌더 금지.
+8. **subagent-driven workflow**: implementer + N.5 fixer per task. Phase 종료 시 3-reviewer 병렬 audit (R1 보안 / R2 아키 / R3 정직성).
+9. **익명화**: 실고객 데이터 매핑은 1Password/age 외부 보관, 레포에는 `.no_real_data` sentinel만
 
-## Phase 진행 상황 (2026-05-08 — T28 MLX 백엔드 전환 완료)
+## Phase 진행 상황 (2026-05-12 — Phase 3 v2.1.1 close)
 
-- **Phase 1 ✅ 완료**: 17/17 tasks + T18 cleanup. HEAD `95fea4f`, 83 passed.
-- **Phase 2 ✅ 완료**: T0~T26 (Group A~H + DoD + 3-reviewer audit + cleanup + docs).
-  - 테스트: **507 passed, 3 skipped** (Phase 1 baseline 83 + Phase 2 신규 424)
-  - Production lock: 52 source files clean
-- **T27/T28 (Maintenance, 2026-05-08)**: case10 whisper deferral 결정 문서 복원 + Ollama → MLX(mlx_vlm.server OpenAI-호환) 백엔드 전환.
-  - HEAD `cf76f50` (T28). 좀비 0 보장(Popen `start_new_session=True` + atexit/SIGTERM/SIGINT/SIGHUP → killpg SIGTERM→5s grace→SIGKILL).
-  - 테스트: **539 passed, 4 skipped** (T26 + 신규 32 회귀 0). mypy --strict source: **53 files clean**.
-  - 시연 가능: **10/10** (case07/08 e2e 검증: 88/100 + 28/30, 좀비 회수 확인).
-  - 외부 사용 게이트는 변동 없음 — 본 작업은 maintenance.
-- **Phase 3 🔒 게이트**: 외부 사용 2회 이상 (현재 0/2, 하드 마감 **2026-05-09**) → 피드백 반영 후 진입.
-  - **설계 + 플랜 (2026-05-08)**: `specs/2026-05-08-phase3-design.md` (전체 설계, 깨지는 5개 가정 G1~G5 처방, target 아키, layer 책임), `specs/2026-05-08-phase3-plan.md` (T29~T52 task map, 즉시 wins W1~W3, 패키징 P1~P3).
-  - **다음 세션 첫 명령**: 게이트 상태 확인 → 충족/retract 결정 → Phase 3-A T29부터 시작.
+- **Phase 1 ✅** (T1~T17 + T18): HEAD `95fea4f`, 83 passed.
+- **Phase 2 ✅** (T0~T26): HEAD `b4e4628`, 507 passed / 3 skipped, source 52 clean. 10/10 시연. 5건 deviation 정직 disclose (case03↔05 swap, rhwp PoC 실패, case10 whisper deferral, DoD N6 partial, weasyprint dropped).
+- **T27/T28 maintenance** (2026-05-08): MLX 백엔드 전환 + 좀비 0 보장. HEAD `cf76f50`, 539 passed.
+- **Phase 3 ✅ v2.1.1 close** (2026-05-12, HEAD `0f36a7a`):
+  - **Phase 3-A** T35~T41 — ScenarioResult + Backends Protocol DI + `safe_mode_v2` ContextVar + 10 scenario 정식화 + progress events
+  - **Phase 3-Pkg** T42~T46 — `core/` → `packages/flowcoder-office-tools/` 이주 + `__all__` snapshot + `_internal/` 격리 + dogfood + CI matrix
+  - **Phase 3-Web** T47~T50 — Streamlit MVP (127.0.0.1 lock + path traversal + size cap + TTL + `as_display()` single sanitizer)
+  - **T51 close audit** — 3-reviewer 병렬, critical R2-C1 (Backends DI 약속 vs 실 구현 정합) 은 design retract framing 으로 흡수 (T-PHASE4-DI-1 backlog)
+  - **T51.5 fixers** — `b9a1b50` total cap fail-early / `52cc3f7` SECRET_ENV_NAMES 21건
+  - **테스트**: 684 passed, 4 skipped (+145 Phase 3 신규). mypy strict source 73 clean / tests/ ceiling 103/13.
+  - **시연 가능**: 10/10 (case07/08 e2e + T48.3 메모리 통제).
+  - **CI**: macos-latest × Python 3.11/3.12/3.13 + dogfood `env -i` smoke + SECRET_ENV_NAMES 21건 leak guard.
+  - **외부 사용 게이트**: (1) 0/1 미충족 보존 (마감 2026-05-09 도과 정직 인정), (2) dogfood ✅. 라벨 = "import-ready 패키지 (외부 reviewer feedback 미수집 인정)" — design v2.1 §8.3.
+- **Phase 4 (deferred)**: T-PHASE4-DI-1 (cases 라우팅 backends.* 전환, ~2d) 우선. swap 비용 ~1.5주 (audit 정정). 자세한 backlog: README.md "Phase 4 backlog" 섹션.
 
 ## 관련 외부 리소스
 
 - 기획 워크스페이스 (사업/제안서/리서치): `/Volumes/포터블/AX/기획`
 - 글로벌 인덱스 메모리: `~/.claude/projects/-Volumes-----AX---/memory/MEMORY.md` (프로젝트 이전 마킹 보존)
 
-## 작업 시작 체크리스트 (다음 세션 — Phase 3-A 진입 또는 외부 사용)
+## 작업 시작 체크리스트 (다음 세션 — Phase 4 진입 또는 외부 시연)
 
 ```bash
 cd /Users/jerome/AX/showcase
 /mem-resume                                    # 컨텍스트 로드
-git log --oneline -5                           # HEAD T28 확인 (cf76f50)
-uv run pytest -q                               # 539 passed, 4 skipped 재확인
-uv run python runner.py --check --strict       # 시연 환경 점검 (MLX E2B/E4B 포함)
+git log --oneline -5                           # HEAD 0f36a7a 확인 (T51 audit)
+uv run pytest -q                               # 684 passed, 4 skipped 재확인
+uv run python runner.py --check --strict       # 시연 환경 점검 (MLX E2B/E4B + Discord)
 
-# Phase 3 진입 결정
-cat specs/phase2-external-usage-promise.md     # 게이트 0/2 → 진입 결정
-cat specs/2026-05-08-phase3-design.md          # 설계 ★
-cat specs/2026-05-08-phase3-plan.md            # task map (T29~T52) ★
+# Phase 4 진입 시
+cat specs/2026-05-12-phase3-audit.md           # close audit findings ★
+cat README.md                                   # Phase 4 backlog + swap 비용 정정 표 ★
+# 권장 진입 task: T-PHASE4-DI-1 (cases 라우팅 backends.* 전환) — design v2.1 §4.2-RETRACT 가 backlog 명시화
+
+# 외부 시연 시
+uv run streamlit run web/app.py                # 127.0.0.1 lock — 외부 노출 차단
+# 시연 후: specs/phase2-external-usage-promise.md 추적표에 row append → status partially-fulfilled
 ```
 
-**Phase 3-A 진입 상태 (2026-05-08 T32 정정)**: production-ready 라벨은 retracted (`specs/phase2-external-usage-promise.md` Retraction 섹션). Phase 3 의도가 design v2.1 (commit `b5ffe0f`)에서 "재사용 라이브러리 추출 + 사내 단일 user 데모"로 재정렬됨. 외부 사용 약속 0/1은 미충족 인정 — 약속 자체는 보존, dogfood가 추가 검증 (대체 아님).
-
-**E4B 4bit weight (W1, 즉시 wins)**: 현재 bf16(7GB)으로 동작. `huggingface-cli download mlx-community/gemma-4-e4b-it-4bit` 후 symlink 갱신 시 case08 평균 8.7s → 3s 수준 기대.
+**E4B 4bit weight (W1, 즉시 wins, 보류)**: 현재 bf16(7GB)으로 동작. `huggingface-cli download mlx-community/gemma-4-e4b-it-4bit` 후 symlink 갱신 시 case08 평균 8.7s → 3s 수준 기대. Phase 4 진입 또는 시연 직전 처리.

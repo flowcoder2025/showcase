@@ -26,9 +26,18 @@
 
 - **상태**: **expired-without-fulfillment** (0/1 시연 — 약속 자체는 보존, 향후 충족 가능)
 - **마감**: Phase 2 종료 (T26 README finalize) + 1주
-- **하드 마감일** (R3-L2): **2026-05-09** — 도과 (오늘 2026-05-10 기준 +1일).
+- **하드 마감일** (R3-L2): **2026-05-09** — 도과 (Phase 3 close 시점 2026-05-12 기준 +3일).
   미충족 처리는 아래 §"Hard Deadline Expiration" 참조.
 - **소유자**: 본인 (showcase 운영자)
+
+### Phase 3 close 시점 status (2026-05-12, T52)
+
+Phase 3 종료 (HEAD `0f36a7a`, T51 audit + T51.5 fixers) 시점 추적 갱신:
+
+- **(1) 외부 사용 시연 약속**: 여전히 **0/1 미충족**. 본 약속은 *보존*. Phase 3 코드는 사내 데모/dogfood 트랙으로 진입 완료 — (1) 의 *대체* 가 아님.
+- **(2) dogfood fixture CI**: ✅ **충족** (T46 `c327ab9`). macos-latest × Python 3.11/3.12/3.13 매트릭스에서 `env -i` isolated dogfood smoke + SECRET_ENV_NAMES 21건 leak guard (T51.5 `52cc3f7` 확장).
+- **라벨링 상태**: design v2.1 §8.3 표 기준 — "**import-ready 패키지 (외부 reviewer feedback 미수집 인정)**" 트랙. dogfood 단독 충족으로 "검증된 재사용 라이브러리 + 외부 시연 검증" 라벨은 청구하지 않음 (정직).
+- **향후**: 외부 미팅·강의 시 위 추적표에 row append + status → `partially-fulfilled (1+/?)`. 추가 연장 마감일 두지 않음.
 
 ## Hard Deadline Expiration (2026-05-10, T34.5 commit)
 

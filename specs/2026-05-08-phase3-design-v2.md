@@ -246,6 +246,38 @@ v1 design §2.2의 5개 깨지는 CLI 가정 중 단일 user에서도 처방이 
 
 **책임 분리 lock**: `safe_mode_v2`는 "현재 safe 토글 상태"만 관리. **Backends DI**가 외부 호출 인터셉트·격리·캐시·force_safe 폴백을 모두 담당. 두 시스템이 같은 일을 중복하지 않음.
 
+---
+
+### 4.2-RETRACT — Phase 3 close 정정 (T52, 2026-05-12)
+
+**원 framing 정정**: 위 "책임 분리 lock" 약속은 Phase 3 종료 시점 (HEAD `0f36a7a` audit) 기준 **구조적으로만 실현**됐다. 정직 disclose:
+
+- `Backends` frozen dataclass + 3 Protocol (`OCRBackend`/`AIBackend`/`MessagingBackend`) 정의 ✓
+- `default_backends()` / `safe_backends()` factory ✓
+- 10 case `scenario.run(*, backends, ...)` 시그니처 ✓
+- **그러나 10/10 case 가 `_ = backends or (safe_backends() if is_safe() else default_backends())  # T40 wire-up` 패턴으로 인자를 폐기**. 실 외부 호출은 여전히 module-level 라우팅 (`tasks.draft_email`, `discord.send_with_level`, `receipt.extract`, `email_mod.send` 등) — 모듈 내부 `is_safe()` 분기 + `force_safe()` 폴백이 진짜 인터셉트 담당.
+- `runner.py:309` 도 여전히 `os.environ["DEMO_SAFE"] = "1"` 직접 mutation (R2-H2 audit finding).
+
+**즉, "Backends DI = 외부 호출 인터셉트·격리 담당" 약속은 정확히는 "facade 가 scaffolded 됐고 swap-ability 의 구조적 토대는 마련됐으나, 실 라우팅 migration 은 미실현"**. 외부 consumer 가 `FakeBackend` 를 주입해도 production code path 가 변하지 않는다 (`tests/dogfood/dogfood_smoke.py` 의 fake 주입은 dogfood 내부 import 검증에 한정).
+
+**Phase 4 backlog 명시화** (T-PHASE4-DI-1):
+- 10 case 의 module-level 외부 호출을 `backends.ocr.extract(...)` / `backends.ai.chat(...)` / `backends.msg.send_*(...)` 패턴으로 라우팅 (~2d, 10 파일).
+- 동반: `runner.py` 의 `DEMO_SAFE` env mutation → `safe_mode_scope(True)` ContextVar 트랙 통일.
+
+**Phase 4 swap 비용 §0.1 정정** — Phase 3 close audit 결과 반영 (`specs/2026-05-12-phase3-audit.md` R2 트랙):
+
+| swap | 원 추정 (§0.1) | 정정 추정 | 사유 |
+|---|---|---|---|
+| FastAPI 라우트 | ~2-3d | ~2.5-3.5d | R2-H1 streamlit progress wiring 흡수 +0.5d |
+| 큐 (Dramatiq+Redis) | ~1-2d | **~2-3d** | T-PHASE4-DI-1 라우팅 변경 동반 (원 추정의 "Backends DI 덕에 actor 주입만" 전제 무너짐) |
+| DB / 객체 스토리지 | ~3-4d | ~3-4d | 정합 (serialize_result JSON 호환) |
+| Next.js | ~1주 | ~1주 | 정합 (as_display 단일 sanitizer JSON 환원 가능) |
+| whisper / fine-tune backend | (§0.1 미언급) | +0.5-1d (T-PHASE4-DI-1 선행 시 0.5d, 후행 시 1d) | C1 영향 |
+
+**총 Phase 4 swap 비용**: 원 ~1주 → **~1.5주** (T-PHASE4-DI-1 cases 라우팅 변경 흡수).
+
+본 retraction 은 약속의 *철회* 가 아니라 *완성도 정직 표기*다. design v2.1 §4.2 lock 의 의도(swap-ability)는 보존, 실 라우팅 migration 은 Phase 4 정식 진입 시점에 통합 처리한다.
+
 ### 4.3 에러 처리 정책
 
 1. **Backend 실패** → 폴백 체인 (`OpenRouter` 모델 폴백 → `force_safe()` ContextVar set)

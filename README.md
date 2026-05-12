@@ -27,22 +27,30 @@ DEMO_SAFE=1 uv run python runner.py case09
 
 ## Structure
 
-- `core/` — 재사용 라이브러리 (CLI 무관)
-  - `common/` — config, demo_logger, timer, secrets_mask, safe_mode
+- `packages/flowcoder-office-tools/` — **재사용 라이브러리 패키지** (Phase 3-Pkg 분리, uv workspace)
+  - `common/` — config, demo_logger, timer, secrets_mask, safe_mode (v1 legacy + v2 ContextVar 듀얼)
   - `excel/` — reader, merger, pivot, writer, validator
   - `messaging/` — discord, email (Gmail API + SMTP 폴백)
-  - `docgen/` — template (Jinja2 + escape), word, pdf (npx tsx md-to-pdf), hwpx (양식 채우기), hwp_preview (Phase 3 placeholder)
-  - `ocr/` — gemma (Ollama Gemma 4 wrapper), receipt, invoice
-  - `ai/` — client (OpenRouter + 폴백 체인), prompts, tasks
-- `cases/` — 얇은 시나리오 wrapper (case01~case10)
-- `personas/` — AX상사 가상 회사·인물·시드 데이터 (영수증 100장, 세금계산서 30장, 회의록 5건 등)
+  - `docgen/` — template (Jinja2 + escape), word, pdf (npx tsx md-to-pdf), hwpx, hwp_preview (Phase 3 placeholder)
+  - `ocr/` — gemma (MLX backend), receipt, invoice, `_mlx_server` (process lifecycle)
+  - `ai/` — client (OpenRouter + OpenAI dual provider, 폴백 체인), prompts, tasks
+  - `backends/` — Protocol DI facade (MLX/OpenRouter/Discord/Gmail/Safe/Cached×3) — Phase 4 swap 토대
+  - `_internal/sanitize.py` — `_mask_recursive` (외부 noexport, R1-C3 격리)
+  - `protocols.py` — ScenarioResult TypedDict + Backends frozen dataclass + `serialize_result`/`as_display` 단일 sanitizer
+  - `progress.py` — ProgressEvent + `rich_progress_adapter` (CLI) — fire-and-forget
+- `cases/` — 얇은 시나리오 wrapper (case01~case10, `run(*, input_dir, output_dir, backends, progress_cb, config)`)
+- `web/` — **Streamlit MVP** (Phase 3-Web, 127.0.0.1 lock + path traversal + size cap + TTL + render_result single sanitizer)
+- `personas/` — AX상사 가상 회사·인물·시드 데이터
 - `docs/` — 시연 대본 (1/3/5분 × 8 케이스) + 강의 노트 (60분)
-- `tests/` — 회귀 + DoD + integration (507 passed, 3 skipped)
-- `specs/` — 설계 문서, Phase plan, deviation 결정 문서
+- `tests/` — 회귀 + DoD + integration (684 passed, 4 skipped) + `tests/dogfood/` 외부 consumer smoke
+- `specs/` — 설계 문서, Phase plan, deviation/audit 결정 문서
 - `memory/` — 프로젝트 상태·세션 로그 (mem-resume 진입점)
 
 자세한 설계: `/Volumes/포터블/AX/기획/specs/ax-showcase/2026-04-30-design.md`
 Phase 2 plan: `specs/2026-05-01-phase2-plan.md`
+Phase 3 design v2.1 (재사용 라이브러리 + 사내 단일 user 데모): `specs/2026-05-08-phase3-design-v2.md`
+Phase 3 plan v2.1.1 (T29~T52): `specs/2026-05-08-phase3-plan-v2.md`
+Phase 3 close audit (T51 3-reviewer): `specs/2026-05-12-phase3-audit.md`
 
 ## 케이스 라인업 (10/10 시연 가능)
 
@@ -127,38 +135,87 @@ case03~10 양산 + DoD 검증 + 3-reviewer audit + cleanup. **이 README는 Phas
 - **safe_mode dummy 호환 패턴 산재**: case03/04/05 시나리오가 `{"_safe": True, ...}` dict를 직접 감지 → SendResult/dict[Any] TypedDict 계약 bypass. 통일안 후보 2개 미결. (`memory/critical-gaps.md` #5)
 - **`core/excel/reader.read_excel(column_map=...)` 헬퍼 부재**: case01/02/03/04/05/07이 `pd.read_excel` 직접 호출 + 시나리오 내부 column_map 적용. 헬퍼 추출 시 회귀 테스트 강화 필요. (`memory/critical-gaps.md` #6)
 
-## Phase 3 — 진입 조건 (정정 — 2026-05-08)
+## Phase 3 — 완료 (2026-05-12 종료, v2.1.1)
 
-**의도 재정렬**: Phase 3은 design v2.1(`specs/2026-05-08-phase3-design-v2.md`, commit `b5ffe0f`)에서 **"재사용 라이브러리 추출 + 사내 단일 user 데모"**로 재정렬되었습니다. SaaS production-ready 방향은 v1 design(`specs/2026-05-08-phase3-design.md`)에 history 보존.
+**의도**: design v2.1 기준 **"재사용 라이브러리 추출 + 사내 단일 user Streamlit MVP"**. SaaS production-ready 방향은 v1 design(`specs/2026-05-08-phase3-design.md`)에 history 보존, retracted (T32).
 
-**Production-ready 라벨 retracted (2026-05-08, T32 commit)**: 외부 사용 0/1 미충족 사실을 마감 도래 전 정직 인정. 약속 자체는 보존 (`specs/phase2-external-usage-promise.md` Retraction 섹션 참조).
+**트랙별 종료 commit**:
+- **Phase 3-A** (refactor, T35~T41): `bdd1489` — ScenarioResult + Backends Protocol DI + `safe_mode_v2` ContextVar + 10 scenario 시그니처 정식화 + progress events
+- **Phase 3-Pkg** (packaging, T42~T46): `c327ab9` — `core/` → `packages/flowcoder-office-tools/` 이주 + `__all__` snapshot + `_internal/` 격리 + dogfood fixture + CI matrix
+- **Phase 3-Web** (Streamlit MVP, T47~T50): `c197012` — 127.0.0.1 lock + path traversal + size cap + TTL + `as_display()` single sanitizer + 5 smoke tests
+- **Phase 3 close audit** (T51): `0f36a7a` — 3-reviewer 병렬 audit (R1 보안 / R2 아키 / R3 정직성) + 2 fixer commits (`b9a1b50` 총 cap fail-early / `52cc3f7` SECRET_ENV_NAMES 21건)
 
-**Phase 3 게이트 (2 트랙)**:
-- (1) 외부 사용 시연 약속 1회 이상 — Phase 2 약속 보존, 외부 reviewer feedback 본래 우려 직접 대응
-- (2) dogfood fixture CI 통과 — 재사용 가능성 코드로 증명 (T45부터 영구 PR 차단 조건)
+### 실측치 (Phase 3 종료)
 
-### Phase 3 후보 작업 (backlog)
+| 항목 | 값 | 측정 명령 |
+|------|---|----------|
+| 테스트 | **684 passed, 4 skipped** | `uv run pytest -q` |
+| Phase 3 신규 (Phase 2 → 3) | +145 (= 684 − 539 baseline) | — |
+| Production lock (mypy --strict) | **73 source files clean** | `uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/ web/` |
+| Tests/ 부채 (mypy --strict) | **103 errors / 13 files** (T41.5 ceiling locked) | `uv run mypy --strict tests/` |
+| Lint | clean | `uv run ruff check . && uv run ruff format --check .` |
+| 시연 가능 케이스 | **10 / 10** | — |
+| CI matrix | macos-latest × Python 3.11/3.12/3.13 + dogfood `env -i` smoke | `.github/workflows/ci.yml` |
+| HEAD | `0f36a7a` | `git log --oneline -1` |
 
-`specs/rhwp-poc-decision.md` + `specs/dod-n6-decision.md` + `specs/case10-whisper-decision.md` + `memory/critical-gaps.md` 통합:
+### Phase 3 게이트 status (T52 정직 disclose)
 
-- **T-PHASE3-RHWP-1** rhwp v2.0.0 (PDF 출력) prebuilt 검증 (3시간)
-- **T-PHASE3-RHWP-2** HOP CLI 추가 발생 시 통합 (2시간)
-- **T-PHASE3-RHWP-3** LibreOffice 24+ HWPX 필터 1일 PoC
-- **T-PHASE3-OCR-1** 실 영수증/세금계산서 10장 hold-out 검증 → DoD §13 N6 fully passed 승격
-- **T-PHASE3-WHISPER-1** whisper 통합 옵션 평가 (openai-whisper / OpenRouter audio / macOS Speech)
-- **T-PHASE3-DEBT-1** safe_mode dummy 호환 패턴 통일
-- **T-PHASE3-DEBT-2** `core/excel/reader.read_excel(column_map=...)` 헬퍼 추출
-- **T-PHASE3-DEBT-3** tests/ mypy --strict 65 → 0
-- **T-PHASE3-DEBT-4** weasyprint 또는 reportlab PDF 폴백 평가
-- **T-PHASE3-DEBT-5** Phase 3 reusability cleanup — `core/common/{image_io,parse,run_summary}.py` 추출 (R2 audit M2/L2/H1)
+| 트랙 | 약속 | 충족 |
+|---|---|---|
+| (1) 외부 사용 시연 1회 이상 | Phase 2 → Phase 3 보존 | **0/1 미충족** (마감 2026-05-09 도과). 약속 보존, 추가 연장 마감 없음. dogfood 가 (1) 대체 아님. |
+| (2) dogfood fixture CI | Phase 3-Pkg(T38) 종료 시 활성화 | **✅** (T46 + T51.5 보강) |
+
+**라벨링**: design v2.1 §8.3 기준 — "**import-ready 패키지 (외부 reviewer feedback 미수집 인정)**" 트랙. "검증된 재사용 라이브러리 + 외부 시연 검증" 라벨은 미청구. 자세한 추적: `specs/phase2-external-usage-promise.md`.
+
+### Phase 3 close audit (T51 — 3 subagent 병렬)
+
+| Track | Verdict | Critical | High | Med | Low |
+|---|---|--:|--:|--:|--:|
+| R1 보안 | GO-with-conditions | 0 | 3 (1 false-positive, 2 흡수) | 6 | 8 |
+| R2 아키 | GO-with-conditions | **1** (design retract) | 3 | 3 | 3 |
+| R3 정직성 | GO Grade **A−** | 0 | 0 | 2 | 2 |
+
+자세한 audit findings + 처방 + 영역별 결론: `specs/2026-05-12-phase3-audit.md`.
+
+### Phase 4 swap 비용 정정 (audit R2 트랙)
+
+| swap | design v2.1 §0.1 | T52 정정 | 사유 |
+|---|---|---|---|
+| FastAPI 라우트 | ~2-3d | ~2.5-3.5d | R2-H1 streamlit progress wiring 흡수 |
+| 큐 (Dramatiq+Redis) | ~1-2d | **~2-3d** | T-PHASE4-DI-1 cases 라우팅 변경 동반 (R2-C1 영향) |
+| DB / 객체 스토리지 | ~3-4d | ~3-4d | 정합 |
+| Next.js | ~1주 | ~1주 | 정합 (`as_display` 단일 sanitizer JSON 환원 가능) |
+| whisper / fine-tune backend | (미언급) | +0.5-1d | T-PHASE4-DI-1 선행 여부에 따라 |
+
+**총 Phase 4 swap 비용**: 원 ~1주 → **~1.5주**.
+
+### Phase 4 backlog
+
+Phase 3 close audit 흡수 + Phase 2 잔여 + memory/critical-gaps:
+
+- **T-PHASE4-DI-1** 10 case module-level 호출 → `backends.ocr/ai/msg.*` 라우팅 (R2-C1 design §4.2-RETRACT, ~2d). 동반: `runner.py:309` `DEMO_SAFE` env mutation → `safe_mode_scope` ContextVar (R2-H2)
+- **T-PHASE4-WEB-1** Streamlit progress adapter wire-up (R2-H1, ~0.25d) — `streamlit_progress_adapter` 가 모듈만 존재, `execute_case` plumb 미실현
+- **T-PHASE4-WEB-2** Streamlit multi-process safety — `_ACTIVE_RUNS` set / TTL lock TOCTOU race (R1-M1/M2)
+- **T-PHASE4-WEB-3** `_TOTAL_UPLOAD_CAP_BYTES` (200MB) vs per-file 50MB × N 정합 (R1-H3, T51.5 부분 흡수)
+- **T-PHASE4-WEB-4** `assert _ADDR` → `raise RuntimeError` (R1-L6, `python -O` defensive)
+- **T-PHASE4-PKG-1** 외부 git+ssh 호환 smoke (R2-H3) — `pip install "git+ssh://github.com/.../packages/flowcoder-office-tools"` CI 추가
+- **T-PHASE4-DEBT-1** tests/ mypy strict 103 → 0 점진 정리 (Phase 1+2 legacy)
+- **T-PHASE4-OCR-1** 실 영수증/세금계산서 10장 hold-out (DoD §13 N6 → fully passed 승격)
+- **T-PHASE4-WHISPER-1** whisper 옵션 평가 (case10 deferred)
+- **T-PHASE4-RHWP-1/2/3** rhwp v2.0.0 prebuilt / HOP CLI / LibreOffice 24+ 1일 PoC (case06)
+- **T-PHASE4-MLX-1** `_mlx_server` hard-coded developer home path 분리 (R1-M6)
+- **T-PHASE4-SAN-1** `_mask_recursive` dict KEY sanitize (R1-M3) + `_DefaultMessagingBackend.cache_identity()` split (R2-L2)
+- **T-PHASE4-DEBT-2** `read_excel(column_map=...)` 헬퍼 추출 (R3-L 1건)
+- **즉시 wins (보류)** W1 E4B 4bit 다운로드 / W2 few-shot prompting / W3 `--warmup-blocking` — 시연 직전 우선 처리 가능
 
 ## 핵심 규칙
 
-1. **모듈 참조 호출**: `from core.ai import client; client.chat()` (✓), `from core.ai.client import chat` (✗) — safe_mode patch 인터셉트 위해
-2. **단일 safe_mode 경계**: `runner.py`만 `safe_mode.intercept()` 호출. 시나리오/케이스는 thin wrapper, 자체 wrap 금지
-3. **OpenRouter 폴백 체인**: Gemini 2.5 Flash → Claude Haiku 4.5 → GPT-4o-mini → `force_safe()`
+1. **모듈 참조 호출 (legacy CLI 트랙)**: `from flowcoder_office_tools.ai import client; client.chat()` — `safe_mode.intercept(patch)` 인터셉트 호환. **신규 Streamlit/외부 consumer 트랙**: `safe_mode_v2.safe_mode_scope(True)` 직접 사용.
+2. **단일 safe_mode 경계 (CLI 한정)**: `runner.py`만 `safe_mode.intercept()` 호출. Streamlit 은 `safe_mode_scope` ContextVar (`web/app.py:118`).
+3. **AI provider dual**: `OPENROUTER_API_KEY` 우선 → `OPENAI_API_KEY` 폴백 → `force_safe()` (T48.2). MODEL_PRIORITY (OpenRouter 3-chain) + OPENAI_MODEL_PRIORITY (gpt-4o-mini, gpt-4.1-mini).
 4. **column_map 강제**: 엑셀 모듈은 column_map 인자 필수, 하드코딩 금지
-5. **시연 직전 검증**: `uv run python runner.py --check --strict` (Ollama + Discord webhook ping 포함)
-6. **TDD + cumulative project lock**: 각 task 신규 파일은 mypy --strict 통과해야 다음 진입
-7. **subagent-driven workflow**: implementer + N.5 fixer per task, Phase 종료 시 3-reviewer 병렬 audit
-8. **익명화**: 실고객 데이터 매핑은 1Password/age 외부 보관, 레포에는 `.no_real_data` sentinel만
+5. **시연 직전 검증**: `uv run python runner.py --check --strict` (MLX E2B/E4B + Discord webhook ping). MLX 메모리 해제는 Streamlit sidebar "MLX OCR 서버 (메모리 관리)" expander.
+6. **TDD + cumulative project lock**: 각 task 신규 파일은 mypy --strict 통과해야 다음 진입. tests/ 부채 ceiling은 `test_test_tree_strict_debt_does_not_grow` 가 잠금.
+7. **단일 sanitizer 진입점 (R1-C1)**: Streamlit 결과 위젯은 `web/_render.py::render_result()` 만 통과 — 내부적으로 `as_display()` 거친 dict 만 `st.*` 에 전달.
+8. **subagent-driven workflow**: implementer + N.5 fixer per task, Phase 종료 시 3-reviewer 병렬 audit
+9. **익명화**: 실고객 데이터 매핑은 1Password/age 외부 보관, 레포에는 `.no_real_data` sentinel만
