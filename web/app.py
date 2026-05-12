@@ -11,20 +11,36 @@ with the rich result-card UI and progress adapter.
 
 from __future__ import annotations
 
-import importlib
-import json
-import os
-from collections.abc import Callable
+import sys
 from pathlib import Path
-from typing import Any, TypedDict, cast
 
-import streamlit as st
-from flowcoder_office_tools.backends.factory import default_backends, safe_backends
-from flowcoder_office_tools.common.safe_mode_v2 import safe_mode_scope
-from flowcoder_office_tools.protocols import ScenarioResult, as_display, serialize_result
+# `streamlit run web/app.py` 실행 시 sys.path[0] = web/ 디렉토리만 들어가고
+# repo root 는 누락된다. pytest 처럼 `from web.* import ...` 가 resolve 되도록
+# repo root 를 sys.path 에 보강 (다른 모든 import 보다 먼저 — E402 noqa).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from web._inputs import render_input_form
-from web._runs import (
+import importlib  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+from collections.abc import Callable  # noqa: E402
+from typing import Any, TypedDict, cast  # noqa: E402
+
+import streamlit as st  # noqa: E402
+from flowcoder_office_tools.backends.factory import (  # noqa: E402
+    default_backends,
+    safe_backends,
+)
+from flowcoder_office_tools.common.safe_mode_v2 import safe_mode_scope  # noqa: E402
+from flowcoder_office_tools.protocols import (  # noqa: E402
+    ScenarioResult,
+    as_display,
+    serialize_result,
+)
+
+from web._inputs import render_input_form  # noqa: E402
+from web._runs import (  # noqa: E402
     create_run_dir,
     mark_active,
     mark_done,
