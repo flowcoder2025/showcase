@@ -420,6 +420,7 @@ dependencies = [
 [package.optional-dependencies]
 docgen = [
     { name = "jinja2" },
+    { name = "lxml" },
     { name = "python-docx" },
 ]
 messaging = [
@@ -440,6 +441,7 @@ requires-dist = [
     { name = "google-auth-oauthlib", marker = "extra == 'messaging'", specifier = ">=1.0" },
     { name = "jinja2", marker = "extra == 'docgen'", specifier = ">=3.0" },
     { name = "jsonschema", marker = "extra == 'ocr'", specifier = ">=4.0" },
+    { name = "lxml", marker = "extra == 'docgen'", specifier = ">=4.9" },
     { name = "openai", specifier = ">=1.0" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "pandas", specifier = ">=2.0" },

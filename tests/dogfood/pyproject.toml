@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dogfood-smoke"
+version = "0.0.0"
+description = "External-consumer simulation: imports flowcoder-office-tools as if from a third-party project (R3-H1)."
+requires-python = ">=3.11"
+dependencies = [
+  "flowcoder-office-tools[ocr,messaging,docgen,ai]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

@@ -25,7 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 ocr = ["jsonschema>=4.0", "Pillow>=10.0"]
 messaging = ["google-auth>=2.0", "google-auth-oauthlib>=1.0", "google-api-python-client>=2.0"]
-docgen = ["python-docx>=1.0", "Jinja2>=3.0"]
+docgen = ["python-docx>=1.0", "Jinja2>=3.0", "lxml>=4.9"]
 ai = []
 
 [tool.hatch.build.targets.wheel]

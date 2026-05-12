@@ -70,6 +70,12 @@ select = ["E", "F", "I", "B", "UP"]
 # root is the only "package base" we need so this remains scoped.
 explicit_package_bases = true
 namespace_packages = true
+# T46: ``tests/dogfood/`` is a stand-alone external-consumer simulation with
+# its own ``pyproject.toml``. It installs ``flowcoder-office-tools`` from a
+# fresh venv and imports ``fake_backend`` as a sibling module after that
+# install — a layout that mypy cannot resolve from the repo root and that is
+# intentionally outside the main test corpus's strict-debt ceiling.
+exclude = ["tests/dogfood/"]
 
 [[tool.mypy.overrides]]
 module = "discord_webhook"
