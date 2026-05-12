@@ -44,14 +44,16 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Phase 2** (2~3주): 나머지 7개 케이스 (case03~08, case10) — 진행 순서 04→03→05→07→10→08→06
 - **Phase 3** (선택): 회귀 테스트 자동화 + webapp(Streamlit/FastAPI 그때 결정) + `core/` 사내 패키지(`flowcoder-office-tools`) 분리
 
-## 진행 상태 (2026-05-11 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T45 ✅ (이주 + shim + surface lock)**
+## 진행 상태 (2026-05-12 시점) — **Phase 3-A ✅ + Phase 3-Pkg T42~T46 ✅ (이주 + shim + surface lock + dogfood + CI)**
 
-- **HEAD**: `83d36ef` (T45 — `__all__` + signature snapshot baseline + protocols underscore 격리)
-- **테스트**: **676 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg 신규 137, 회귀 0)
-- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/` **67 source files clean** (T44 65 → +2 `_internal/`). `core/` 는 shim 만 남았고 lock 외 (T46 제거 예정)
-- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 유지. T43 직후 272 폭증 → T43.5 `py.typed` 정확 회복. T44/T45 신규 source 추가 시 ceiling 변동 0
+- **HEAD**: `c327ab9` (T46 — shim 제거 + tests/dogfood/ FakeBackend smoke + CI matrix env -i)
+- **테스트**: **671 passed, 4 skipped** (Phase 2 baseline 539 + Phase 3-A·정합·Pkg 신규 132, T45 676 → T46 -5 shim tests 정리, 회귀 0)
+- **Production lock (mypy --strict)**: `packages/flowcoder-office-tools/src/ + runner.py + cases/` **67 source files clean** (불변)
+- **tests/ 부채 (mypy --strict)**: **103 errors / 13 files** — T41.5 ceiling 정확 유지. T46 `[tool.mypy] exclude = ["tests/dogfood/"]` 추가 (dogfood 는 별도 build package + 외부 consumer 시뮬레이션, ceiling scope 외)
 - **ruff**: clean (`ruff check .` + `ruff format --check .`)
 - **시연 가능**: 10/10 (case07/08 e2e 검증 유지 — T28 MLX 백엔드)
+- **CI matrix**: `.github/workflows/ci.yml` (macos-latest × Python 3.11/3.12/3.13). 3.11 full pytest + ruff + mypy. 모든 매트릭스에서 `env -i` isolated dogfood smoke 영구 게이트.
+- **dogfood smoke**: `tests/dogfood/` (외부 consumer 시뮬레이션, fresh venv + `[ocr,messaging,docgen,ai]` extras + `env -i PATH=$PATH PYTHONPATH=""` wrapping). SECRET_ENV_NAMES 13건 leak guard (R2-H6). local 통과 — `dogfood smoke OK`.
 
 ### Phase 3-A T35~T41 완료 (2026-05-10 → 05-11, 8 commits)
 
@@ -112,6 +114,21 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
 - **Plan note 2건 틀림 발견**: (1) "Python ModuleType `__getattr__` 가 import 시점에 자동 해결" — `__getattr__` 는 attribute access hook 이라 sub-sub deep import 에 트리거 안 됨. (2) `sys.meta_path.append(...)` — 기본 `PathFinder` 가 앞에 있어서 sub-sub 가 path-based 별도 module 로 import (alias 깨짐). `insert(0, ...)` 필요
 - 기타 deviation: plan example `read_excel` → 실 export `read_dir` (test 갱신), `# type: ignore[import-not-found]` 3건 (shim 경유 import 의 mypy 보고 mute, ceiling 변동 0)
 - 검증: 673 passed (+5), mypy 65 clean, tests/ 103/13 ceiling 유지, ruff clean
+
+**T46** `c327ab9` — shim 제거 + tests/dogfood/ FakeBackend smoke + CI matrix env -i:
+- `core/` + `core/__init__.py` 삭제 (T44 meta path finder shim 완전 제거). T45 step 6 grep + 본 commit 직전 grep 모두 0건 검증.
+- `tests/test_shim_compat.py` 삭제 (shim 자체 검증 5 test — shim 제거와 함께 정리, ceiling 변동 0).
+- `tests/dogfood/` 신규 3 파일: `pyproject.toml` (별도 build package, `flowcoder-office-tools[ocr,messaging,docgen,ai]` 의존) + `fake_backend.py` (Protocol 3 impls + `cache_identity()` 계약) + `dogfood_smoke.py` (env-isolated import smoke + Safe/Fake backend 주입 + ScenarioResult 5+1 + serialize_result/as_display sentinel 마스킹 + SECRET_ENV_NAMES 13건 leak guard).
+- `.github/workflows/ci.yml` 신규 — macos-latest × Python 3.11/3.12/3.13 matrix. 3.11 full pytest + ruff + mypy strict. 매트릭스 전체에서 `env -i PATH=$PATH PYTHONPATH=""` dogfood smoke wrapping (R1-C2).
+- `packages/.../pyproject.toml` — `docgen` extras 에 `lxml>=4.9` 추가 (`docgen/hwpx.py` 의존성 누락 — dogfood install 단계에서 catch).
+- root `pyproject.toml [tool.mypy]` — `exclude = ["tests/dogfood/"]` 추가 (별도 build package + 외부 consumer 시뮬레이션이라 main test corpus ceiling scope 외).
+- **Plan deviation 4건 (정직 disclose)**:
+  1. spec `dogfood_smoke.py` import 4건이 실 export 와 어긋남 (`read_excel`/`merge_files`/`build_pivot`/`write_workbook` / `send_discord_with_level` / `extract_receipt` / `chat,draft_email` 모두 부정확). T45 채택한 sub-module export 패턴 기준으로 정정 — `from .excel import merger, pivot, reader, validator, writer` 등 + 각 sub-module 의 실 callable 검증.
+  2. spec dogfood `requires-python = ">=3.11,<3.14"` 대신 `">=3.11"` (T42 root pyproject 정정 패턴 동일, dev env Python 3.14.4 차단 회피).
+  3. spec CI yml `[ocr] extras 3.11 only` 분기 제거 — `ocr` extras = jsonschema + Pillow (pure Python, 3.12/3.13 호환), mlx_vlm 은 subprocess 호출이라 import-time 의존 아님.
+  4. spec CI yml `mypy --strict ... web/` 명령에서 `web/` 제외 — T47 (Streamlit MVP) 진입 시 추가 예정 (본 commit 시점에 미존재).
+- **핵심 교훈 (lessons.md 추가)**: (a) 외부 consumer dogfood 가 extras 누락 (lxml) 을 즉시 catch — workspace install 만으로는 transitive dep 가 누락돼도 dev test 가 통과해 부채 가림. dogfood install 분리가 이런 부채를 catch 하는 영구 게이트. (b) tests/ 하위지만 별도 build package 는 `[tool.mypy] exclude` 로 main ceiling scope 분리 — 외부 consumer 시뮬레이션의 type 검증 의도가 main corpus 와 다름 (strict X). spec example 의 implicit 가정.
+- 검증: pytest 671 passed (-5 shim, +0 회귀), mypy source 67 clean, mypy tests/ 103/13 ceiling 유지, ruff clean, local dogfood smoke `dogfood smoke OK`.
 
 **T45** `83d36ef` — `__all__` 명시 + signature snapshot baseline + protocols underscore 격리:
 - `_internal/sanitize.py` 신규 — `_mask_recursive` (+ `_MAX_DEPTH`) 이동. `protocols.py` 가 `from ._internal.sanitize import _mask_recursive` 로 재사용 → `dir(protocols)` 의 `__module__` 분리로 R1-C3 차단 통과.
@@ -205,31 +222,35 @@ originSessionId: 5f17504f-aeae-4369-a83b-4a0ef76e757b
   - 보안 minimum: ScenarioResult sanitizer + Streamlit 127.0.0.1 + path traversal 방어
 - **진입 절차**: T32 retract-only commit (이번 세션) → T33 게이트 정합화 → T34부터 코드 진입
 
-## 다음 세션 진입 (Phase 3-Pkg T46 진입)
+## 다음 세션 진입 (Phase 3-Web T47 진입)
 
 ```bash
 cd /Users/jerome/AX/showcase && claude
 /mem-resume
-git log --oneline -10                          # HEAD 83d36ef (T45) 확인
-uv run pytest -q                               # 676 passed, 4 skipped
+git log --oneline -10                          # HEAD c327ab9 (T46) 확인
+uv run pytest -q                               # 671 passed, 4 skipped
 uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/   # 67 clean
-grep -n "^### T46" specs/2026-05-08-phase3-plan-v2.md  # T46 spec (line 1737~)
+grep -n "^### T47" specs/2026-05-08-phase3-plan-v2.md  # T47 spec (line 1970~)
 ```
 
-**T46 핵심 (plan v2.1.1 line 1737~)**: shim 제거 + dogfood fixture + CI matrix.
-- shim (`core/__init__.py` + meta path finder) 제거 — `from core.*` 잔존 사전 grep 0건 검증 (T45 step 6 에서 이미 확인됨)
-- dogfood fixture 활성화 (외부 사용 게이트 (b) 충족 조건 — design v2.1 §5.1, critical-gaps §2)
-- CI matrix: Python 3.11 풀 + 3.12/3.13 smoke (design v2.1 framing)
-- AC: shim 제거 후 모든 회귀 0 + dogfood fixture 가 영구 PR merge 차단 게이트로 동작
+**T47 핵심 (plan v2.1.1 line 1970~)**: `web/app.py` 골격 + `.streamlit/config.toml` + 127.0.0.1 default (보안 minimum).
+- web/ 디렉토리 신규 + Streamlit MVP entry point
+- 127.0.0.1 binding (LAN 노출 차단)
+- design v2.1 §5.2 보안 minimum: ScenarioResult sanitizer 의존 (T45 `serialize_result`/`as_display` 이미 구축)
+- 본 commit 진입 시 CI yml `mypy --strict ... web/` 명령 복원 예정 (T46 deviation 4 정합)
 
-### Phase 3-Pkg 진행 순서 (남은 task)
+### Phase 3-Pkg ✅ 완전 종료 (T42~T46)
 
-- **T42** ✅ scaffold
+- **T42** ✅ `7d55a58` — scaffold (uv workspace)
 - **T43** ✅ `6b6b32b` — `core/` → packages 이주 + libcst codemod
 - **T43.5** ✅ `ed68a4f` — `py.typed` marker (PEP 561) + 부채 회귀 0
 - **T44** ✅ `d5ac2e9` — shim 안정화 + meta path finder (plan note 정정)
 - **T45** ✅ `83d36ef` — `__all__` + signature snapshot baseline + protocols underscore 격리
-- **T46**: shim 제거 + dogfood fixture + CI matrix (외부 사용 게이트 (b) 충족 조건)
+- **T46** ✅ `c327ab9` — shim 제거 + dogfood + CI matrix (Phase 3-Pkg 종료)
+
+### Phase 3-Web 진입 예정 (T47~T50)
+
+design v2.1 §5.2 — 사내 단일 user Streamlit MVP. cases.scenario.run() 직접 호출 + minimum 보안 요건.
 
 ## 시연 추천 조합
 

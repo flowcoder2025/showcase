@@ -17,10 +17,11 @@ T35~T38 완료, T39~T41 완료, T41.5 부채 정합 완료. Phase 3-Pkg T42~T45 
 - 회귀 차단: `tests/test_safe_mode_v2.py::test_intercept_boundary_isolates_force_safe_between_cases`
 - Token return contract 는 보존 (명시적 scope 필요한 caller 용 — 현 호출자는 sticky failover 의도로 discard).
 
-### 2. dogfood fixture CI 미활성화
-- design v2.1 §5.1: dogfood = 추가 검증 트랙 (외부 사용 약속의 대체 아님)
-- **T46에서 영구 PR merge 차단 조건으로 활성화 예정** (T45 surface lock 완료 → T46 shim 제거와 같이 진행)
-- 현재 0% 진행 — Phase 3-Pkg T46 단계에서 구축
+### ~~2. dogfood fixture CI 미활성화~~ ✅ 해결 (2026-05-12, T46)
+- `tests/dogfood/` 별도 build package + `.github/workflows/ci.yml` matrix (3.11/3.12/3.13) 활성화
+- `env -i PATH=$PATH PYTHONPATH=""` wrapping 으로 SECRET_ENV_NAMES 13건 leak guard (R2-H6)
+- local 통과 (`dogfood smoke OK`), CI 첫 실행은 main push (commit c327ab9) 와 함께 트리거됨
+- 외부 사용 약속 (1) 게이트는 별도 — dogfood 는 추가 검증 트랙 (design v2.1 §5.1 대체 아님)
 
 ### 3. tests/ mypy strict 부채 ceiling 잠금 (T41.5 새로 명문화)
 - 현 ceiling: **103 errors / 13 files** (`tests/test_test_tree_strict_debt_does_not_grow.py`)
