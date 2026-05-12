@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 SECRET_ENV_NAMES = [
+    # Provider keys used by flowcoder_office_tools backends.
     "OPENROUTER_API_KEY",
     "OPENAI_API_KEY",
     "DISCORD_WEBHOOK_URL",
@@ -35,6 +36,17 @@ SECRET_ENV_NAMES = [
     "AX_OCR_BASE_URL_E4B",
     "AX_OCR_MODEL_E2B_PATH",
     "AX_OCR_MODEL_E4B_PATH",
+    # Cross-tool secrets (R1-M5 audit finding). The package itself does not
+    # consume these, but a downstream consumer that imports this package
+    # alongside Claude/AWS/HuggingFace/GitHub SDKs would inherit them; the
+    # dogfood guard catches accidental forwarding into the isolated test env.
+    "ANTHROPIC_API_KEY",
+    "GITHUB_TOKEN",
+    "GH_TOKEN",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "HF_TOKEN",
+    "SLACK_BOT_TOKEN",
 ]
 
 _leaked = [k for k in SECRET_ENV_NAMES if os.environ.get(k)]
