@@ -81,6 +81,23 @@ def test_stream_save_size_cap_during_write(tmp_path: Path) -> None:
     assert not target.exists()
 
 
+def test_stream_save_total_cap_fail_early(tmp_path: Path) -> None:
+    """R1-H2 fail-early: remaining_total cap aborts during write, partial cleaned."""
+    runs_root = tmp_path / "runs"
+    run_dir = create_run_dir(runs_root)
+    target = run_dir / "input" / "second.xlsx"
+
+    payload = b"z" * (5 * 1024 * 1024)
+    with pytest.raises(ValueError, match="total upload"):
+        stream_save(
+            _FakeUpload(payload),
+            target,
+            per_file_mb=50,
+            remaining_total=2 * 1024 * 1024,
+        )
+    assert not target.exists()
+
+
 def test_stream_save_under_cap_succeeds(tmp_path: Path) -> None:
     runs_root = tmp_path / "runs"
     run_dir = create_run_dir(runs_root)

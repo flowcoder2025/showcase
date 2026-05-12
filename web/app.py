@@ -103,12 +103,16 @@ def execute_case(
         for uf in form_result.get("uploaded_files", []):
             target = in_dir / uf.name
             validate_upload_path(RUNS_ROOT, target)
-            written = stream_save(uf, target, per_file_mb=_PER_FILE_MB)
+            # R1-H2 fail-early: pass the remaining headroom so a single file
+            # cannot blow through the total cap before we get a chance to look.
+            remaining = _TOTAL_UPLOAD_CAP_BYTES - total_bytes
+            written = stream_save(
+                uf,
+                target,
+                per_file_mb=_PER_FILE_MB,
+                remaining_total=remaining,
+            )
             total_bytes += written
-            if total_bytes > _TOTAL_UPLOAD_CAP_BYTES:
-                raise ValueError(
-                    f"total upload exceeds {_TOTAL_UPLOAD_CAP_BYTES // (1024 * 1024)}MB cap"
-                )
 
         scenario_mod = importlib.import_module(f"cases.{case_id}.scenario")
         run_fn = cast(Callable[..., ScenarioResult], scenario_mod.run)

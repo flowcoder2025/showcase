@@ -74,13 +74,23 @@ def stream_save(
     *,
     per_file_mb: int = _DEFAULT_PER_FILE_MB,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
+    remaining_total: int | None = None,
 ) -> int:
-    """Stream ``uf`` into ``target``; abort + cleanup if cap is exceeded.
+    """Stream ``uf`` into ``target``; abort + cleanup if any cap is exceeded.
 
-    Returns total bytes written on success. Raises ``ValueError`` (matching
-    ``<N>MB``) when the running counter overruns ``per_file_mb``.
+    Two limits apply during the write loop. ``per_file_mb`` caps the *single*
+    upload, and ``remaining_total`` (when provided) caps how many additional
+    bytes the caller can absorb across the whole batch (R1-H2 fail-early).
+    Both are enforced *while* writing — the offending file is truncated and
+    unlinked before the chunk that overruns the cap is committed to disk, so
+    a partial blob never lingers.
+
+    Returns total bytes written on success. Raises ``ValueError`` whose
+    message contains either ``<N>MB`` (per-file) or ``total upload``
+    (cross-file) so callers can disambiguate the two limits.
     """
-    cap = per_file_mb * 1024 * 1024
+    per_file_cap = per_file_mb * 1024 * 1024
+    effective_cap = per_file_cap if remaining_total is None else min(per_file_cap, remaining_total)
     size = 0
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("wb") as fh:
@@ -89,9 +99,11 @@ def stream_save(
             if not chunk:
                 break
             size += len(chunk)
-            if size > cap:
+            if size > effective_cap:
                 fh.close()
                 target.unlink(missing_ok=True)
+                if remaining_total is not None and size > remaining_total:
+                    raise ValueError(f"total upload exceeds remaining {remaining_total} bytes")
                 raise ValueError(f"file {target.name} exceeds {per_file_mb}MB cap")
             fh.write(chunk)
     return size
