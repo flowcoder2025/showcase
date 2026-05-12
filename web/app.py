@@ -36,12 +36,13 @@ from flowcoder_office_tools.common.safe_mode_v2 import safe_mode_scope  # noqa: 
 from flowcoder_office_tools.ocr import _mlx_server  # noqa: E402
 from flowcoder_office_tools.protocols import (  # noqa: E402
     ScenarioResult,
-    as_display,
     serialize_result,
 )
 
 from web._inputs import render_input_form  # noqa: E402
+from web._render import render_result  # noqa: E402
 from web._runs import (  # noqa: E402
+    cleanup_expired_runs,
     create_run_dir,
     mark_active,
     mark_done,
@@ -136,6 +137,10 @@ def main() -> None:
     st.set_page_config(page_title="AX Showcase", layout="wide")
     st.title("AX Showcase — 사무자동화 시연")
 
+    # TTL start hook (R1-H4): reclaim stale run dirs before serving the page.
+    # Active runs and any holding a `.lock` file are skipped by cleanup_expired_runs.
+    cleanup_expired_runs(RUNS_ROOT, ttl_hours=24)
+
     with st.sidebar:
         st.subheader("실행 모드")
         running = bool(st.session_state.get("running", False))
@@ -208,7 +213,7 @@ def main() -> None:
         st.session_state["running"] = False
 
     st.success(f"실행 완료 — run_id={execute_result['run_id']}")
-    st.json(as_display(execute_result["result"]))
+    render_result(execute_result)
 
 
 if __name__ == "__main__":
