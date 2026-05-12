@@ -1,0 +1,15 @@
+# Phase 3-Web T47 — local-only Streamlit MVP (R1-H3).
+#
+# `address = "127.0.0.1"` 강제로 LAN/외부 노출 차단. `web/app.py` 시작부에
+# `STREAMLIT_SERVER_ADDRESS` 환경변수 동시 검증 — config 변조와 env override
+# 둘 중 하나만 통과해도 외부 노출이라 두 layer 모두 enforce.
+#
+# `maxUploadSize = 50` 은 T48 의 per-file cap 과 정합 (case07/08 영수증·세금
+# 계산서 일괄 업로드 시 단일 파일 50MB 상한).
+
+[server]
+address = "127.0.0.1"
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 50

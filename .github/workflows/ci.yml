@@ -52,6 +52,6 @@ jobs:
       - name: mypy --strict (3.11 only)
         if: matrix.python == '3.11'
         run: |
-          # T46 deviation: spec yml의 mypy 명령에 'web/' 포함 — T47에서 생성
-          # 예정이라 본 commit 시점에 미존재. T47 도입 시 web/ 추가.
-          uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/
+          # T47: web/ Streamlit MVP entry — spec yml 의 mypy scope 복원
+          # (T46 deviation 4 정합화).
+          uv run mypy --strict packages/flowcoder-office-tools/src/ runner.py cases/ web/

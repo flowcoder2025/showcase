@@ -24,6 +24,7 @@ dependencies = [
     "jsonschema>=4.20",
     # T42 (Phase 3-Pkg): 재사용 라이브러리 추출 scaffold. T43 에서 core/ → packages/.../src 이주.
     "flowcoder-office-tools",
+    "streamlit>=1.57.0",
 ]
 
 [dependency-groups]
